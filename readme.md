@@ -16,6 +16,8 @@
 
 下载模型后，请将模型文件放入 `paraformer-offline-zh` 文件夹内（如果下载的压缩包则需解压）
 
+![image-20230528171615868](assets/model-path.png) 
+
 
 ## 安装依赖
 
