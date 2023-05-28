@@ -6,7 +6,7 @@ from os.path import dirname; BASE_DIR = dirname(__file__)
 
 import colorama; colorama.init()
 
-port = 6008
+port = 6006
 
 command = f'''
 ./sherpa-onnx-bin/sherpa-onnx-offline-websocket-server 
