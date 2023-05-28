@@ -1,0 +1,5 @@
+keyboard
+numpy
+sounddevice
+websockets
+colorama
