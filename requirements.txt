@@ -3,3 +3,4 @@ numpy
 sounddevice
 websockets
 colorama
+funasr_onnx
