@@ -11,8 +11,11 @@
 已作 Win10-x86-64 打包版本，下载后双击 exe，分别打开 Server 和 Client 即可使用，下载地址：
 
 - 百度盘: https://pan.baidu.com/s/1zNHstoWZDJVynCBz2yS9vg 提取码: eu4c 
+- Github Release: [CapsWriter-Offline-V0.2](https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/v0.2) 
 
+打包后大小约 1.4G，下载要花些时间，主要是里面包含了模型文件。
 
+（若百度盘链接失效，请从 Github Releases 下载，虽然慢，至少不会掉链）
 
 ![win10-bin](assets/win10-bin.png)
 
