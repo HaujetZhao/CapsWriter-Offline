@@ -1,6 +1,6 @@
 ## CapsWriter 简陋的离线版
 
-![server-and-client](assets/server-and-client.png)
+![image-20230530173118273](assets/image-20230530173118273.png) 
 
 这是 `CapsWriter` 简陋的离线版，一个 PC 端的语音输入工具。
 
@@ -8,38 +8,59 @@
 
 ## 懒人包
 
-已作 Win10-x86-64 打包版本，下载后双击 exe，分别打开 Server 和 Client 即可使用，下载地址：
+对于 Windows10 64 位用户，我打包了 `exe` 版本，可以从百度网盘或者 GitHub Releases界面下载。
+
+由于模型文件太大，为了方便更新，打包版本中没有包含模型文件，所以需要分别手动下载软件和模型，模型文件也放在了百度网盘和 GitHub Releases 界面里边。
+
+打包版本里有一个 `models` 文件夹，请把模型文件解压后放到 `models` 里，之后双击 `exe`，分别打开 `Server` 和 `Client` 即可使用。
+
+下载地址：
 
 - 百度盘: https://pan.baidu.com/s/1zNHstoWZDJVynCBz2yS9vg 提取码: eu4c 
-- Github Release: [CapsWriter-Offline-V0.2](https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/v0.2) 
+- GitHub Release: [CapsWriter-Offline-V0.2](https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/v0.2) 
 
 打包后大小约 1.4G，下载要花些时间，主要是里面包含了模型文件。
 
-（若百度盘链接失效，请从 Github Releases 下载，虽然慢，至少不会掉链）
+（百度网盘容易掉链接，补链接太麻烦了，我不一定会补链接。GitHub Releases 界面下载是最可靠的。）
 
-![win10-bin](assets/win10-bin.png)
+![image-20230530164630611](assets/image-20230530164630611.png) 
 
 其它系统，可以下载模型、安装依赖后从 Python 源码运行。
+
+## 修改配置
+
+你可以打开 `core_server.py` ，在开头部分有注释，指导你修改服务端的端口，默认是 `6006`
+
+你可以打开 `core_client.py` ，在开头部分有注释，指导你修改客户端的：
+
+- 连接的地址和端口，默认是 `127.0.0.1` 和 `6006` 
+- 键盘快捷键
+- 是否要保存录音文件
+- 要移除识别结果末尾的哪些标点，（如果你想把问号也删除掉，可以在这边加上）
+
+如果未来要加一些新的功能，也会把配置项放这两个文件开头
+
+
 
 
 ## 下载模型
 
-本工具服务端使用了 [sherpa-onnx](https://k2-fsa.github.io/sherpa/onnx/index.html) ，载入阿里巴巴开源的 [Paraformer](https://www.modelscope.cn/models/damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch/summary) 模型（[转为onnx格式](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/offline-paraformer/paraformer-models.html)），来作语音识别，整个模型约 1GB 大小。你可以从这里下载到已转换好的模型文件：
+本工具服务端使用了 [sherpa-onnx](https://k2-fsa.github.io/sherpa/onnx/index.html) ，载入阿里巴巴开源的 [Paraformer](https://www.modelscope.cn/models/damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch/summary) 模型（[转为onnx格式](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/offline-paraformer/paraformer-models.html)），来作语音识别，整个模型约 1GB 大小。下载有已转换好的模型文件：
 
 - [csukuangfj/sherpa-onnx-paraformer-zh-2023-03-28 at main (huggingface.co)](https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-03-28/tree/main) 
 
 另外，还使用了阿里巴巴的标点符号模型（[转为了onnx格式](https://github.com/alibaba-damo-academy/FunASR/tree/main/funasr/export)）：
 
-- [CT-Transformer标点-中文-通用-pytorch ](https://modelscope.cn/models/damo/punc_ct-transformer_zh-cn-common-vocab272727-pytorch/summary)
+- [CT-Transformer标点-中文-通用-pytorch ](https://modelscope.cn/models/damo/punc_ct-transformer_zh-cn-common-vocab272727-pytorch/summary) 
 
-下载模型后，请将模型文件放入 `models` 文件夹内（如果下载的压缩包则需解压）
-
-![image-20230530031322605](assets/image-20230530031322605.png)  
+**模型文件太大，并没有包含在 GitHub 库里面，你可以从百度网盘或者 GitHub Releases 界面下载已经转换好的模型文件，解压后，放入 `models` 文件夹。** 
 
 
 ## 安装依赖
 
-安装 Python 后，在 `cmd` 窗口进入本文件夹，运行 `pip install -r requirements.txt` 安装依赖
+安装 Python 后，在 `cmd` 窗口进入本文件夹，运行 `pip install -r requirements.txt` 安装依赖。
+
+有些依赖在3.11还暂时不无法安装，建议使用 `python 3.10`
 
 ## 运行和使用
 

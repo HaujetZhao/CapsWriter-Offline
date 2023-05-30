@@ -39,7 +39,7 @@ pattern = re.compile(f"""(?ix)          # i 表示忽略大小写，x 表示开�
 pure_num = re.compile(f'[零幺一二三四五六七八九]+(点[零幺一二三四五六七八九]+)*[{common_units}]?')
 
 # 数值
-value_num = re.compile(f"十?(零?[一二两三四五六七八九十][十百千万])*零?[一二三四五六七八九]?(点[零一二三四五六七八九]+)?[{common_units}]?")
+value_num = re.compile(f"十?(零?[一二两三四五六七八九十][十百千万]{{1,2}})*零?[一二三四五六七八九]?(点[零一二三四五六七八九]+)?[{common_units}]?")
 
 # 百分值
 percent_value = re.compile('(?<![一二三四五六七八九])(百分之)[零一二三四五六七八九十百千万]+(点)?(?(2)[零一二三四五六七八九]+)')
@@ -105,6 +105,8 @@ def strip_unit(original):
 def convert_pure_num(original):
     '''把中文数字转为对应的阿拉伯数字'''
     stripped, unit = strip_unit(original)
+    if stripped in ['一']:
+        return original
     converted = []
     for c in stripped:
         converted.append(num_mapper[c])
@@ -124,7 +126,11 @@ def convert_value_num(original):
             temp = 10 if temp==0 else value_mapper[c]*temp
         elif c in '一二两三四五六七八九':
             temp += value_mapper[c]
-        elif c in '百千万':
+        elif c in '万':
+            value += temp 
+            value *= value_mapper[c]
+            temp = 0
+        elif c in '百千':
             value += temp * value_mapper[c]
             temp = 0
     value += temp; 
@@ -233,4 +239,4 @@ if __name__ == "__main__":
     #     print(f'\n{original=}')
     #     print(f'{reference=}') 
     #     print(f'{answer=   }') 
-    print(chinese_to_num('三十九点六四秒'))
+    print(chinese_to_num('一个'))

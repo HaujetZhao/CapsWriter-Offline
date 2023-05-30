@@ -28,9 +28,15 @@ rmdir /s /q .\dist\start_server\numpy
 mkdir  .\dist\start_server\numpy
 xcopy /S /Y %PythonPath%\Lib\site-packages\numpy .\dist\start_server\numpy
 
+:: onnxruntime
+rmdir /s /q .\dist\start_server\onnxruntime
+mkdir  .\dist\start_server\onnxruntime
+xcopy /S /Y %PythonPath%\Lib\site-packages\onnxruntime .\dist\start_server\onnxruntime
+
 
 :: models
 mkdir .\dist\start_server\models 
+@REM copy ..\models\请将语音和标点模型放到此文件夹 .\dist\start_server\models\
 xcopy /S /Y ..\models .\dist\start_server\models 
 
 :: core_server.py

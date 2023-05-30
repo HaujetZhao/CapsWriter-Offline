@@ -6,6 +6,7 @@ print(f'当前基文件夹：{BASE_DIR}')
 from pathlib import Path
 import time
 import asyncio
+import re
 
 import numpy as np
 import websockets
@@ -51,6 +52,23 @@ for path in (paraformer_path, tokens_path, punc_model_dir,):
 
 # ========================================================================
 
+en_in_zh = re.compile(r"([\u4e00-\u9fa5]|[a-zA-Z]+ )?([a-zA-Z ]+)([\u4e00-\u9fa5]|[a-zA-Z]+)?")
+
+def adjust_space(original: re.Match):
+    # 如果拼写字母中间有空格，就把空格都去掉
+    if original.group(2):
+        final = re.sub(r'(\b\w) (?!\w{2})', r'\1', original.group(2)).strip()
+    # 如果是英文单词，就把两边的空格去掉
+    
+    # 如果英文的左边有汉字，给中英之间加上空格
+    if original.group(1):
+        final = original.group(1).rstrip() + ' ' + final
+
+    # 如果英文的右边有汉字，给中英之间加上空格
+    if original.group(3):
+        final += ' ' + original.group(3).lstrip()
+
+    return final
 
 async def ws_serve(websocket, path):
     global loop
@@ -63,19 +81,31 @@ async def ws_serve(websocket, path):
             s = recognizer.create_stream()
             s.accept_waveform(16000, samples)
 
-            # 识别音频得到结果
+            # 识别结果
             await loop.run_in_executor(None, recognizer.decode_streams, [s])
-            result_raw = s.result.text
+            result_0 = s.result.text
+
+            # 转数字
+            result_1 = chinese_to_num(result_0)
+
+            # 去掉拼写空格
+            result_2 = en_in_zh.sub(adjust_space, result_1)
 
             # 添加标点
-            result_punc = await loop.run_in_executor(None, punc_model, result_raw)
-            result_punc = result_punc[0]
+            result_3 = await loop.run_in_executor(None, punc_model, result_2)
+            result_3 = result_3[0]
 
-            # 中文数字转阿拉伯数字
-            result_final = chinese_to_num(result_punc)
+            # 调整中英空格排版
+            result_4 = en_in_zh.sub(adjust_space, result_3)
 
-            await websocket.send(result_final)
-            print(f'\n识别结果：{result_raw}\n加标点结果：{result_punc}\nITN结果：\x9b32m{result_final}\x9b0m')
+            await websocket.send(result_4)
+            print(f'''
+    识别粗结果：{result_0}
+    转数字后后：{result_1}
+    去拼写空格：{result_2}
+    加标点结果：{result_3}
+    调中英空格：\x9b32m{result_4}\x9b0m
+            ''')
      
     except websockets.ConnectionClosed:
         print("ConnectionClosed...", )
@@ -121,7 +151,11 @@ async def main():
                                 port, 
                                 subprotocols=["binary"], 
                                 ping_interval=None)
-    await start_server
+    try:
+        await start_server
+    except OSError as e:
+        input(f'\x9b31m 出错了：{e} \x9b0m')
+        exit()
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
