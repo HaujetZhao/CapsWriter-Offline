@@ -58,11 +58,13 @@ def adjust_space(original: re.Match):
     # 如果拼写字母中间有空格，就把空格都去掉
     if original.group(2):
         final = re.sub(r'(\b\w) (?!\w{2})', r'\1', original.group(2)).strip()
-    # 如果是英文单词，就把两边的空格去掉
     
     # 如果英文的左边有汉字，给中英之间加上空格
     if original.group(1):
         final = original.group(1).rstrip() + ' ' + final
+    # 如果英文左边的汉字被前一个组消费了，就要手动去看一下前一个字是不是中文
+    elif re.match(r'[\u4e00-\u9fa5]', original.string[original.start(2) - 1]): 
+        final = ' ' + final
 
     # 如果英文的右边有汉字，给中英之间加上空格
     if original.group(3):
