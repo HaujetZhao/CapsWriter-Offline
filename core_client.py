@@ -226,7 +226,7 @@ def caps_handler(e: keyboard.KeyboardEvent) -> None:
             print('\r\x9b2K', end='', flush=True)
         else:
             time.sleep(0.01)    
-            keyboard.send('caps lock')  # 恢复 CapsLock 状态
+            keyboard.send(shortcut)  # 松开快捷键后，再按一次，恢复 CapsLock 或 Shift 等按键的状态
         
         loop_main.call_soon_threadsafe(finish_event.set) # 通知识别任务：录音停止了，可以识别了
         on = False              # 全局标识已停止录音
