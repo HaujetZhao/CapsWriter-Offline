@@ -6,6 +6,8 @@
 
 运行后，只要按下键盘上的 `大写锁定键`，就会开始录音，当你松开 `大写锁定键` 时，就会识别你的录音，并将识别结果立刻输入。
 
+视频教程：[CapsWriter-Offline 电脑端离线语音输入工具](https://www.bilibili.com/video/BV1fo4y1T7KN/)  
+
 ## 懒人包
 
 对于 Windows10 64 位用户，我打包了 `exe` 版本，可以从百度网盘或者 GitHub Releases界面下载。
@@ -17,7 +19,7 @@
 下载地址：
 
 - 百度盘: https://pan.baidu.com/s/1zNHstoWZDJVynCBz2yS9vg 提取码: eu4c 
-- GitHub Release: [CapsWriter-Offline-V0.2](https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/v0.2) 
+- GitHub Release: [Releases · HaujetZhao/CapsWriter-Offline](https://github.com/HaujetZhao/CapsWriter-Offline/releases) 
 
 打包后大小约 1.4G，下载要花些时间，主要是里面包含了模型文件。
 
