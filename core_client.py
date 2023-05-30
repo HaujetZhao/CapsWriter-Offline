@@ -26,6 +26,7 @@ port = '6006'               # Server 端口
 
 shortcut  = 'caps lock'     # 控制录音的快捷键，默认是 CapsLock
 threshold = 0.3             # 按下快捷键后，触发语音识别的时间阈值
+restore   = True            # 录音完成，松开按键后，是否自动再按一遍，以恢复 CapsLock 或 Shift 等之前的状态
 
 save_audio = True           # 是否保存录音文件
 trash_punc = '，。,.'        # 识别结果要消除的末尾标点
@@ -198,9 +199,18 @@ async def recognize():
         f.setsampwidth(2)
         f.writeframes((samples * 32768).astype(np.int16))
     
-def caps_handler(e: keyboard.KeyboardEvent) -> None:
+def shortcut_handler(e: keyboard.KeyboardEvent) -> None:
+    # 在我的 Windows 电脑上，left ctrl 和 right ctrl 的 keycode 都是一样的，
+    # keyboard 库按 keycode 判断触发
+    # 即便设置 right ctrl 触发，在按下 left ctrl 时也会触发
+    # 不过，虽然两个按键的 keycode 一样，但事件 e.name 是不一样的
+    # 在这里加一个判断，如果 e.name 不是我们期待的按键，就返回
+    global shortcut
+    if keyboard.normalize_name(shortcut).replace('left ', '') != e.name.replace('left ', ''): return False    
+        
     global on           # 用于判断是否已开始录音、记录录音开始的时间
     global threshold    # 按下快捷键后，触发语音识别的时间阈值
+    global restore      # 用于标识在用户松开按键后，再自动发送一下按键，以恢复 CapsLock 或 Shift 状态
 
     global loop_main    # 这是主线程的事件循环
     global coro_queue   # 主线程从这个队列中获取识别任务后，放入主事件循环
@@ -224,7 +234,7 @@ def caps_handler(e: keyboard.KeyboardEvent) -> None:
             task.cancel()       # 取消识别任务
             container_in = None    # 删除录音，并停止接收录音
             print('\r\x9b2K', end='', flush=True)
-        else:
+        elif restore:
             time.sleep(0.01)    
             keyboard.send(shortcut)  # 松开快捷键后，再按一次，恢复 CapsLock 或 Shift 等按键的状态
         
@@ -294,7 +304,7 @@ async def main():
     stream = record_open()
 
     # 快捷键绑定到函数
-    keyboard.hook_key(shortcut, caps_handler)
+    keyboard.hook_key(shortcut, shortcut_handler)
 
     # 打印说明
     show_tips()
