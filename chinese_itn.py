@@ -120,20 +120,25 @@ def convert_value_num(original):
     int_part, decimal_part = stripped.split("点")   # 分离小数
 
     # 计算整数部分的值
-    value, temp = 0, 0
+    value, temp, base = 0, 0, 0
     for c in int_part:
         if c == '十' : 
             temp = 10 if temp==0 else value_mapper[c]*temp
+            base = 1
+        elif c == '零':
+            base = 1
         elif c in '一二两三四五六七八九':
             temp += value_mapper[c]
         elif c in '万':
             value += temp 
             value *= value_mapper[c]
+            base = value_mapper[c] // 10
             temp = 0
         elif c in '百千':
             value += temp * value_mapper[c]
+            base = value_mapper[c] // 10
             temp = 0
-    value += temp; 
+    value += temp * base; 
     final = str(value)
     
     # 小数部分，就是纯数字，直接映射即可
@@ -239,4 +244,4 @@ if __name__ == "__main__":
     #     print(f'\n{original=}')
     #     print(f'{reference=}') 
     #     print(f'{answer=   }') 
-    print(chinese_to_num('一个'))
+    print(chinese_to_num('一万三千六'))
