@@ -1,6 +1,6 @@
 ## CapsWriter 简陋的离线版
 
-![image-20230530173118273](assets/image-20230530173118273.png) 
+![image-20230601013640132](assets/image-20230601013640132.png) 
 
 这是 `CapsWriter` 简陋的离线版，一个 PC 端的语音输入工具。
 

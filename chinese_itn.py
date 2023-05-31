@@ -31,7 +31,7 @@ pattern = re.compile(f"""(?ix)          # i 表示忽略大小写，x 表示开�
   (
     [零幺一二两三四五六七八九十百千万点比]
     |[零一二三四五六七八九十][ ]
-    |(?<=[一二两三四五六七八九十])[年月日号]
+    |(?<=[一二两三四五六七八九十])[年月日号分]
     |(分之)
   )+
   (
@@ -245,7 +245,9 @@ def replace(original):
             final = convert_date_value(original)
         else:
             final = original
-        final = head + final
+
+        if head:
+            final = head + final
     except:
         num_type = '未知'
         final = original
@@ -272,4 +274,4 @@ if __name__ == "__main__":
     #     print(f'\n{original=}')
     #     print(f'{reference=}') 
     #     print(f'{answer=   }') 
-    print(chinese_to_num(' samsung s 八'))
+    print(chinese_to_num('现在时间十六点二十五分二十四秒'))

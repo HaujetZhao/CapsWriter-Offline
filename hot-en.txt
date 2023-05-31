@@ -1,6 +1,33 @@
 # 在此文件放置英文热词
 # Put English hot words here, one per line. Line starts with # will be ignored. 
 
+
+# 杂项
+IP
+IO
+PC
+KB
+MB
+GB
+TB
+PB
+
+Apple
+Apple Watch
+iPhone
+iPad
+iMac
+MacBook
+Pro
+
+Samsung
+
+SpaceX
+StarShip
+Falcon
+Raptor
+Merlin
+
 # 数字开头
 7-Zip
 
@@ -35,6 +62,7 @@ CPU
 Creative Cloud
 Cubase
 ChatGPT
+CapsWriter
 
 # D开头
 Dell

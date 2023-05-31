@@ -64,7 +64,7 @@ def 热词替换(句子):
     所有匹配 = 匹配热词(句子)
     for 匹配项 in 所有匹配:
         正则模式 = re.sub('[^\w]', '', 匹配项)
-        正则模式 = r'\b' + re.sub('(.)', r'\1 *?', 正则模式) + r'\b'
+        正则模式 = r'(\b|\d)' + re.sub('(.)', r'\1 *?', 正则模式) + r'(\b|\d)'
         句子 = re.sub(正则模式, 匹配项, 句子, flags=re.I)
     return 句子
 
@@ -78,11 +78,13 @@ if __name__ == '__main__':
         iPhone4S
         7-Zip
         AI
+        CapsWriter
+        GB
     '''
 
     更新热词词典(热词文本)
 
-    res = 热词替换('gmail')
+    res = 热词替换('文件大小16gb')
 
 
     print(f'{res}')
