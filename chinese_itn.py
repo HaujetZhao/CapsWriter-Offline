@@ -16,30 +16,56 @@ print(res)  # 192.168.1.1
 __all__ = ['chinese_to_num']
 
 import re
+from string import ascii_letters
 
 
 
 # 常见的跟在数字后面的单位
-common_units = '个只分万秒'       
+common_units = r'个只分万亿秒'       
 
 # 总模式，筛选出可能需要替换的内容
+# 测试链接  https://regex101.com/r/tFqg9S/3
 pattern = re.compile(f"""(?ix)          # i 表示忽略大小写，x 表示开启注释模式
-    (
-        (
-            [零幺一二两三四五六七八九十百千万亿点比]
-            |(分之)
-            |(?<=[一二两三四五六七八九十])[年月日号{common_units}]
-        ){{2,}}
+([a-z]\s*)?
+(
+  (
+    [零幺一二两三四五六七八九十百千万点比]
+    |[零一二三四五六七八九十][ ]
+    |(?<=[一二两三四五六七八九十])[年月日号]
+    |(分之)
+  )+
+  (
+    (?<=[一二两三四五六七八九十])[a-zA-Z年月日号{common_units}]
+    |(?<=[一二两三四五六七八九十]\s)[a-zA-Z]
+  )?
+  (?(1)
+  |(?(5)
+    |(
+      [零幺一二两三四五六七八九十百千万亿点比]
+      |(分之)
     )
+  )+
+  )
+)
+
 """)
+# pattern = re.compile(f"""(?ix)          # i 表示忽略大小写，x 表示开启注释模式
+#     (
+#         (
+#             [零幺一二两三四五六七八九十百千万亿点比]
+#             |(分之)
+#             |(?<=[一二两三四五六七八九十])[年月日号{common_units}]
+#         ){{2,}}
+#     )
+# """)
 
 # 细分匹配不同的数字类型
 
 # 纯数字序号
-pure_num = re.compile(f'[零幺一二三四五六七八九]+(点[零幺一二三四五六七八九]+)*[{common_units}]?')
+pure_num = re.compile(f'[零幺一二三四五六七八九]+(点[零幺一二三四五六七八九]+)* *[a-zA-Z{common_units}]?')
 
 # 数值
-value_num = re.compile(f"十?(零?[一二两三四五六七八九十][十百千万]{{1,2}})*零?[一二三四五六七八九]?(点[零一二三四五六七八九]+)?[{common_units}]?")
+value_num = re.compile(f"十?(零?[一二两三四五六七八九十][十百千万]{{1,2}})*零?[一二三四五六七八九]?(点[零一二三四五六七八九]+)? *[a-zA-Z{common_units}]?")
 
 # 百分值
 percent_value = re.compile('(?<![一二三四五六七八九])(百分之)[零一二三四五六七八九十百千万]+(点)?(?(2)[零一二三四五六七八九]+)')
@@ -97,15 +123,15 @@ value_mapper = {
 def strip_unit(original):
     '''把数字后面跟着的单位剥离开'''
     unit = ''       
-    stripped = original.strip(common_units)
+    stripped = original.strip(common_units + ascii_letters).strip()
     if stripped != original: 
         unit = original[len(stripped):]
     return stripped, unit
 
-def convert_pure_num(original):
+def convert_pure_num(original, strict=False):
     '''把中文数字转为对应的阿拉伯数字'''
     stripped, unit = strip_unit(original)
-    if stripped in ['一']:
+    if stripped in ['一'] and not strict:
         return original
     converted = []
     for c in stripped:
@@ -120,7 +146,7 @@ def convert_value_num(original):
     int_part, decimal_part = stripped.split("点")   # 分离小数
 
     # 计算整数部分的值
-    value, temp, base = 0, 0, 0
+    value, temp, base = 0, 0, 1
     for c in int_part:
         if c == '十' : 
             temp = 10 if temp==0 else value_mapper[c]*temp
@@ -142,7 +168,7 @@ def convert_value_num(original):
     final = str(value)
     
     # 小数部分，就是纯数字，直接映射即可
-    decimal_str = convert_pure_num(decimal_part)
+    decimal_str = convert_pure_num(decimal_part, strict=True)
     if decimal_str: final += '.' + decimal_str
     final += unit
     
@@ -193,12 +219,13 @@ def convert_date_value(original):
 
 
 def replace(original):
-    original = original.group()
+    head = original.group(1)
+    original = original.group(2)
     try:
-        if pure_num.fullmatch(original.strip('个只分万')):
+        if pure_num.fullmatch(original.strip(common_units)):
             num_type = '纯数字'
             final = convert_pure_num(original)
-        elif value_num.fullmatch(original.strip('个只分万')):
+        elif value_num.fullmatch(original.strip(common_units)):
             num_type = '数值'
             final = convert_value_num(original)
         elif percent_value.fullmatch(original):
@@ -218,6 +245,7 @@ def replace(original):
             final = convert_date_value(original)
         else:
             final = original
+        final = head + final
     except:
         num_type = '未知'
         final = original
@@ -230,7 +258,7 @@ def chinese_to_num(original):
 if __name__ == "__main__":
 
     # groups = []
-    # with open('./测试集.txt', 'r', encoding="utf-8", newline='') as f:
+    # with open('./old/测试集.txt', 'r', encoding="utf-8", newline='') as f:
     #     lines = f.readlines()
     #     for i in range(0, len(lines), 5):
     #         original = lines[i].split(maxsplit=2)[1]
@@ -244,4 +272,4 @@ if __name__ == "__main__":
     #     print(f'\n{original=}')
     #     print(f'{reference=}') 
     #     print(f'{answer=   }') 
-    print(chinese_to_num('一万三千六'))
+    print(chinese_to_num(' samsung s 八'))

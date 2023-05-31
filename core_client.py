@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from os import path, mkdir; 
+from os import path, sep, mkdir; 
 if 'BASE_DIR' not in globals():
     BASE_DIR = path.dirname(__file__); 
 print(f'当前基文件夹：{BASE_DIR}')
@@ -17,6 +17,10 @@ import numpy as np
 import sounddevice as sd
 import websockets
 
+import hot_sub_zh   # 中文热词替换模块
+import hot_sub_en   # 英文热词替换模块
+import hot_sub_rule   # 自定义规则替换
+
 
 
 # ============================全局变量和检查区====================================
@@ -31,8 +35,13 @@ restore   = True            # 录音完成，松开按键后，是否自动再�
 save_audio = True           # 是否保存录音文件
 trash_punc = '，。,.'        # 识别结果要消除的末尾标点
 
-# todo 热词替换功能
-# 英文字母拼接
+hot_zh = True              # 是否启用中文热词替换，中文热词存储在 hot_zh.txt 文件里
+hot_sub_zh.多音字 = True    # True 表示多音字匹配
+hot_sub_zh.声调  = False    # False 表示忽略声调区别，这样「黄章」就能匹配「慌张」
+
+hot_en = True              # 是否启用英文热词替换，英文热词存储在 hot_en.txt 文件里
+
+hot_rule = True            # 是否启用自定义规则替换，自定义规则存储在 hot_rule.txt 文件里
 
 # ============================快捷键名字参考====================================
 
@@ -181,6 +190,13 @@ async def recognize():
         
         break
 
+    # 热词替换
+    if hot_zh: 
+        decoding_results = hot_sub_zh.热词替换(decoding_results)
+    if hot_en: 
+        decoding_results = hot_sub_en.热词替换(decoding_results)
+    if hot_rule: 
+        decoding_results = hot_sub_rule.热词替换(decoding_results)
         
     # 打印结果
     keyboard.write(decoding_results)
@@ -253,9 +269,9 @@ def record_open():
     # 显示录音所用的音频设备
     try:
         device = sd.query_devices(kind='input')
-        print(f'\n使用默认音频设备：{device["name"]}\n')
+        print(f'\n使用默认音频设备：{device["name"]}')
     except UnicodeDecodeError:
-        print("\n由于编码问题，暂时无法获得麦克风设备名字\n")
+        print("\n由于编码问题，暂时无法获得麦克风设备名字")
 
     # 打开音频流
     stream = sd.InputStream(
@@ -268,12 +284,43 @@ def record_open():
 
     return stream
 
+def init_hot_words():
+    global BASE_DIR, hot_zh, hot_en, hot_rule
+
+    path_zh = BASE_DIR + sep + "hot-zh.txt"
+    path_en = BASE_DIR + sep + "hot-en.txt"
+    path_rule = BASE_DIR + sep + "hot-rule.txt"
+
+    if hot_zh:
+        if not path.exists(path_zh):
+            with open(path_zh, "w", encoding="utf-8") as f:
+                f.write('# 在此文件放置中文热词，每行一个，开头带井号表示注释，会被省略')
+        with open(path_zh, "r", encoding="utf-8") as f: 
+            num_hot_zh = hot_sub_zh.更新热词词典(f.read())
+        print(f'\n\x9b32m已载入 {num_hot_zh:5} 条中文热词\x9b0m')
+    if hot_en:
+        if not path.exists(path_en):
+            with open(path_en, "w", encoding='utf-8') as f:
+                f.write('# 在此文件放置英文热词 \n# Put English hot words here, one per line. Line starts with # will be ignored. ')
+        with open(path_en, "r", encoding="utf-8") as f: 
+            num_hot_en = hot_sub_en.更新热词词典(f.read())
+        print(f'\x9b32m已载入 {num_hot_en:5} 条英文热词\x9b0m')
+    if hot_rule:
+        if not path.exists(path_rule):
+            with open(path_rule, "w", encoding='utf-8') as f:
+                f.write('# 在此文件放置自定义规则，规则是每行一条的文本，以 # 开头的会被忽略，将查找和匹配用等号隔开，文本两边的空格会被省略。例如：\n\n毫安时 = mAh\n赫兹 = Hz')
+        with open(path_rule, "r", encoding="utf-8") as f: 
+            num_hot_rule = hot_sub_rule.更新热词词典(f.read())
+        print(f'\x9b32m已载入 {num_hot_rule:5} 条自定义替换规则\x9b0m\n')
+
+
+
 def show_tips():
     print(f'服务端地址：\x9b33m{addr}:{port}\x9b0m')
     print(f'''
-项目地址：\x9b36mhttps://github.com/HaujetZhao/CapsWriter-Offline\x9b0m
-
 当前所用快捷键：{shortcut}
+
+项目地址：\x9b36mhttps://github.com/HaujetZhao/CapsWriter-Offline\x9b0m
 
 你好，这是 \x9b33mCapsWriter 简陋的离线版\x9b0m，一个语音输入工具。
 使用步骤：
@@ -287,6 +334,7 @@ def show_tips():
     3. 本地模型对算力要求非常低，基本无需担心性能问题
     4. 为方便用户检查录音质量、识别效果，脚本默认开启了保存录音，所有都被保存在了 audios 文件夹
     5. 默认的快捷键是 {shortcut}，你可以打开 core_client.py 进行修改
+    6. 你可以在  hot-en.txt  hot-zh.txt  hot-rule.txt  中添加热词，客户端会在启动时载入热词
     ''')
 
 
@@ -306,6 +354,12 @@ async def main():
     # 快捷键绑定到函数
     keyboard.hook_key(shortcut, shortcut_handler)
 
+    # 载入热词
+    try:
+        init_hot_words()
+    except Exception as e:
+        print(f'载入热词失败，常见原因一般是热词文件没有使用 UTF-8 编码\n{e}')
+
     # 打印说明
     show_tips()
 
@@ -320,3 +374,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print(f'再见！')
+        exit()

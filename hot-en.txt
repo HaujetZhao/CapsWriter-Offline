@@ -1,0 +1,197 @@
+# 在此文件放置英文热词
+# Put English hot words here, one per line. Line starts with # will be ignored. 
+
+# 数字开头
+7-Zip
+
+# A开头
+Adobe
+After Effects
+AI
+Airbnb
+Amazon
+AMD
+Apple
+Audition
+AutoCAD
+
+# B开头
+Bandizip
+BIOS
+Blender
+
+# C开头
+CAD
+CameraRAW
+CD
+CD-ROM
+CEO
+CFO
+CIA
+Cisco
+Clash
+CMD
+CPU
+Creative Cloud
+Cubase
+ChatGPT
+
+# D开头
+Dell
+Dolby
+Dropbox
+Directory OPUS
+
+# E开头
+Edge
+EPA
+Epic
+EU
+Evernote
+Excel
+EXIF
+
+# F开头
+Facebook
+FBI
+FCC
+FDA
+Figma
+Final Cut Pro
+Firefox
+FTP
+
+# G开头
+GDP
+GitHub
+Google
+Google Docs
+Google Drive
+Google Sheets
+Google Slides
+GPT
+GUI
+
+# H开头
+HD
+
+# I开头
+IBM
+Illustrator
+IMF
+InDesign
+Instagram
+Intel
+iPhone
+
+# J开头
+Java
+JavaScript
+
+# K开头
+Kotlin
+KPI
+
+# L开头
+Lightroom
+LinkedIn
+Linux
+Logic Pro
+Lua
+
+# M开头
+Maya
+Microsoft
+
+# N开头
+NASA
+Netflix
+Notepad
+Notion
+NSA
+NVIDIA
+
+# O开头
+OBS
+OCR
+OneNote
+OpenAI
+Oracle
+Outlook
+
+# P开头
+Photoshop
+PHP
+Pinterest
+PowerPoint
+PowerShell
+PPT
+Premiere Pro
+Pro Tools
+Python
+
+# Q开头
+QQ
+
+# R开头
+RAM
+RAW
+Reddit
+RGB
+Ruby
+Rust
+
+# S开头
+Sketch
+Skype
+Slack
+Snapchat
+SolidWorks
+SSD
+Steam
+
+# T开头
+Teams
+Telegram
+Tencent
+TikTok
+Trello
+TV
+Twitter
+TypeScript
+
+# U开头
+Uber
+UEFI
+UI
+UNESCO
+UNICEF
+USB
+
+# V开头
+VIP
+VPN
+VR
+VRChat
+
+# W开头
+WeChat
+WhatsApp
+WHO
+WiFi
+Windows
+WinRAR
+Wix
+Word
+WordPress
+WTO
+
+# X开头
+Xbox
+XD
+
+# Y开头
+YouTube
+
+# Z开头
+Zoom

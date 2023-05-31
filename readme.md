@@ -40,9 +40,23 @@
 - 是否要保存录音文件
 - 要移除识别结果末尾的哪些标点，（如果你想把问号也删除掉，可以在这边加上）
 
-如果未来要加一些新的功能，也会把配置项放这两个文件开头
+![image-20230531220203415](assets/image-20230531220203415.png)
 
 
+
+## 热词替换
+
+如果你有专用名词需要替换，可以加入热词文件。规则文件中以 `#` 开头的行以及空行会被忽略，可以用作注释。
+
+- 中文热词请写到 `hot-zh.txt` 文件，每行一个，替换依据为拼音，实测每 1 万条热词约引入 3ms 延迟
+
+- 英文热词请写到 `hot-en.txt` 文件，每行一个，替换依据为字母拼写
+
+- 自定义规则热词请写到 `hot-rule.txt` 文件，每行一个，将搜索和替换词以等号隔开，如 `毫安时  =  mAh` 
+
+你可以在 `core_client.py` 文件中配置是否匹配中文多音字，是否严格匹配拼音声调。
+
+![image-20230531221314983](assets/image-20230531221314983.png) 
 
 
 ## 下载模型
@@ -56,6 +70,8 @@
 - [CT-Transformer标点-中文-通用-pytorch ](https://modelscope.cn/models/damo/punc_ct-transformer_zh-cn-common-vocab272727-pytorch/summary) 
 
 **模型文件太大，并没有包含在 GitHub 库里面，你可以从百度网盘或者 GitHub Releases 界面下载已经转换好的模型文件，解压后，放入 `models` 文件夹。** 
+
+- 模型打包下载：[models-Paraformer.Punctuation.zip](https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/v0.3/models-Paraformer.Punctuation.zip)
 
 
 ## 安装依赖
