@@ -28,6 +28,27 @@ Falcon
 Raptor
 Merlin
 
+Transformer
+Paraformer
+
+China
+Chinese
+England
+English
+America
+American
+Germany
+German
+Russia
+Russian
+Australia
+Australian
+French
+Japan
+Japanese
+Korea
+Korean
+
 # 数字开头
 7-Zip
 
@@ -41,6 +62,8 @@ AMD
 Apple
 Audition
 AutoCAD
+App
+
 
 # B开头
 Bandizip
@@ -99,6 +122,7 @@ Google Sheets
 Google Slides
 GPT
 GUI
+GPU
 
 # H开头
 HD
@@ -111,6 +135,7 @@ InDesign
 Instagram
 Intel
 iPhone
+
 
 # J开头
 Java
