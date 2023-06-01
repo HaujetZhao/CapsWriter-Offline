@@ -9,7 +9,7 @@ import re
 import wave
 import asyncio
 import queue
-from threading import Event, current_thread
+from threading import Event, current_thread, Thread
 
 import colorama; colorama.init()
 import keyboard
@@ -216,7 +216,8 @@ async def recognize():
         f.setnchannels(1)
         f.setsampwidth(2)
         f.writeframes((samples * 32768).astype(np.int16))
-    
+
+
 def shortcut_handler(e: keyboard.KeyboardEvent) -> None:
     # 在我的 Windows 电脑上，left ctrl 和 right ctrl 的 keycode 都是一样的，
     # keyboard 库按 keycode 判断触发
@@ -260,12 +261,13 @@ def shortcut_handler(e: keyboard.KeyboardEvent) -> None:
         on = False              # 全局标识已停止录音
 
 
-
-def record_callback(indata, frame_count, time_info, status):
-    global container_in
-    if container_in is None:    # 若容器不可用，就算了
-        return None
-    container_in.append(indata.copy())
+def record():
+    global container_in, stream
+    while True:
+        if container_in is not None:
+            container_in.append(stream.read(int(0.05 * 16000))[0])
+        else:
+            time.sleep(0.005)
 
 
 def record_open():
@@ -277,13 +279,16 @@ def record_open():
         print("\n由于编码问题，暂时无法获得麦克风设备名字")
 
     # 打开音频流
+    # 由于 sounddevice 在 MacOS 上使用 callback 的方法会导致闪退
+    # 所以打开一个新的线程，用于收集音频
+    global stream
     stream = sd.InputStream(
-        callback=record_callback,
         channels=1,
         dtype="float32",
         samplerate=16000,
         blocksize=int(0.05 * 16000),  # 0.05 seconds
     ); stream.start()
+    Thread(target=record, daemon=True).start()
 
     return stream
 

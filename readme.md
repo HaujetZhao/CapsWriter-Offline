@@ -80,13 +80,31 @@
 
 安装 Python 后，在 `cmd` 窗口进入本文件夹，运行 `pip install -r requirements.txt` 安装依赖。
 
-有些依赖在3.11还暂时不无法安装，建议使用 `python 3.10`
+有些依赖在3.11还暂时不无法安装，建议使用 `python 3.10` 
+
+### Mac 端
+
+在 Arm 芯片的 MacOS 电脑上（如 MacBook M1）无法使用 pip 安装 sherpa_onnx ，需要手动从源代码安装：
+
+```
+git clone https://github.com/k2-fsa/sherpa-onnx
+cd sherpa-onnx
+python3 setup.py install
+```
+
+
 
 ## 运行和使用
 
 1. 运行 `core_server.py` 脚本，会载入 Paraformer 模型识别模型（这会占用1GB的内存，载入时长约十几秒）
-2. 运行 `core_client.py` 脚本，它会打开系统默认麦克风，开始监听按键
+2. 运行 `core_client.py` 脚本，它会打开系统默认麦克风，开始监听按键（`MacOS` 端需要 `sudo`）
 3. 按住 `CapsLock` 键，录音开始，松开 `CapsLock` 键，录音结束，识别结果立马被输入（录音时长短于0.3秒不算）
+
+MacOS 端注意事项：
+
+- 当 MacOS 打开下图中的设置时，监听 `CapsLock` 键会出错，需要快捷键修改为其他按键，如 `right shift` 
+
+![image](https://user-images.githubusercontent.com/4661804/89397590-9d97b500-d742-11ea-846b-fc67f24a10ef.png)
 
 ## 注意事项
 

@@ -23,6 +23,10 @@ from chinese_itn import chinese_to_num
 addr = '0.0.0.0'
 port = '6006'
 
+format_num      = True      # 输出时是否将中文数字转为阿拉伯数字
+format_punc     = True      # 输出时是否启用标点符号引擎（在 MacOS 上标点引擎似乎有问题，应当改为 False）
+format_spell    = True      # 输出时是否调整中英之间的空格
+
 model_dir = Path(BASE_DIR) / 'models'
 paraformer_path = Path(BASE_DIR) / 'models' / 'paraformer-offline-zh' / 'model.onnx'
 tokens_path = Path(BASE_DIR) / 'models' / 'paraformer-offline-zh' / 'tokens.txt'
@@ -90,6 +94,8 @@ def adjust_space(original: re.Match):
 
 async def ws_serve(websocket, path):
     global loop
+    global format_num, format_punc, format_spell
+
     print(f'\n接客了：{websocket}')
     try:
         async for data in websocket:
@@ -101,22 +107,30 @@ async def ws_serve(websocket, path):
 
             # 识别结果
             await loop.run_in_executor(None, recognizer.decode_streams, [s])
-            result_0 = s.result.text
+            result_final = result_0 = s.result.text
+            result_1 = result_2 = result_3 = result_4 = '未实施'
 
             # 转数字
-            result_1 = chinese_to_num(result_0)
+            if format_num:
+                result_final = result_1 = chinese_to_num(result_final)
 
             # 去掉拼写空格
-            result_2 = en_in_zh.sub(adjust_space, result_1)
+            if format_spell:
+                result_final = result_2 = en_in_zh.sub(adjust_space, result_final)
 
             # 添加标点
-            result_3 = await loop.run_in_executor(None, punc_model, result_2)
-            result_3 = result_3[0]
+            if format_punc:
+                try:
+                    result_final = result_3 = await loop.run_in_executor(None, punc_model, result_final)
+                    result_final = result_3 = result_3[0]
+                except Exception as e:
+                    print(f'标点引擎出错：{e}')
 
             # 调整中英空格排版
-            result_4 = en_in_zh.sub(adjust_space, result_3)
+            if format_spell:
+                result_final = result_4 = en_in_zh.sub(adjust_space, result_final)
 
-            await websocket.send(result_4)
+            await websocket.send(result_final)
             print(f'''
     识别粗结果：{result_0}
     转数字后后：{result_1}
@@ -156,9 +170,12 @@ async def main():
     )
     print(f'\r\x9b2K\x9b32m语音模型载入完成\x9b0m')
 
-    print(f'\n正在载入标点模型', end='')
-    punc_model = CT_Transformer(punc_model_dir)
-    print(f'\r\x9b2K\x9b32m标点模型载入完成\x9b0m')
+    if format_punc:
+        print(f'\n正在载入标点模型', end='')
+        punc_model = CT_Transformer(punc_model_dir)
+        print(f'\r\x9b2K\x9b32m标点模型载入完成\x9b0m')
+    else:
+        punc_model = None
 
     print(f'\n加载耗时 {time.time() - t1 :.2f}s')
 
