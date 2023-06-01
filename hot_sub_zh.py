@@ -64,7 +64,7 @@ def 更新热词词典(热词文本: str):
                 ]
         }
     '''
-    global 热词词典
+    global 热词词典; 热词词典.clear()
     for 热词 in 热词文本.splitlines():
         热词 = 热词.strip()                             # 给热词去掉多余的空格
         if not 热词 or 热词.startswith('#'): continue   # 过滤掉注释

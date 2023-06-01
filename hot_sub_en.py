@@ -33,7 +33,7 @@ def 更新热词词典(热词文本: str):
     key 是热词，
     value 是热词的小写
     '''
-    global 热词词典
+    global 热词词典; 热词词典.clear()
     for 热词 in 热词文本.splitlines():
         热词 = 热词.strip()
         if not 热词 or 热词.startswith('#'): continue
@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
     更新热词词典(热词文本)
 
-    res = 热词替换('ip 测试')
+    res = 热词替换('7 zip测试')
 
 
     print(f'{res}')

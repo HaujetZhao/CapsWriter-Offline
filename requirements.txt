@@ -5,3 +5,4 @@ websockets
 colorama
 funasr_onnx
 pypinyin
+watchdog

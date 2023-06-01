@@ -16,6 +16,8 @@ import keyboard
 import numpy as np
 import sounddevice as sd
 import websockets
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 import hot_sub_zh   # 中文热词替换模块
 import hot_sub_en   # 英文热词替换模块
@@ -265,11 +267,12 @@ def record_callback(indata, frame_count, time_info, status):
         return None
     container_in.append(indata.copy())
 
+
 def record_open():
     # 显示录音所用的音频设备
     try:
         device = sd.query_devices(kind='input')
-        print(f'\n使用默认音频设备：{device["name"]}')
+        print(f'\n使用默认音频设备：{device["name"]}\n')
     except UnicodeDecodeError:
         print("\n由于编码问题，暂时无法获得麦克风设备名字")
 
@@ -284,8 +287,9 @@ def record_open():
 
     return stream
 
-def init_hot_words():
-    global BASE_DIR, hot_zh, hot_en, hot_rule
+
+def init_hot_words(hot_zh=False, hot_en=False, hot_rule=False):
+    global BASE_DIR, path_zh, path_en, path_rule
 
     path_zh = BASE_DIR + sep + "hot-zh.txt"
     path_en = BASE_DIR + sep + "hot-en.txt"
@@ -297,7 +301,7 @@ def init_hot_words():
                 f.write('# 在此文件放置中文热词，每行一个，开头带井号表示注释，会被省略')
         with open(path_zh, "r", encoding="utf-8") as f: 
             num_hot_zh = hot_sub_zh.更新热词词典(f.read())
-        print(f'\n\x9b32m已载入 {num_hot_zh:5} 条中文热词\x9b0m')
+        print(f'\x9b32m已载入 {num_hot_zh:5} 条中文热词\x9b0m')
     if hot_en:
         if not path.exists(path_en):
             with open(path_en, "w", encoding='utf-8') as f:
@@ -311,12 +315,33 @@ def init_hot_words():
                 f.write('# 在此文件放置自定义规则，规则是每行一条的文本，以 # 开头的会被忽略，将查找和匹配用等号隔开，文本两边的空格会被省略。例如：\n\n毫安时 = mAh\n赫兹 = Hz')
         with open(path_rule, "r", encoding="utf-8") as f: 
             num_hot_rule = hot_sub_rule.更新热词词典(f.read())
-        print(f'\x9b32m已载入 {num_hot_rule:5} 条自定义替换规则\x9b0m\n')
+        print(f'\x9b32m已载入 {num_hot_rule:5} 条自定义替换规则\x9b0m')
 
+
+class HotHandler(FileSystemEventHandler):
+    last_time = 0
+    def on_modified(self, event):
+        if time.time() - self.last_time < 1:  # 事件间隔小于2秒就取消
+            return
+        try:
+            time.sleep(0.2)     # 延迟0.2秒，避免编辑器还没有将热词文件更新完成导致读空
+            if event.src_path in [path_zh, path_en, path_rule]:
+                print('检测到热词文件更新，', end='')
+            if event.src_path == path_zh :
+                self.last_time = time.time()
+                init_hot_words(hot_zh=hot_zh)
+            elif event.src_path == path_en:
+                self.last_time = time.time()
+                init_hot_words(hot_en=hot_en)
+            elif event.src_path == path_rule:
+                self.last_time = time.time()
+                init_hot_words(hot_rule=hot_rule)
+        except Exception as e:
+            print(f'\x0b31m更新热词失败：{e}')
 
 
 def show_tips():
-    print(f'服务端地址：\x9b33m{addr}:{port}\x9b0m')
+    print(f'\n服务端地址：\x9b33m{addr}:{port}\x9b0m')
     print(f'''
 当前所用快捷键：{shortcut}
 
@@ -334,7 +359,7 @@ def show_tips():
     3. 本地模型对算力要求非常低，基本无需担心性能问题
     4. 为方便用户检查录音质量、识别效果，脚本默认开启了保存录音，所有都被保存在了 audios 文件夹
     5. 默认的快捷键是 {shortcut}，你可以打开 core_client.py 进行修改
-    6. 你可以在  hot-en.txt  hot-zh.txt  hot-rule.txt  中添加热词，客户端会在启动时载入热词
+    6. 你可以在  hot-en.txt  hot-zh.txt  hot-rule.txt  中添加热词，检测到修改后，客户端会动态载入热词
     ''')
 
 
@@ -346,6 +371,8 @@ async def main():
     global on;              on = False          # 录音开关标识
     global shortcut                             # 快捷键
     global container_in,    container_out       # 音频容器
+    global observer         # 将文件监控器设为全局变量，方便退出时回收资源
+    global stream           # 将麦克风音频流设为全局变量，方便退出时回收资源
     container_in, container_out = None, []
 
     # 打开音频流
@@ -354,11 +381,15 @@ async def main():
     # 快捷键绑定到函数
     keyboard.hook_key(shortcut, shortcut_handler)
 
-    # 载入热词
+    # 载入热词，并监控热词文件的修改，动态更新热词
     try:
-        init_hot_words()
+        init_hot_words(hot_zh, hot_en, hot_rule)
     except Exception as e:
         print(f'载入热词失败，常见原因一般是热词文件没有使用 UTF-8 编码\n{e}')
+    observer = Observer()
+    observer.schedule(HotHandler(), BASE_DIR, recursive=False)
+    observer.start()
+
 
     # 打印说明
     show_tips()
@@ -374,4 +405,6 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print(f'再见！')
+        stream.close()      # 关闭麦克风
+        observer.stop()     # 关闭文件监控
         exit()

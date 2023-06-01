@@ -36,7 +36,7 @@ def 更新热词词典(热词文本: str):
     key     是被替换的词，
     value   是将被替换成的词
     '''
-    global 热词词典
+    global 热词词典; 热词词典.clear()
     for 热词 in 热词文本.splitlines():
         if not 热词 or 热词.startswith('#'): continue
         if len(热词.split('=')) == 2:
