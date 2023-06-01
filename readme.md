@@ -73,7 +73,8 @@
 
 **模型文件太大，并没有包含在 GitHub 库里面，你可以从百度网盘或者 GitHub Releases 界面下载已经转换好的模型文件，解压后，放入 `models` 文件夹。** 
 
-- 模型打包下载：[models-Paraformer.Punctuation.zip](https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/v0.3/models-Paraformer.Punctuation.zip)
+- 模型打包下载：[models-Paraformer-and-Punctuation-X86.zip](https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/v0.3/models-Paraformer-and-Punctuation-X86.zip) （包含了 Paraformer 语音模型和 Punctuation X86 标点模型）
+- Arm 机型需另外再下载：[model-Punctuation-Arm.zip](https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/v0.3/model-Punctuation-Arm.zip) （Punctuation Arm 标点模型）
 
 
 ## 安装依赖

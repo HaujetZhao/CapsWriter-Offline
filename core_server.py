@@ -45,7 +45,7 @@ class args:
 
 for path in (paraformer_path, tokens_path, punc_model_dir,):
     if path.exists(): continue
-    print(f'''\x9b31m
+    print(f'''\033[31m
     未能找到模型文件  
 
     未找到：{path}
@@ -53,7 +53,7 @@ for path in (paraformer_path, tokens_path, punc_model_dir,):
     本服务端需要 paraformer-offline-zh 模型和 punc_ct-transformer_zh-cn 模型，
     请下载模型并放置到： {model_dir} 
 
-    \x9b0m'''); input('按回车退出'); exit()
+    \033[0m'''); input('按回车退出'); exit()
 
 # ========================================================================
 
@@ -136,7 +136,7 @@ async def ws_serve(websocket, path):
     转数字后后：{result_1}
     去拼写空格：{result_2}
     加标点结果：{result_3}
-    调中英空格：\x9b32m{result_4}\x9b0m
+    调中英空格：\033[32m{result_4}\033[0m
             ''')
      
     except websockets.ConnectionClosed:
@@ -153,9 +153,9 @@ async def main():
     global recognizer, punc_model
     global loop; loop = asyncio.get_event_loop()
 
-    print(f'\n绑定的服务地址：\x9b33m{addr}:{port}\x9b0m')
+    print(f'\n绑定的服务地址：\033[33m{addr}:{port}\033[0m')
 
-    print(f'\n项目地址：\x9b36mhttps://github.com/HaujetZhao/CapsWriter-Offline\x9b0m')
+    print(f'\n项目地址：\033[36mhttps://github.com/HaujetZhao/CapsWriter-Offline\033[0m')
 
     t1 = time.time()
     print(f'\n正在载入语音模型', end='')
@@ -168,12 +168,12 @@ async def main():
         decoding_method=args.decoding_method,
         debug=args.debug,
     )
-    print(f'\r\x9b2K\x9b32m语音模型载入完成\x9b0m')
+    print(f'\r\033[2K\033[32m语音模型载入完成\033[0m')
 
     if format_punc:
         print(f'\n正在载入标点模型', end='')
         punc_model = CT_Transformer(punc_model_dir)
-        print(f'\r\x9b2K\x9b32m标点模型载入完成\x9b0m')
+        print(f'\r\033[2K\033[32m标点模型载入完成\033[0m')
     else:
         punc_model = None
 
@@ -189,7 +189,7 @@ async def main():
     try:
         await start_server
     except OSError as e:
-        input(f'\x9b31m 出错了：{e} \x9b0m')
+        input(f'\033[31m 出错了：{e} \033[0m')
         exit()
     await asyncio.Event().wait()
 
