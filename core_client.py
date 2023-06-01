@@ -35,6 +35,10 @@ threshold = 0.3             # 按下快捷键后，触发语音识别的时间�
 restore   = True            # 录音完成，松开按键后，是否自动再按一遍，以恢复 CapsLock 或 Shift 等之前的状态
 
 save_audio = True           # 是否保存录音文件
+audio_name_len = 20         # 保存录音文件时，将识别结果中前多少个字保存到文件里
+                            # 系统对最长文件名都有不同的限制，例如 Windows 文件名最长255个字符
+                            # 建议这个值不要超过200
+
 trash_punc = '，。,.'        # 识别结果要消除的末尾标点
 
 hot_zh = True              # 是否启用中文热词替换，中文热词存储在 hot_zh.txt 文件里
@@ -137,7 +141,7 @@ async def connect_server():
         try:
             websocket = await websockets.connect(f"ws://{addr}:{port}") 
         except ConnectionRefusedError as e:
-            print(f'\r\x9b2K\x9b31m 无法连接服务端，请检查服务端是否运行，端口是否正确 \x9b0m')
+            print(f'\r\033[2K\033[31m 无法连接服务端，请检查服务端是否运行，端口是否正确 \033[0m')
             return False
     return True
 
@@ -184,7 +188,7 @@ async def recognize():
         
         # 如果中途连接中断了，那就要重试几次
         except websockets.exceptions.ConnectionClosedError: 
-            print(f'\r\x9b2K\x9b31m 连接中断了，剩余重试次数：{retry_time} \x9b0m')
+            print(f'\r\033[2K\033[31m 连接中断了，剩余重试次数：{retry_time} \033[0m')
             retry_time -= 1
             if retry_time <= 0:
                 return False
@@ -202,7 +206,7 @@ async def recognize():
         
     # 打印结果
     keyboard.write(decoding_results)
-    print(f'\r\x9b2K识别结果：\x9b32m{decoding_results}\x9b0m')
+    print(f'\r\033[2K识别结果：\033[32m{decoding_results}\033[0m')
     print(f'    录音时长：{len(samples) / 16000: >8.2f}s')
     print(f'    识别时长：{t2 - t1: >8.2f}s')
     print(f'    Real Time Factor: {(t2-t1) / (len(samples)/16000): >5.2f}\n')
@@ -210,7 +214,7 @@ async def recognize():
     # 保存录音文件，方便用户检查录音质量、识别效果
     if not save_audio:  return
     if not path.exists(f'{BASE_DIR}/audios'): mkdir(f'{BASE_DIR}/audios')
-    filename = f'({time.strftime("%Y%m%d-%H%M%S")}){decoding_results[:20]}.wav'.replace(':', '_')
+    filename = f'({time.strftime("%Y%m%d-%H%M%S")}){decoding_results[:audio_name_len]}.wav'.replace(':', '_')
     with wave.open(f'{BASE_DIR}/audios/{filename}', 'wb') as f:
         f.setframerate(16000)
         f.setnchannels(1)
@@ -252,7 +256,7 @@ def shortcut_handler(e: keyboard.KeyboardEvent) -> None:
         if time.time() - on < threshold:  # 如果持续按下 CapsLock 的时长小于 threshold 秒
             task.cancel()       # 取消识别任务
             container_in = None    # 删除录音，并停止接收录音
-            print('\r\x9b2K', end='', flush=True)
+            print('\r\033[2K', end='', flush=True)
         elif restore:
             time.sleep(0.01)    
             keyboard.send(shortcut)  # 松开快捷键后，再按一次，恢复 CapsLock 或 Shift 等按键的状态
@@ -306,21 +310,21 @@ def init_hot_words(hot_zh=False, hot_en=False, hot_rule=False):
                 f.write('# 在此文件放置中文热词，每行一个，开头带井号表示注释，会被省略')
         with open(path_zh, "r", encoding="utf-8") as f: 
             num_hot_zh = hot_sub_zh.更新热词词典(f.read())
-        print(f'\x9b32m已载入 {num_hot_zh:5} 条中文热词\x9b0m')
+        print(f'\033[32m已载入 {num_hot_zh:5} 条中文热词\033[0m')
     if hot_en:
         if not path.exists(path_en):
             with open(path_en, "w", encoding='utf-8') as f:
                 f.write('# 在此文件放置英文热词 \n# Put English hot words here, one per line. Line starts with # will be ignored. ')
         with open(path_en, "r", encoding="utf-8") as f: 
             num_hot_en = hot_sub_en.更新热词词典(f.read())
-        print(f'\x9b32m已载入 {num_hot_en:5} 条英文热词\x9b0m')
+        print(f'\033[32m已载入 {num_hot_en:5} 条英文热词\033[0m')
     if hot_rule:
         if not path.exists(path_rule):
             with open(path_rule, "w", encoding='utf-8') as f:
                 f.write('# 在此文件放置自定义规则，规则是每行一条的文本，以 # 开头的会被忽略，将查找和匹配用等号隔开，文本两边的空格会被省略。例如：\n\n毫安时 = mAh\n赫兹 = Hz')
         with open(path_rule, "r", encoding="utf-8") as f: 
             num_hot_rule = hot_sub_rule.更新热词词典(f.read())
-        print(f'\x9b32m已载入 {num_hot_rule:5} 条自定义替换规则\x9b0m')
+        print(f'\033[32m已载入 {num_hot_rule:5} 条自定义替换规则\033[0m')
 
 
 class HotHandler(FileSystemEventHandler):
@@ -346,13 +350,13 @@ class HotHandler(FileSystemEventHandler):
 
 
 def show_tips():
-    print(f'\n服务端地址：\x9b33m{addr}:{port}\x9b0m')
+    print(f'\n服务端地址：\033[33m{addr}:{port}\033[0m')
     print(f'''
 当前所用快捷键：{shortcut}
 
-项目地址：\x9b36mhttps://github.com/HaujetZhao/CapsWriter-Offline\x9b0m
+项目地址：\033[36mhttps://github.com/HaujetZhao/CapsWriter-Offline\033[0m
 
-你好，这是 \x9b33mCapsWriter 简陋的离线版\x9b0m，一个语音输入工具。
+你好，这是 \033[33mCapsWriter 简陋的离线版\033[0m，一个语音输入工具。
 使用步骤：
     1. 运行 Server 端，它会载入 Paraformer 模型识别模型（这会占用1GB的内存）
     2. 运行 Client 端，它会打开系统默认麦克风
