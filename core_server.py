@@ -15,7 +15,7 @@ import sherpa_onnx
 from funasr_onnx import CT_Transformer
 import colorama; colorama.init()
 
-from chinese_itn import chinese_to_num
+from libs.chinese_itn import chinese_to_num
 
 
 # ============================全局变量和检查区====================================
@@ -185,13 +185,13 @@ async def main():
                                 addr, 
                                 port, 
                                 subprotocols=["binary"], 
-                                ping_interval=None)
+                                max_size=None)
     try:
         await start_server
-    except OSError as e:
+    except OSError as e:            # 有时候可能会因为端口占用而报错，捕获一下
         input(f'\033[31m 出错了：{e} \033[0m')
         exit()
-    await asyncio.Event().wait()
+    await asyncio.Event().wait()    # 持续运行
 
 if __name__ == "__main__":
     try:

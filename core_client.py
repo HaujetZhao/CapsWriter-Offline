@@ -19,9 +19,9 @@ import websockets
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-import hot_sub_zh   # 中文热词替换模块
-import hot_sub_en   # 英文热词替换模块
-import hot_sub_rule   # 自定义规则替换
+from libs import hot_sub_zh   # 中文热词替换模块
+from libs import hot_sub_en   # 英文热词替换模块
+from libs import hot_sub_rule   # 自定义规则替换
 
 
 
@@ -139,7 +139,7 @@ async def connect_server():
     global websocket, addr, port
     if websocket is None or websocket.closed:
         try:
-            websocket = await websockets.connect(f"ws://{addr}:{port}") 
+            websocket = await websockets.connect(f"ws://{addr}:{port}", max_size=None) 
         except ConnectionRefusedError as e:
             print(f'\r\033[2K\033[31m 无法连接服务端，请检查服务端是否运行，端口是否正确 \033[0m')
             return False
@@ -167,9 +167,7 @@ async def recognize():
     samples = np.concatenate([k.reshape(-1) for k in samples])
 
     # 构造比特流
-    buf = (16000).to_bytes(4, byteorder="little")  # 4 bytes
-    buf += (samples.size * 4).to_bytes(4, byteorder="little")
-    buf += samples.tobytes()
+    buf = samples.tobytes()
 
     
     retry_time = 3
@@ -187,10 +185,10 @@ async def recognize():
             t2 = time.time()
         
         # 如果中途连接中断了，那就要重试几次
-        except websockets.exceptions.ConnectionClosedError: 
+        except websockets.exceptions.ConnectionClosedError as e: 
             print(f'\r\033[2K\033[31m 连接中断了，剩余重试次数：{retry_time} \033[0m')
             retry_time -= 1
-            if retry_time <= 0:
+            if retry_time < 0:
                 return False
             continue
         
@@ -268,10 +266,9 @@ def shortcut_handler(e: keyboard.KeyboardEvent) -> None:
 def record():
     global container_in, stream
     while True:
+        data = stream.read(int(0.05 * 16000))[0]
         if container_in is not None:
-            container_in.append(stream.read(int(0.05 * 16000))[0])
-        else:
-            time.sleep(0.005)
+            container_in.append(data)
 
 
 def record_open():
