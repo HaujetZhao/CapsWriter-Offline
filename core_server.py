@@ -1,8 +1,15 @@
 
-from os import path, mkdir; 
+from os import path, sep, mkdir, makedirs
+import sys
 if 'BASE_DIR' not in globals():
     BASE_DIR = path.dirname(__file__); 
-print(f'当前基文件夹：{BASE_DIR}')
+import rich
+from rich.console import Console 
+console = Console(highlight=False)
+console.line(2)
+console.rule('[bold #d55252]CapsWriter Offline Server'); console.line()
+console.print(f'当前基文件夹：[cyan underline]{BASE_DIR}', end='\n\n')
+
 from pathlib import Path
 import time
 import asyncio
@@ -13,7 +20,6 @@ import numpy as np
 import websockets
 import sherpa_onnx
 from funasr_onnx import CT_Transformer
-import colorama; colorama.init()
 
 from libs.chinese_itn import chinese_to_num
 
@@ -45,7 +51,7 @@ class args:
 
 for path in (paraformer_path, tokens_path, punc_model_dir,):
     if path.exists(): continue
-    print(f'''\033[31m
+    console.print(f'''
     未能找到模型文件  
 
     未找到：{path}
@@ -53,7 +59,7 @@ for path in (paraformer_path, tokens_path, punc_model_dir,):
     本服务端需要 paraformer-offline-zh 模型和 punc_ct-transformer_zh-cn 模型，
     请下载模型并放置到： {model_dir} 
 
-    \033[0m'''); input('按回车退出'); exit()
+    ''', style='bright_red'); input('按回车退出'); exit()
 
 # ========================================================================
 
@@ -96,7 +102,7 @@ async def ws_serve(websocket, path):
     global loop
     global format_num, format_punc, format_spell
 
-    print(f'\n接客了：{websocket}')
+    console.print(f'接客了：{websocket}', style='yellow')
     try:
         async for data in websocket:
             samples = np.frombuffer(data, dtype=np.float32)
@@ -124,27 +130,27 @@ async def ws_serve(websocket, path):
                     result_final = result_3 = await loop.run_in_executor(None, punc_model, result_final)
                     result_final = result_3 = result_3[0]
                 except Exception as e:
-                    print(f'标点引擎出错：{e}')
+                    console.print(f'标点引擎出错：{e}', style='bright_red')
 
             # 调整中英空格排版
             if format_spell:
                 result_final = result_4 = en_in_zh.sub(adjust_space, result_final)
 
             await websocket.send(result_final)
-            print(f'''
+            console.print(f'''
     识别粗结果：{result_0}
     转数字后后：{result_1}
     去拼写空格：{result_2}
     加标点结果：{result_3}
-    调中英空格：\033[32m{result_4}\033[0m
+    调中英空格：[green4]{result_4}[/]
             ''')
      
     except websockets.ConnectionClosed:
-        print("ConnectionClosed...", )
+        console.print("ConnectionClosed...", )
     except websockets.InvalidState:
-        print("InvalidState...")
+        console.print("InvalidState...")
     except Exception as e:
-        print("Exception:", e)
+        console.print("Exception:", e)
 
 
 async def main():
@@ -153,12 +159,12 @@ async def main():
     global recognizer, punc_model
     global loop; loop = asyncio.get_event_loop()
 
-    print(f'\n绑定的服务地址：\033[33m{addr}:{port}\033[0m')
+    console.print(f'绑定的服务地址：[cyan underline]{addr}:{port}', end='\n\n')
 
-    print(f'\n项目地址：\033[36mhttps://github.com/HaujetZhao/CapsWriter-Offline\033[0m')
+    console.print(f'项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
 
     t1 = time.time()
-    print(f'\n正在载入语音模型', end='')
+    rich.print('[yellow]语音模型载入中', end='\r')
     recognizer = sherpa_onnx.OfflineRecognizer.from_paraformer(
         paraformer=args.paraformer,
         tokens=args.tokens,
@@ -166,21 +172,20 @@ async def main():
         sample_rate=args.sample_rate,
         feature_dim=args.feature_dim,
         decoding_method=args.decoding_method,
-        debug=args.debug,
-    )
-    print(f'\r\033[2K\033[32m语音模型载入完成\033[0m')
+        debug=args.debug,)
+    rich.print(f'[green4]语音模型载入完成', end='\n\n')
 
     if format_punc:
-        print(f'\n正在载入标点模型', end='')
+        rich.print('[yellow]标点模型载入中', end='\r')
         punc_model = CT_Transformer(punc_model_dir)
-        print(f'\r\033[2K\033[32m标点模型载入完成\033[0m')
+        console.print(f'[green4]标点模型载入完成', end='\n\n')
     else:
         punc_model = None
 
-    print(f'\n加载耗时 {time.time() - t1 :.2f}s')
+    console.print(f'加载耗时 {time.time() - t1 :.2f}s', end='\n\n')
 
 
-    print('\n开始服务...')
+    console.rule('[green3]开始服务'); console.line()
     start_server = websockets.serve(ws_serve, 
                                 addr, 
                                 port, 
@@ -189,7 +194,7 @@ async def main():
     try:
         await start_server
     except OSError as e:            # 有时候可能会因为端口占用而报错，捕获一下
-        input(f'\033[31m 出错了：{e} \033[0m')
+        console.print(f'出错了：{e}', style='bright_red'); console.input('...')
         exit()
     await asyncio.Event().wait()    # 持续运行
 
@@ -197,4 +202,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print('再见！')
+        console.print('再见！')
+        sys.exit()

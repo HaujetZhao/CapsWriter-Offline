@@ -19,7 +19,7 @@ iPad
 iMac
 MacBook
 Pro
-
+iCloud
 Samsung
 
 SpaceX
@@ -155,6 +155,7 @@ Lua
 # M开头
 Maya
 Microsoft
+Markdown
 
 # N开头
 NASA
