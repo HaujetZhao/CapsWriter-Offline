@@ -1,0 +1,6 @@
+rich
+websockets
+numpy==1.23.3
+typeguard==2.13.3
+sherpa_onnx==1.4.3
+funasr_onnx==0.0.6

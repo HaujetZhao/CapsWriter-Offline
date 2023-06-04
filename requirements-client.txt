@@ -1,8 +1,8 @@
+rich
 keyboard
+pyclip
 numpy
 sounddevice
 websockets
-colorama
-funasr_onnx
 pypinyin
 watchdog
