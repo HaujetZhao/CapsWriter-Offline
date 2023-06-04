@@ -144,6 +144,7 @@ def convert_value_num(original):
     stripped, unit = strip_unit(original)   # 剥除单位
     if '点' not in stripped: stripped += '点'
     int_part, decimal_part = stripped.split("点")   # 分离小数
+    if not int_part: return original        # 如果没有整数部分，表面匹配到的是「点一」这样的形式，应当不处理
 
     # 计算整数部分的值
     value, temp, base = 0, 0, 1
