@@ -21,7 +21,7 @@ import websockets
 import sherpa_onnx
 from funasr_onnx import CT_Transformer
 
-from libs.chinese_itn import chinese_to_num
+from util.chinese_itn import chinese_to_num
 
 
 # ============================全局变量和检查区====================================
@@ -198,9 +198,14 @@ async def main():
         exit()
     await asyncio.Event().wait()    # 持续运行
 
-if __name__ == "__main__":
+
+
+def init():
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         console.print('再见！')
         sys.exit()
+        
+if __name__ == "__main__":
+    init()

@@ -34,9 +34,9 @@ with console.status("载入模块中…", spinner="bouncingBall", spinner_style=
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
 
-    from libs import hot_sub_zh     # 中文热词替换模块
-    from libs import hot_sub_en     # 英文热词替换模块
-    from libs import hot_sub_rule   # 自定义规则替换
+    from util import hot_sub_zh     # 中文热词替换模块
+    from util import hot_sub_en     # 英文热词替换模块
+    from util import hot_sub_rule   # 自定义规则替换
 console.print('[green4]模块加载完成', end='\n\n')
 
 
@@ -621,16 +621,15 @@ async def main():
         task_queue.put(loop_main.create_task(recog_coro))
 
 
-
-
-
-
-if __name__ == "__main__":
+def init():
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         console.print(f'再见！')
         to_exit = True      # 提醒录音线程，该关闭了
         keyboard.unhook_all()
-        # observer.stop()     # 关闭文件监控
+        observer.stop()     # 关闭文件监控
         sys.exit()
+
+if __name__ == "__main__":
+    init()
