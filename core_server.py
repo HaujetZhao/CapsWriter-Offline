@@ -52,14 +52,16 @@ class args:
 for path in (paraformer_path, tokens_path, punc_model_dir,):
     if path.exists(): continue
     console.print(f'''
-    未能找到模型文件  
+    未能找到模型文件 
 
     未找到：{path}
 
     本服务端需要 paraformer-offline-zh 模型和 punc_ct-transformer_zh-cn 模型，
     请下载模型并放置到： {model_dir} 
+    
+    下载地址在： https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/v0.3 
 
-    ''', style='bright_red'); input('按回车退出'); exit()
+    ''', style='bright_red'); input('按回车退出'); sys.exit()
 
 # ========================================================================
 
@@ -173,7 +175,7 @@ async def main():
         feature_dim=args.feature_dim,
         decoding_method=args.decoding_method,
         debug=args.debug,)
-    rich.print(f'[green4]语音模型载入完成', end='\n\n')
+    rich.print(f'[green4]语音模型载入完成', end='\n');print('')
 
     if format_punc:
         rich.print('[yellow]标点模型载入中', end='\r')
@@ -195,7 +197,7 @@ async def main():
         await start_server
     except OSError as e:            # 有时候可能会因为端口占用而报错，捕获一下
         console.print(f'出错了：{e}', style='bright_red'); console.input('...')
-        exit()
+        sys.exit()
     await asyncio.Event().wait()    # 持续运行
 
 
