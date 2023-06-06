@@ -1,7 +1,13 @@
 # coding: utf-8
 
-from os import path, sep, makedirs, chmod
+import os
 import sys
+import platform
+if platform.system() == 'Darwin' and os.getuid() != 0:
+    print('在 MacOS 上需要以管理员启动客户端才能监听键盘活动，请 sudo 启动')
+    input('按回车退出'); sys.exit()
+
+from os import path, sep, makedirs, chmod
 if 'BASE_DIR' not in globals():
     BASE_DIR = path.dirname(__file__); 
 import rich.status
@@ -21,7 +27,6 @@ with console.status("载入模块中…", spinner="bouncingBall", spinner_style=
     import wave
     import asyncio
     import queue
-    import platform
     import shutil
     from subprocess import Popen, PIPE
     from threading import Event, current_thread, Thread
@@ -452,7 +457,7 @@ def stream_open():
         samplerate=48000,
         blocksize=int(0.05 * 48000),  # 0.05 seconds
     ); stream.start()
-    Thread(target=record).start()
+    Thread(target=record, daemon=True).start()
 
     return stream
 
