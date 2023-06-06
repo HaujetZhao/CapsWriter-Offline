@@ -4,11 +4,10 @@
 block_cipher = None
 
 
-# =============================================================================
 
 from importlib.util import find_spec
 from os.path import dirname
-from os import sep
+from os import sep, path
 from copy import deepcopy
 from pathlib import Path
 from pprint import pprint
@@ -16,35 +15,33 @@ import rich
 import re
 import os
 
+
+#============================手动添加额外要复制的文件=====================================
+
 # 空列表，用于准备要复制的数据
 datas = []
 
-# 需要手动复制的文件夹依赖库
+# 这是要额外复制的模块
 manual_modules = ['numpy', 'librosa', 'lazy_loader', 'onnxruntime']
 for m in manual_modules:
     if not find_spec(m): continue
     p1 = dirname(find_spec(m).origin)
-    p2 = 'libs' + sep + m
+    p2 = m
     datas.append((p1, p2))
 
-
-# 自定义文件
-custom_file = ['core_client.py', 'core_server.py', 
-               'hot-en.txt', 'hot-rule.txt', 'hot-zh.txt', 'keywords.txt', 
-               'readme.md', ]
-datas.append(('models/请将语音和标点模型放到此文件夹', 'models'))
-
-# 自定义文件夹
-custom_folder = ['util', 'assets']
-for f in custom_file:
-    datas.append((f, '.'))
-for f in custom_folder:
+# 这是要额外复制的文件夹
+my_folders = ['assets', 'util', 'models']
+for f in my_folders:
     datas.append((f, f))
 
-# =============================================================================
+# 这是要额外复制的文件
+my_files = ['hot-en.txt', 'hot-zh.txt', 'keywords.txt', 'hot-rule.txt', 
+            'readme.md', 
+            'core_server.py', 'core_client.py']
+for f in my_files:
+    datas.append((f, '.'))
 
-
-
+#===============================================================================
 
 
 a = Analysis(
@@ -56,7 +53,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=['build_hook.py'],
-    excludes=['numpy', 'librosa'],
+    excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -64,60 +61,74 @@ a = Analysis(
 )
 
 
-# =============================================================================
+
+#============================重定向二进制、py文件===================================================
+
+# 把 a.datas 中不属于自定义的文件重定向到 libs 文件夹
+temp, a.datas = a.datas, []
+for d in temp:
+    c1 =  (d[0] == 'base_library.zip')
+    c2 = any([d[0].startswith(f) for f in my_folders])
+    c3 = any([d[0].startswith(f) for f in my_files])
+    if any([c1, c2, c3]):
+        a.datas.append(d)
+    else:
+        a.datas.append((path.join('libs', d[0]), d[1], d[2]))
 
 
-# 将需要排除打包到 exe 的 py 模块
-my_modules = ['core_client', 'core_server', 'util', 
-              'util.chinese_itn', 
-              'util.hot_sub_en', 
-              'util.hot_sub_zh', 
-              'util.hot_sub_rule', 
-              'util.clean-assets']
-# 将不需要打包的 py 模块删除
-a.pure = [x for x in a.pure if x[0] not in my_modules]
+# 把 a.binaries 中的二进制文件放到 a.datas ，作为普通文件复制到 libs 目录
+for b in a.binaries:
+    c1 = (b[0]=='Python')                       # 不修改 Pyhton 
+    c2 = re.fullmatch(r'python\d+\.dll', b[0])  # 不修改 python310.dll
+    if any([c1, c2]):
+        a.datas.append((b[0], b[1], 'DATA'))
+    else:
+        a.datas.append((path.join('libs', b[0]), b[1], 'DATA'))
+a.binaries.clear()
 
 
-# 把原本要打包进 exe 的 py 文件以二进制文件复制
-a.binaries.extend([(x[1][x[1].find(x[0].replace('.', sep)):], 
-                    x[1], 
-                    'BINARY') 
-                    for x in a.pure])
+
+# 把所有不是自定义模块的 py 文件用 a.datas 复制到 libs 文件夹
+my_modules = ['core_client', 'core_server', 'util']
+for py in a.pure:
+    if any([re.match(m, py[0]) for m in my_modules]): continue
+    pos = py[1].find(py[0].replace('.', sep))
+    d0 = py[1][pos:]
+    d1 = py[1]
+    d2 = 'DATA'
+    a.datas.append((path.join('libs', d0), d1, d2))
 a.pure.clear()
 
 
-# 把依赖包、二进制文件重定向到 libs 文件夹
-def new_dest(package: str):
-    if package == 'base_library.zip' or re.match(r'python\d+.dll', package):
-        return package
-    return 'libs' + os.sep + package
-a.binaries = [(new_dest(x[0]), x[1], x[2]) for x in a.binaries]
-
-
-# 删除自动添加的多余数据
-trash = ['dist-info', '_sounddevice_data']
-def filter_trash(name):
-    for t in trash:
-        if t not in name: continue
-        print(f'\nfiltered: {name}\n')
-        return False
-    return True
-a.datas = [x for x in a.datas if filter_trash(x[0]) ]
-
 # =============================================================================
-
 
 
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='start_server',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
 
 exe = EXE(
     pyz,
     a.scripts,
     [],
-    exclude_binaries=False,
+    exclude_binaries=True,
     name='start_server',
     debug=False,
     bootloader_ignore_signals=False,
@@ -134,7 +145,7 @@ exe = EXE(
 
 exe2 = EXE(
     pyz,
-    a.scripts[:-2] + a.scripts[-1:],    # 提供给 a 的文件有两个，生成 scripts 列表后，依次执行，所以要把倒数第2个（即 start_server）删掉
+    a.scripts[:-2] + a.scripts[-1:],    # 提供给 a 的 py 脚本文件有两个，生成 scripts 列表后，依次执行，所以要把倒数第2个（即 start_server）删掉
     [],
     exclude_binaries=False,
     name='start_client',
@@ -150,7 +161,6 @@ exe2 = EXE(
     entitlements_file=None,
     icon=['assets\\icon.ico'],
 )
-
 
 
 coll = COLLECT(
