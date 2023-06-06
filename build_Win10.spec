@@ -72,7 +72,8 @@ my_modules = ['core_client', 'core_server', 'util',
               'util.chinese_itn', 
               'util.hot_sub_en', 
               'util.hot_sub_zh', 
-              'util.hot_sub_rule']
+              'util.hot_sub_rule', 
+              'util.clean-assets']
 # 将不需要打包的 py 模块删除
 a.pure = [x for x in a.pure if x[0] not in my_modules]
 

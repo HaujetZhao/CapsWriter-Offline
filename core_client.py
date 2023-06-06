@@ -198,6 +198,13 @@ def do_save_audio(data:np.array, text:str, start_time:float):
         # 创建路径
         makedirs(folder_assets, exist_ok=True)
 
+        # 复制用于清理无用附件的 py 脚本
+        clean_src = Path(BASE_DIR) / 'util' / 'clean-assets.py'
+        clean_dst = Path(folder_path) / 'clean-assets.py'
+        if clean_src.exists() and not clean_dst.exists():
+            shutil.copy(clean_src, clean_dst)
+            
+
         # 如果 Unix 以 root 身份运行客户端，会导致创建的文件不能被普通用户程序访问，要修改权限
         if platform.system() not in ['Darwin', 'Linux']: break
         from os import chown, chmod, geteuid, stat
@@ -207,6 +214,7 @@ def do_save_audio(data:np.array, text:str, start_time:float):
             if not child.is_dir(): continue
             chown(child, stat(BASE_DIR).st_uid, stat(BASE_DIR).st_gid)
             chmod(child, stat(BASE_DIR).st_mode)
+        chown(clean_dst, stat(BASE_DIR).st_uid, stat(BASE_DIR).st_gid)
         break
     
 
