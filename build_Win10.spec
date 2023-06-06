@@ -10,6 +10,7 @@ from importlib.util import find_spec
 from os.path import dirname
 from os import sep
 from copy import deepcopy
+from pathlib import Path
 from pprint import pprint
 import rich
 import re
@@ -18,18 +19,14 @@ import os
 # 空列表，用于准备要复制的数据
 datas = []
 
-# 文件夹依赖库
-manual_modules = ['lazy_loader', 'numpy', 'librosa', 'onnxruntime', '_sounddevice_data']
+# 需要手动复制的文件夹依赖库
+manual_modules = ['numpy', 'librosa', 'lazy_loader', 'onnxruntime']
 for m in manual_modules:
     if not find_spec(m): continue
     p1 = dirname(find_spec(m).origin)
     p2 = 'libs' + sep + m
     datas.append((p1, p2))
 
-# 单文件依赖库
-datas.append((find_spec('sounddevice').origin, 'libs'))
-datas.append((find_spec('_sounddevice').origin, 'libs'))
-datas.append((find_spec('_cffi_backend').origin, 'libs'))
 
 # 自定义文件
 custom_file = ['core_client.py', 'core_server.py', 
@@ -50,8 +47,6 @@ for f in custom_folder:
 
 
 
-
-
 a = Analysis(
     ['start_server.py', 'start_client.py'],
     pathex=[],
@@ -61,7 +56,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=['build_hook.py'],
-    excludes=['numpy', 'librosa', 'onnxruntime', 'sounddevice'],
+    excludes=['numpy', 'librosa'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -69,20 +64,8 @@ a = Analysis(
 )
 
 
-
-
-
-
-
-
 # =============================================================================
 
-# 把依赖包重定向到 libs 文件夹
-def new_dest(package: str):
-    if package == 'base_library.zip' or re.match(r'python\d+.dll', package):
-        return package
-    return 'libs' + os.sep + package
-a.binaries = [(new_dest(x[0]), x[1], x[2]) for x in a.binaries]
 
 # 将需要排除打包到 exe 的 py 模块
 my_modules = ['core_client', 'core_server', 'util', 
@@ -94,8 +77,24 @@ my_modules = ['core_client', 'core_server', 'util',
 a.pure = [x for x in a.pure if x[0] not in my_modules]
 
 
-# 删除自动添加的多余文件
-trash = ['dist-info']
+# 把原本要打包进 exe 的 py 文件以二进制文件复制
+a.binaries.extend([(x[1][x[1].find(x[0].replace('.', sep)):], 
+                    x[1], 
+                    'BINARY') 
+                    for x in a.pure])
+a.pure.clear()
+
+
+# 把依赖包、二进制文件重定向到 libs 文件夹
+def new_dest(package: str):
+    if package == 'base_library.zip' or re.match(r'python\d+.dll', package):
+        return package
+    return 'libs' + os.sep + package
+a.binaries = [(new_dest(x[0]), x[1], x[2]) for x in a.binaries]
+
+
+# 删除自动添加的多余数据
+trash = ['dist-info', '_sounddevice_data']
 def filter_trash(name):
     for t in trash:
         if t not in name: continue
@@ -105,7 +104,6 @@ def filter_trash(name):
 a.datas = [x for x in a.datas if filter_trash(x[0]) ]
 
 # =============================================================================
-
 
 
 
