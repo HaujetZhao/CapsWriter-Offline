@@ -21,6 +21,8 @@
 
 对于 Windows10 64 位用户，我打包了 `exe` 版本，可以从百度网盘或者 GitHub Releases界面下载。
 
+对于 MacOS ARM 用户，我也做了打包版本，可以从百度网盘或者 GitHub Releases界面下载。（由于系统限制，客户端需要 sudo 启动，且默认快捷键为 `right shift`）
+
 由于模型文件太大，为了方便更新，打包版本中没有包含模型文件，所以需要分别手动下载软件和模型，模型文件也放在了百度网盘和 GitHub Releases 界面里边。
 
 打包版本里有一个 `models` 文件夹，请把模型文件解压后放到 `models` 里，之后双击 `exe`，分别打开 `Server` 和 `Client` 即可使用。
