@@ -121,7 +121,7 @@ def 获取拼音索引(句子: str):
     拼音带索引_ = iter(拼音带索引)
     拼音 = next(拼音带索引_)
     for i, 字 in enumerate(句子):
-        if 拼音['pinyin'] == pinyin(字, 风格, 多音字)[0][0] or 拼音['pinyin'].startswith(字):
+        if 拼音['pinyin'] in pinyin(字, 风格, 多音字)[0] or 拼音['pinyin'].startswith(字):
             拼音['index'] = i
             try: 拼音 = next(拼音带索引_)
             except: ...
@@ -160,13 +160,13 @@ if __name__ == '__main__':
         撒贝宁
         康辉
         周涛
-        李嘉懿
+        乐清
     '''
 
     更新热词词典(热词文本)
 
     t3 = time()
-    res = 热词替换('我有个同学叫李佳一')
+    res = 热词替换('在乐清在')
     t4 = time()
 
     print(f'{res=}    {t4-t3=}')
