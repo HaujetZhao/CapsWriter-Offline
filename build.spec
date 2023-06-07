@@ -30,7 +30,7 @@ for m in manual_modules:
     datas.append((p1, p2))
 
 # 这是要额外复制的文件夹
-my_folders = ['assets', 'util', 'models']
+my_folders = ['assets', 'models']
 for f in my_folders:
     datas.append((f, f))
 
@@ -45,7 +45,23 @@ for f in my_files:
 
 
 a = Analysis(
-    ['start_server.py', 'start_client.py'],
+    ['start_server.py'],
+    pathex=[],
+    binaries=[],
+    datas=datas,
+    hiddenimports=[],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=['build_hook.py'],
+    excludes=['numpy', 'librosa'],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+a2 = Analysis(
+    ['start_client.py'],
     pathex=[],
     binaries=[],
     datas=datas,
@@ -65,39 +81,70 @@ a = Analysis(
 #============================重定向二进制、py文件===================================================
 
 # 把 a.datas 中不属于自定义的文件重定向到 libs 文件夹
-temp, a.datas = a.datas, []
-for d in temp:
-    c1 =  (d[0] == 'base_library.zip')
-    c2 = any([d[0].startswith(f) for f in my_folders])
-    c3 = any([d[0].startswith(f) for f in my_files])
+temp = a.datas.copy(); a.datas.clear()
+for dst, src, type in temp:
+    c1 =  (dst == 'base_library.zip')
+    c2 = any([dst.startswith(f) for f in my_folders])
+    c3 = any([dst.startswith(f) for f in my_files])
     if any([c1, c2, c3]):
-        a.datas.append(d)
+        a.datas.append((dst, src, type))
     else:
-        a.datas.append((path.join('libs', d[0]), d[1], d[2]))
+        a.datas.append((path.join('libs', dst), src, type))
+
+
+temp = a2.datas.copy(); a2.datas.clear()
+for dst, src, type in temp:
+    c1 =  (dst == 'base_library.zip')
+    c2 = any([dst.startswith(f) for f in my_folders])
+    c3 = any([dst.startswith(f) for f in my_files])
+    if any([c1, c2, c3]):
+        a2.datas.append((dst, src, type))
+    else:
+        a2.datas.append((path.join('libs', dst), src, type))
+
+
 
 
 # 把 a.binaries 中的二进制文件放到 a.datas ，作为普通文件复制到 libs 目录
-for b in a.binaries:
-    c1 = (b[0]=='Python')                       # 不修改 Pyhton 
-    c2 = re.fullmatch(r'python\d+\.dll', b[0])  # 不修改 python310.dll
+for dst, src, type in a.binaries:
+    c1 = (dst=='Python')                       # 不修改 Pyhton 
+    c2 = re.fullmatch(r'python\d+\.dll', dst)  # 不修改 python310.dll
     if any([c1, c2]):
-        a.datas.append((b[0], b[1], 'DATA'))
+        a.datas.append((dst, src, 'DATA'))
     else:
-        a.datas.append((path.join('libs', b[0]), b[1], 'DATA'))
+        a.datas.append((path.join('libs', dst), src, 'DATA'))
 a.binaries.clear()
 
 
+for dst, src, type in a2.binaries:
+    c1 = (dst=='Python')                       # 不修改 Pyhton 
+    c2 = re.fullmatch(r'python\d+\.dll', dst)  # 不修改 python310.dll
+    if any([c1, c2]):
+        a2.datas.append((dst, src, 'DATA'))
+    else:
+        a2.datas.append((path.join('libs', dst), src, 'DATA'))
+a2.binaries.clear()
 
-# 把所有不是自定义模块的 py 文件用 a.datas 复制到 libs 文件夹
-my_modules = ['core_client', 'core_server', 'util']
-for py in a.pure:
-    if any([re.match(m, py[0]) for m in my_modules]): continue
-    pos = py[1].find(py[0].replace('.', sep))
-    d0 = py[1][pos:]
-    d1 = py[1]
-    d2 = 'DATA'
-    a.datas.append((path.join('libs', d0), d1, d2))
+
+
+# 把所有的 py 文件依赖用 a.datas 复制到 libs 文件夹
+for name, src, type in a.pure:
+    name = name.replace('.', os.sep)
+    init = path.join(name, '__init__.py')
+    pos = src.find(init) if init in src else src.find(name)
+    dst = src[pos:]
+    dst = path.join('libs', dst)
+    a.datas.append((dst, src, 'DATA'))
 a.pure.clear()
+
+for name, src, type in a2.pure:
+    name = name.replace('.', os.sep)
+    init = path.join(name, '__init__.py')
+    pos = src.find(init) if init in src else src.find(name)
+    dst = src[pos:]
+    dst = path.join('libs', dst)
+    a2.datas.append((dst, src, 'DATA'))
+a2.pure.clear()
 
 
 # =============================================================================
@@ -105,6 +152,8 @@ a.pure.clear()
 
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz2 = PYZ(a2.pure, a2.zipped_data, cipher=block_cipher)
+
 
 exe = EXE(
     pyz,
@@ -124,12 +173,11 @@ exe = EXE(
     entitlements_file=None,
     icon=['assets\\icon.ico'],
 )
-
 exe2 = EXE(
-    pyz,
-    a.scripts[:-2] + a.scripts[-1:],    # 提供给 a 的 py 脚本文件有两个，生成 scripts 列表后，依次执行，所以要把倒数第2个（即 start_server）删掉
+    pyz2,
+    a2.scripts,
     [],
-    exclude_binaries=False,
+    exclude_binaries=True,
     name='start_client',
     debug=False,
     bootloader_ignore_signals=False,
@@ -145,12 +193,14 @@ exe2 = EXE(
 )
 
 
+
 coll = COLLECT(
     exe,
     exe2,
     a.binaries,
     a.zipfiles,
     a.datas,
+    a2.datas,
     strip=False,
     upx=True,
     upx_exclude=[],

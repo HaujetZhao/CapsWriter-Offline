@@ -30,6 +30,7 @@ with console.status("载入模块中…", spinner="bouncingBall", spinner_style=
     import shutil
     from subprocess import Popen, PIPE
     from threading import Event, current_thread, Thread
+    from importlib.util import find_spec
 
     import keyboard
     import numpy as np
@@ -199,8 +200,8 @@ def do_save_audio(data:np.array, text:str, start_time:float):
         makedirs(folder_assets, exist_ok=True)
 
         # 复制用于清理无用附件的 py 脚本
-        clean_src = Path(BASE_DIR) / 'util' / 'clean-assets.py'
-        clean_dst = Path(folder_path) / 'clean-assets.py'
+        clean_src = Path(find_spec('util.clean_assets').origin)
+        clean_dst = Path(folder_path) / 'clean_assets.py'
         if clean_src.exists() and not clean_dst.exists():
             shutil.copy(clean_src, clean_dst)
             
