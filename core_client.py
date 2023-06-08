@@ -233,7 +233,7 @@ def do_save_audio(data:np.array, text:str, start_time:float):
             'ffmpeg', '-y',
             '-f', 'f32le',      # 输入数据格式为有浮点32位小端字节序
             '-ar', '48000',     # 采样率为 48000 Hz
-            '-ac', '2',         # 双声道
+            '-ac', f'{channels}',         # 双声道
             '-i', '-',          # 从标准输入读取数据
             '-b:a', '192k',      # 输出比特率 192kbps
             file_audio
@@ -246,7 +246,7 @@ def do_save_audio(data:np.array, text:str, start_time:float):
         file_audio = file_wav   
         data = (data * (2**15-1)).astype(np.int16).tobytes()
         with wave.open(str(file_audio), 'w') as f:
-            f.setnchannels(2)
+            f.setnchannels(channels)
             f.setsampwidth(2)
             f.setframerate(48000)
             f.setnchannels(2)
@@ -447,6 +447,7 @@ def record():
 
 def stream_open():
     # 显示录音所用的音频设备
+    global channels
     channels = 1
     try:
         device = sd.query_devices(kind='input')
