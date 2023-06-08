@@ -19,9 +19,21 @@ import re
 from string import ascii_letters
 
 
-
 # 常见的跟在数字后面的单位
 common_units = r'个只分万亿秒'       
+
+# 以空格分隔开的常用语，如成语、日常短语，用于避免误转
+idioms = '''
+正经八百  五零二落 五零四散 
+五十步笑百步 乌七八糟 污七八糟 四百四病 思绪万千 
+十有八九 十之八九 三十而立 三十六策 三十六计 三十六行
+三五成群 三百六十行 三六九等 
+七老八十 七零八落 七零八碎 七七八八 乱七八遭 乱七八糟 略知一二 零零星星 零七八碎 
+九九归一 二三其德 二三其意 无银三百两 八九不离十 
+百分之百 年三十 烂七八糟 一点一滴 路易十六 九三学社 五四运动 入木三分 三十六计 
+'''
+
+idioms = [x.strip() for x in idioms.split() ]
 
 # 总模式，筛选出可能需要替换的内容
 # 测试链接  https://regex101.com/r/tFqg9S/3
@@ -49,15 +61,7 @@ pattern = re.compile(f"""(?ix)          # i 表示忽略大小写，x 表示开�
 )
 
 """)
-# pattern = re.compile(f"""(?ix)          # i 表示忽略大小写，x 表示开启注释模式
-#     (
-#         (
-#             [零幺一二两三四五六七八九十百千万亿点比]
-#             |(分之)
-#             |(?<=[一二两三四五六七八九十])[年月日号{common_units}]
-#         ){{2,}}
-#     )
-# """)
+
 
 # 细分匹配不同的数字类型
 
@@ -81,7 +85,6 @@ time_value = re.compile("[零一二三四五六七八九十]+点([零一二三�
 
 # 日期
 data_value = re.compile("([零一二三四五六七八九]+年)?([一二三四五六七八九十]+月)([一二三四五六七八九十]+[日号])")
-
 
 # 中文数字对阿拉伯数字的映射
 num_mapper = {
@@ -220,10 +223,14 @@ def convert_date_value(original):
 
 
 def replace(original):
+    string = original.string
+    l_pos, r_pos = original.regs[2]; l_pos = max(l_pos-2, 0)
     head = original.group(1)
     original = original.group(2)
     try:
-        if pure_num.fullmatch(original.strip(common_units)):
+        if idioms and any([string.find(idiom) in range(l_pos, r_pos) for idiom in idioms]):
+            final = original
+        elif pure_num.fullmatch(original.strip(common_units)):
             num_type = '纯数字'
             final = convert_pure_num(original)
         elif value_num.fullmatch(original.strip(common_units)):
@@ -275,4 +282,15 @@ if __name__ == "__main__":
     #     print(f'\n{original=}')
     #     print(f'{reference=}') 
     #     print(f'{answer=   }') 
-    print(chinese_to_num('现在时间十六点二十五分二十四秒'))
+
+    # file = './old/汉语词语.txt'
+    # with open(file, 'r', encoding='utf-8') as f:
+    #     words = f.readlines()
+
+    # for word in words: 
+    #     new = chinese_to_num(word)
+    #     if re.match(r'.*\d.+', new):
+    #         print(word, new)
+    print(chinese_to_num('二零二五年十月'))
+    print(chinese_to_num('乱七八糟'))
+
