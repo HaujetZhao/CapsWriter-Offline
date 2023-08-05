@@ -1,8 +1,10 @@
 
-from os import path, sep, mkdir, makedirs
+from os import path, sep, mkdir, makedirs, getcwd, chdir
 import sys
 if 'BASE_DIR' not in globals():
     BASE_DIR = path.dirname(__file__); 
+if getcwd() != BASE_DIR:
+    chdir(BASE_DIR)     # 如果cwd不是文件根目录，就切换过去。这是为了用相对目录加载模型文件，以避免中文路径问题
 import rich
 from rich.console import Console 
 console = Console(highlight=False)
@@ -33,15 +35,14 @@ format_num      = True      # 输出时是否将中文数字转为阿拉伯数�
 format_punc     = True      # 输出时是否启用标点符号引擎（在 MacOS 上标点引擎似乎有问题，应当改为 False）
 format_spell    = True      # 输出时是否调整中英之间的空格
 
-model_dir = Path(BASE_DIR) / 'models'
-paraformer_path = Path(BASE_DIR) / 'models' / 'paraformer-offline-zh' / 'model.onnx'
-tokens_path = Path(BASE_DIR) / 'models' / 'paraformer-offline-zh' / 'tokens.txt'
-punc_model_dir = Path(BASE_DIR) / 'models' / 'punc_ct-transformer_zh-cn' 
+model_dir = Path() / 'models'
+paraformer_path = Path() / 'models' / 'paraformer-offline-zh' / 'model.onnx'
+tokens_path = Path() / 'models' / 'paraformer-offline-zh' / 'tokens.txt'
+punc_model_dir = Path() / 'models' / 'punc_ct-transformer_zh-cn' 
 
 class args:
     paraformer = f'{paraformer_path}' 
     tokens = f'{tokens_path}'
-    num_threads = 3
     num_threads = 3
     sample_rate = 16000
     feature_dim = 80
