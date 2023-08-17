@@ -119,6 +119,20 @@
 
 ## 源码安装依赖
 
+### \[New\] Linux 端
+```bash
+# for core_server.py
+pip install -r requirements-server.txt  -i https://mirror.sjtu.edu.cn/pypi/web/simple
+# [NOTE]: kaldi-native-fbank==1.17(使用1.18及以上会报错`lib/python3.10/site-packages/_kaldi_native_fbank.cpython-310-x86_64-linux-gnu.so: undefined symbol: _ZN3knf24OnlineGenericBaseFeatureINS_22WhisperFeatureComputerEE13InputFinishedEv`)
+
+# for core_client.py
+pip install -r requirements-client.txt  -i https://mirror.sjtu.edu.cn/pypi/web/simple
+sudo apt-get install xclip   # 让core_client.py正常运行
+```
+**运行方式**
+`core_server.py`   # 无需以 root 权限运行
+`core_client.py`   # 注意: 必须以 root 权限运行!!
+
 ### Windows 端
 
 ```powershell
