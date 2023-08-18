@@ -164,6 +164,19 @@ MacOS 端注意事项：
 
 - MacOS 上监听 `CapsLock` 键可能会出错，需要快捷键修改为其他按键，如 `right shift` 
 
+## 打包方法
+Windows/MacOS/Linux均使用如下命令完成打包:
+`pyinstaller build.spec`
+
+### Linux 还需要补充一些文件才能正常运行 (基于Ubuntu 22.04)
+`libpython3.10.so.1.0` 从`./libs`文件夹复制到`start_client`同级目录。
+`numpy.libs`文件夹 从Python环境的site-packages/numpy.libs复制到`./libs`路径下。
+
+## 运行方式
+### Linux 
+双击 `run.sh` 自动输入sudo密码且实现左右分屏展示
+![](./assets/run-sh.png)
+
 ## 打赏
 
 如果你愿意，可以以打赏的方式支持我一下：
