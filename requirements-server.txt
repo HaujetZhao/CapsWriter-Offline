@@ -4,3 +4,4 @@ numpy==1.23.3
 typeguard==2.13.3
 sherpa_onnx==1.5.4
 funasr_onnx==0.0.6
+kaldi-native-fbank==1.17
