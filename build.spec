@@ -119,7 +119,8 @@ a.binaries.clear()
 for dst, src, type in a2.binaries:
     c1 = (dst=='Python')                       # 不修改 Pyhton 
     c2 = re.fullmatch(r'python\d+\.dll', dst)  # 不修改 python310.dll
-    if any([c1, c2]):
+    c3 = re.fullmatch(r'libpython[\d\.]+so[\d\.]+', dst)  # 不修改 libpython3.10.so.1.0
+    if any([c1, c2, c3]):
         a2.datas.append((dst, src, 'DATA'))
     else:
         a2.datas.append((path.join('libs', dst), src, 'DATA'))
