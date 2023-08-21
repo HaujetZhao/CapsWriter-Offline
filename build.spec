@@ -6,6 +6,7 @@ block_cipher = None
 
 
 from importlib.util import find_spec
+from importlib.metadata import distribution, PackagePath
 from os.path import dirname
 from os import sep, path
 from copy import deepcopy
@@ -22,12 +23,24 @@ import os
 datas = []
 
 # 这是要额外复制的模块
-manual_modules = ['numpy', 'librosa', 'lazy_loader', 'onnxruntime']
+manual_modules = ['librosa', 'lazy_loader', 'onnxruntime']
 for m in manual_modules:
     if not find_spec(m): continue
     p1 = dirname(find_spec(m).origin)
     p2 = m
     datas.append((p1, p2))
+
+# 这是要额外复制的包名（如 numpy，可能包含了多个文件夹 numpy、numpy.libs ）
+packages = ['numpy']
+for p in packages:
+    dist = distribution(p)
+    top_folders = set([d.parts[0] for d in dist.files if d.parts[0] != '..'])   # 顶级文件夹名
+    print(top_folders)
+    for dst in top_folders:
+        src = PackagePath(dst)
+        src.dist = dist
+        src = str(src.locate())
+        datas.append((src, dst))
 
 # 这是要额外复制的文件夹
 my_folders = ['assets', 'models']
@@ -119,7 +132,8 @@ a.binaries.clear()
 for dst, src, type in a2.binaries:
     c1 = (dst=='Python')                       # 不修改 Pyhton 
     c2 = re.fullmatch(r'python\d+\.dll', dst)  # 不修改 python310.dll
-    if any([c1, c2]):
+    c3 = re.fullmatch(r'libpython[\d\.]+so[\d\.]+', dst)  # 不修改 libpython3.10.so.1.0
+    if any([c1, c2, c3]):
         a2.datas.append((dst, src, 'DATA'))
     else:
         a2.datas.append((path.join('libs', dst), src, 'DATA'))
