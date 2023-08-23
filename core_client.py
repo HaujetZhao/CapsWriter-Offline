@@ -455,6 +455,9 @@ def stream_open():
         console.print(f'使用默认音频设备：[italic]{device["name"]}', end='\n\n')
     except UnicodeDecodeError:
         console.print("由于编码问题，暂时无法获得麦克风设备名字", end='\n\n', style='bright_red')
+    except sd.PortAudioError:
+        console.print("没有找到麦克风设备", end='\n\n', style='bright_red')
+        input('按回车键退出'); sys.exit()
         
 
     # 打开音频流
