@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from globs_var import *
 import os
 import sys
 import platform
@@ -348,6 +349,12 @@ async def do_recognize():
         decoding_results = hot_sub_en.热词替换(decoding_results)
     if hot_rule: 
         decoding_results = hot_sub_rule.热词替换(decoding_results)
+    
+    result_0 = decoding_results
+
+    # 调整中英空格排版
+    if format_spell:
+        decoding_results = result_1 = en_in_zh.sub(adjust_space, decoding_results)
 
     # 打印结果
     if paste:   
@@ -362,7 +369,9 @@ async def do_recognize():
         keyboard.write(decoding_results)
     
     # 终端显示结果
-    console.print(f'识别结果：[green4]{decoding_results}')
+    console.print(f'识别结果：[green4]{result_0}')
+    if format_spell:
+        console.print(f'    调整中英空格排版：{result_1}')
     console.print(f'    录音时长：{len(samples1) / 16000: >8.2f}s')
     console.print(f'    识别时长：{t2 - t1: >8.2f}s')
     console.print(f'    Real Time Factor: {(t2-t1) / (len(samples1)/16000): >5.2f}')
