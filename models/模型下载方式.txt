@@ -1,0 +1,5 @@
+语音模型：
+git clone https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14 paraformer-offline-zh
+
+标点模型：
+git clone https://www.modelscope.cn/damo/punc_ct-transformer_cn-en-common-vocab471067-large-onnx.git punc_ct-transformer_cn-en

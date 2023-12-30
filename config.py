@@ -38,7 +38,9 @@ class ModelPaths:
     model_dir = Path() / 'models'
     paraformer_path = Path() / 'models' / 'paraformer-offline-zh' / 'model.int8.onnx'
     tokens_path = Path() / 'models' / 'paraformer-offline-zh' / 'tokens.txt'
-    punc_model_dir = Path() / 'models' / 'punc_ct-transformer_zh-cn'
+    punc_model_dir = Path() / 'models' / 'punc_ct-transformer_cn-en'
+    
+    
 
 
 class ParaformerArgs:
