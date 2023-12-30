@@ -1,7 +1,7 @@
 rich
 websockets
-numpy==1.23.3
+numpy
 typeguard==2.13.3
-sherpa_onnx==1.5.4
-funasr_onnx==0.0.6
+sherpa_onnx==1.8.11
+funasr_onnx==0.2.4
 kaldi-native-fbank==1.17

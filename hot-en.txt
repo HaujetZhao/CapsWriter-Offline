@@ -12,15 +12,36 @@ GB
 TB
 PB
 
+
+PDF
+DPI
+
 Apple
 Apple Watch
+Apple Vision
 iPhone
 iPad
 iMac
 MacBook
 Pro
 iCloud
+Siri
+Hey Siri
+
 Samsung
+
+Android
+Google
+
+Micro-USB
+Mini-USB
+Type-C
+USB
+HDMI
+SD
+Readme
+3M
+
 
 SpaceX
 StarShip
