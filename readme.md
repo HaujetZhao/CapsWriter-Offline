@@ -164,6 +164,15 @@ MacOS 端注意事项：
 
 - MacOS 上监听 `CapsLock` 键可能会出错，需要快捷键修改为其他按键，如 `right shift` 
 
+## 打包方法
+Windows/MacOS/Linux均使用如下命令完成打包:
+`pyinstaller build.spec`
+
+## 运行方式
+### Linux 
+双击 `run.sh` 自动输入sudo密码且实现左右分屏展示
+![](./assets/run-sh.png)
+
 ## 打赏
 
 如果你愿意，可以以打赏的方式支持我一下：
