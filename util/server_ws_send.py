@@ -4,6 +4,7 @@ import asyncio
 from multiprocessing import Queue
 
 from util.server_cosmic import console, connections, queue_out, connections
+from util.server_classes import Result
 from rich import inspect
 
 
@@ -11,7 +12,7 @@ async def ws_send():
     while True:
         try:
             # 获取识别结果（从多进程队列）
-            result = await asyncio.to_thread(queue_out.get)
+            result: Result = await asyncio.to_thread(queue_out.get)
 
             # 得到退出的通知
             if result is None:
@@ -39,7 +40,13 @@ async def ws_send():
             # 发送消息
             await websocket.send(json.dumps(message))
 
-            console.print(f'识别结果：\n    [green]{result.text}\n')
+            if result.source == 'mic':
+                console.print(f'识别结果：\n    [green]{result.text}')
+            elif result.source == 'file':
+                console.print(f'    转录进度：{result.duration:.2f}s', end='\r')
+                if result.is_final:
+                    console.print('\n    [green]转录完成')
+
         except Exception as e:
             print(e)
 

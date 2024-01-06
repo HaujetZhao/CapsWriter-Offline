@@ -6,3 +6,5 @@ sounddevice
 websockets
 pypinyin
 watchdog
+typer
+srt

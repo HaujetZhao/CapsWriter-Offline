@@ -6,7 +6,7 @@ from pprint import pprint
 
 from os.path import join, basename, dirname, exists
 from os import walk, makedirs, sep
-from shutil import copyfile
+from shutil import copyfile, rmtree
 
 # 初始化空列表
 binaries = []
@@ -21,22 +21,6 @@ for module in modules:
 
 
 a_1 = Analysis(
-    ['start_client.py'],
-    pathex=[],
-    binaries=binaries,
-    datas=datas,
-    hiddenimports=hiddenimports,
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=['hook.py'],
-    excludes=['IPython', 'PIL', 
-              'PySide6', 'PySide2', 'PyQt5', 
-              'matplotlib', 'wx', 
-              ],
-    noarchive=False,
-)
-
-a_2 = Analysis(
     ['start_server.py'],
     pathex=[],
     binaries=binaries,
@@ -44,7 +28,7 @@ a_2 = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=['hook.py'],
+    runtime_hooks=['build_hook.py'],
     excludes=['IPython', 'PIL', 
               'PySide6', 'PySide2', 'PyQt5', 
               'matplotlib', 'wx', 
@@ -53,9 +37,28 @@ a_2 = Analysis(
     noarchive=False,
 )
 
+a_2 = Analysis(
+    ['start_client.py'],
+    pathex=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=['build_hook.py'],
+    excludes=['IPython', 'PIL', 
+              'PySide6', 'PySide2', 'PyQt5', 
+              'matplotlib', 'wx', 
+              ],
+    noarchive=False,
+)
+
 
 # 排除不要打包的模块
-private_module = ['core_client', 'core_server', 'util', 'config']
+private_module = ['util', 'config', 
+                  'core_server', 
+                  'core_client', 
+                  ]
 pure = a_1.pure.copy()
 a_1.pure.clear()
 for name, src, type in pure:
@@ -78,12 +81,13 @@ for name, src, type in pure:
 pyz_1 = PYZ(a_1.pure)
 pyz_2 = PYZ(a_2.pure)
 
+
 exe_1 = EXE(
     pyz_1,
     a_1.scripts,
     [],
     exclude_binaries=True,
-    name='start_client',
+    name='start_server',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -102,7 +106,7 @@ exe_2 = EXE(
     a_2.scripts,
     [],
     exclude_binaries=True,
-    name='start_server',
+    name='start_client',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -121,9 +125,11 @@ coll = COLLECT(
     exe_1,
     a_1.binaries,
     a_1.datas,
+
     exe_2,
     a_2.binaries,
     a_2.datas,
+
     strip=False,
     upx=True,
     upx_exclude=[],
@@ -132,7 +138,9 @@ coll = COLLECT(
 
 
 # 复制额外所需的文件
-my_files = ['core_client.py', 'core_server.py', 'config.py', 
+my_files = ['config.py', 
+            'core_server.py', 
+            'core_client.py', 
             'hot-en.txt', 'hot-zh.txt', 'hot-rule.txt', 'keywords.txt', 
             'readme.md']
 my_folders = ['assets', 'util']
@@ -154,11 +162,13 @@ for file in my_files:
 from platform import system
 from subprocess import run
 if system() == 'Windows':
-    link_folders = ['models']
+    link_folders = ['models', 'util']
     for folder in link_folders:
         if not exists(folder):
             continue
         dest_folder = join(dest_root, folder)
+        if exists(dest_folder):
+            rmtree(dest_folder)
         cmd = ['mklink', '/j', dest_folder, folder]
         run(cmd, shell=True)
 

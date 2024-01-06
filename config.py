@@ -33,6 +33,9 @@ class ClientConfig:
     hot_rule = True             # 是否启用自定义规则替换，自定义规则存储在 hot_rule.txt 文件里
     hot_kwd  = True             # 是否启用关键词日记功能，自定义关键词存储在 keyword.txt 文件里
 
+    seg_duration = 15           # 分段长度：15秒
+    seg_overlap = 2             # 分段重叠：2秒
+
 
 class ModelPaths:
     model_dir = Path() / 'models'

@@ -1,12 +1,5 @@
 import sys
-from pathlib import Path
+from os.path import dirname
 
-BASE_DIR = Path(__file__).parent
-
-for p in sys.path.copy():
-    relative_p = Path(p).relative_to(BASE_DIR)
-    new_p = BASE_DIR / 'libs' / relative_p
-    sys.path.insert(0, str(new_p))
-
-sys.path.insert(0, str(BASE_DIR/ 'libs' / 'pywin32_system32'))
-sys.path.insert(0, str(BASE_DIR))    # 把运行文件所在的根目录排到第一位，优先从根目录查找依赖包
+# 将「执行文件所在目录」添加到「模块查找路径」
+sys.path.insert(0, dirname(sys.executable))

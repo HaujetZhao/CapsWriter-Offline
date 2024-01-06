@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 from config import ModelPaths
-from util.server_cosmic import console, Cosmic
+from util.server_cosmic import console
 
 
 def check_model():

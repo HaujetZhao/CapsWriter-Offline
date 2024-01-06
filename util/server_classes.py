@@ -1,5 +1,6 @@
 class Task:
-    def __init__(self, data,
+    def __init__(self, source: str,
+                 data,
                  offset: float,
                  overlap: float,
                  task_id: str,
@@ -7,6 +8,7 @@ class Task:
                  is_final: bool,
                  time_start: float,
                  time_submit: float) -> None:
+        self.source = source
         self.data = data
         self.offset = offset
         self.overlap = overlap
@@ -19,9 +21,10 @@ class Task:
 
 
 class Result:
-    def __init__(self, task_id, socket_id) -> None:
+    def __init__(self, task_id, socket_id, source) -> None:
         self.task_id = task_id          # 任务 id
         self.socket_id = socket_id      # socket id
+        self.source = source            # 是从 'file' 还是 'mic' 的音频流得到的结果
 
         self.duration = 0               # 全部音频时长
         self.time_start = 0             # 录音开始的时刻

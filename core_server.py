@@ -4,7 +4,8 @@ import asyncio
 from multiprocessing import Process
 
 import websockets
-from util.server_cosmic import Cosmic, console, queue_in, queue_out
+from config import ServerConfig as Config
+from util.server_cosmic import console, queue_in, queue_out
 from util.server_check_model import check_model
 from util.server_ws_recv import ws_recv
 from util.server_ws_send import ws_send
@@ -22,7 +23,7 @@ async def main():
     console.rule('[bold #d55252]CapsWriter Offline Server'); console.line()
     console.print(f'项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
     console.print(f'当前基文件夹：[cyan underline]{BASE_DIR}', end='\n\n')
-    console.print(f'绑定的服务地址：[cyan underline]{Cosmic.addr}:{Cosmic.port}', end='\n\n')
+    console.print(f'绑定的服务地址：[cyan underline]{Config.addr}:{Config.port}', end='\n\n')
 
     # 负责识别的子进程
     recognize_process = Process(target=init_recognizer, args=(queue_in, queue_out), daemon=True)
@@ -33,8 +34,8 @@ async def main():
 
     # 负责接收客户端数据的 coroutine
     recv = websockets.serve(ws_recv,
-                            Cosmic.addr,
-                            Cosmic.port,
+                            Config.addr,
+                            Config.port,
                             subprotocols=["binary"],
                             max_size=None)
 

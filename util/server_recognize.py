@@ -3,7 +3,7 @@ import time
 
 import numpy as np 
 
-from util.server_cosmic import console, Cosmic
+from util.server_cosmic import console
 from util.server_classes import Task, Result
 from util.chinese_itn import chinese_to_num
 from util.format_tools import adjust_space
@@ -20,7 +20,7 @@ def recognize(recognizer, punc_model, task: Task):
 
     # 确保结果容器存在
     if task.task_id not in results:
-        results[task.task_id] = Result(task.task_id, task.socket_id)
+        results[task.task_id] = Result(task.task_id, task.socket_id, task.source)
 
     # 取出结果容器
     result = results[task.task_id]
@@ -28,7 +28,9 @@ def recognize(recognizer, punc_model, task: Task):
     # 片段预处理
     samples = np.frombuffer(task.data, dtype=np.float32)
     duration = len(samples) / task.samplerate
-    result.duration += duration
+    result.duration += duration - task.overlap
+    if task.is_final:
+        result.duration += task.overlap
 
     # 识别片段
     stream = recognizer.create_stream()
@@ -65,21 +67,25 @@ def recognize(recognizer, punc_model, task: Task):
     result.timestamps += [t + task.offset for t in stream.result.timestamps[m:n]]
     result.tokens += [token for token in stream.result.tokens[m:n]]
 
+    
     # token 合并为文本
     text = ' '.join(result.tokens).replace('@@ ', '')
     text = re.sub('([^a-zA-Z0-9]) (?![a-zA-Z0-9])', r'\1', text)
 
+    result.text = text
+
+    if not task.is_final:
+        return result
+
     # 调整文本格式
     text = adjust_space(text)       # 调空格
-    if punc_model:
+    if punc_model and text:
         text = punc_model(text)[0]  # 加标点
     text = chinese_to_num(text)     # 转数字
     text = adjust_space(text)       # 调空格
 
     result.text = text
 
-    if not task.is_final:
-        return result
 
     # 若最后一个片段完成识别，从字典摘取任务
     result = results.pop(task.task_id)

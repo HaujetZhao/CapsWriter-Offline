@@ -5,7 +5,7 @@ import signal
 
 from config import ServerConfig as Config
 from config import ParaformerArgs, ModelPaths
-from util.server_cosmic import console, Cosmic
+from util.server_cosmic import console
 from util.server_recognize import recognize
 
 

@@ -77,11 +77,14 @@ async def send_audio():
 
                     # 发送音频数据用于识别
                     message = {
-                        'task_id': task_id,
-                        'is_final': False,
-                        'time_start': time_start,
-                        'time_frame': task['time'],
-                        'data': base64.b64encode(
+                        'task_id': task_id,             # 任务 ID
+                        'seg_duration': Config.seg_duration,    # 分段长度
+                        'seg_overlap': Config.seg_overlap,      # 分段重叠
+                        'is_final': False,              # 是否结束
+                        'time_start': time_start,       # 录音起始时间
+                        'time_frame': task['time'],     # 该帧时间
+                        'source': 'mic',                # 数据来源：从麦克风收到的数据
+                        'data': base64.b64encode(       # 数据
                                     np.mean(data[::3], axis=1).tobytes()
                                 ).decode('utf-8'),
                     }
@@ -96,9 +99,12 @@ async def send_audio():
                     # 告诉服务端音频片段结束了
                     message = {
                         'task_id': task_id,
+                        'seg_duration': 15,
+                        'seg_overlap': 2,
                         'is_final': True,
                         'time_start': time_start,
                         'time_frame': task['time'],
+                        'source': 'mic',
                         'data': '',
                     }
                     task = asyncio.create_task(send_message(message))
