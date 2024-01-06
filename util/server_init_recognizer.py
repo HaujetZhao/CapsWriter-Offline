@@ -2,11 +2,12 @@ import time
 import sherpa_onnx
 from multiprocessing import Queue
 import signal
-
+from platform import system
 from config import ServerConfig as Config
 from config import ParaformerArgs, ModelPaths
 from util.server_cosmic import console
 from util.server_recognize import recognize
+from util.empty_working_set import empty_current_working_set
 
 
 
@@ -39,10 +40,15 @@ def init_recognizer(queue_in: Queue, queue_out: Queue):
     # 载入标点模型
     punc_model = None
     console.print('[yellow]标点模型载入中', end='\r')
-    punc_model = CT_Transformer(ModelPaths.punc_model_dir, quantize=True)
+    # punc_model = CT_Transformer(ModelPaths.punc_model_dir, quantize=True)
     console.print(f'[green4]标点模型载入完成', end='\n\n')
 
     console.print(f'模型加载耗时 {time.time() - t1 :.2f}s', end='\n\n')
+
+    # 清空物理内存工作集
+    if system() == 'Windows':
+        empty_current_working_set()
+
     queue_out.put(True)  # 通知主进程加载完了
 
     while True:

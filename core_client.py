@@ -2,10 +2,12 @@
 
 import os
 import sys
-import platform
 import asyncio
 import signal
 from pathlib import Path
+from platform import system
+
+
 
 import typer
 import colorama
@@ -22,6 +24,7 @@ from util.client_hot_update import update_hot_all, observe_hot
 from util.client_transcribe import transcribe
 from util.client_adjust_srt import adjust_srt
 
+from util.empty_working_set import empty_current_working_set
 
 # 确保根目录位置正确，用相对路径加载模型
 BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)
@@ -30,7 +33,7 @@ BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)
 colorama.init()
 
 # MacOS 的权限设置
-if platform.system() == 'Darwin' and not sys.argv[1:]:
+if system() == 'Darwin' and not sys.argv[1:]:
     if os.getuid() != 0:
         print('在 MacOS 上需要以管理员启动客户端才能监听键盘活动，请 sudo 启动')
         input('按回车退出'); sys.exit()
@@ -57,6 +60,10 @@ async def main_mic():
 
     # 绑定按键
     keyboard.hook_key(Config.shortcut, shortcut_handler)
+
+    # 清空物理内存工作集
+    if system() == 'Windows':
+        empty_current_working_set()
 
     # 接收结果
     while True:

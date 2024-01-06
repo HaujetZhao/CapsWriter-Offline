@@ -2,6 +2,7 @@ import os
 import sys
 import asyncio
 from multiprocessing import Process
+from platform import system
 
 import websockets
 from config import ServerConfig as Config
@@ -10,6 +11,7 @@ from util.server_check_model import check_model
 from util.server_ws_recv import ws_recv
 from util.server_ws_send import ws_send
 from util.server_init_recognizer import init_recognizer
+from util.empty_working_set import empty_current_working_set
 
 BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)    # 确保 os.getcwd() 位置正确，用相对路径加载模型
 
@@ -31,6 +33,10 @@ async def main():
     queue_out.get()
     console.rule('[green3]开始服务')
     console.line()
+
+    # 清空物理内存工作集
+    if system() == 'Windows':
+        empty_current_working_set()
 
     # 负责接收客户端数据的 coroutine
     recv = websockets.serve(ws_recv,
