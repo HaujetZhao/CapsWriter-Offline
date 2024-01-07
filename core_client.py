@@ -6,6 +6,7 @@ import asyncio
 import signal
 from pathlib import Path
 from platform import system
+from typing import List
 
 
 
@@ -43,6 +44,8 @@ if system() == 'Darwin' and not sys.argv[1:]:
 
 async def main_mic():
     Cosmic.loop = asyncio.get_event_loop()
+    Cosmic.queue_in = asyncio.Queue()
+    Cosmic.queue_out = asyncio.Queue()
 
     show_mic_tips()
 
@@ -70,7 +73,7 @@ async def main_mic():
         await recv_result()
 
 
-async def main_file(files: list[Path]):
+async def main_file(files: List[Path]):
     show_file_tips()
 
     for file in files:
@@ -93,7 +96,7 @@ def init_mic():
         print('...')
 
 
-def init_file(files: list[Path]):
+def init_file(files: List[Path]):
     """
     用 CapsWriter Server 转录音视频文件，生成 srt 字幕
     """

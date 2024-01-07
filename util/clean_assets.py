@@ -9,6 +9,7 @@ import os
 import sys
 from os import remove
 from pathlib import Path
+from typing import List
 from pprint import pprint
 from urllib.parse import unquote
 
@@ -61,7 +62,7 @@ def get_links(text: str):       # 查找文本内的所有链接
     return links
 
 
-def absolutify_links(file, links: list[str]):   # 验证链接是本地文件
+def absolutify_links(file, links: List[str]):   # 验证链接是本地文件
     if type(file) is not Path: file = Path(file)
     
     temp_links = links.copy(); links.clear()

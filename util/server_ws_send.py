@@ -5,6 +5,7 @@ from multiprocessing import Queue
 
 from util.server_cosmic import console, connections, queue_out, connections
 from util.server_classes import Result
+from util.asyncio_to_thread import to_thread
 from rich import inspect
 
 
@@ -12,7 +13,7 @@ async def ws_send():
     while True:
         try:
             # 获取识别结果（从多进程队列）
-            result: Result = await asyncio.to_thread(queue_out.get)
+            result: Result = await to_thread(queue_out.get)
 
             # 得到退出的通知
             if result is None:

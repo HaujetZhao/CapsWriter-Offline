@@ -9,7 +9,7 @@ from wave import Wave_write
 import tempfile
 
 
-def create_file(channels: int, time_start: float) -> tuple[Path, Popen[bytes] | Wave_write]:
+def create_file(channels: int, time_start: float) -> Tuple[Path, Union[Popen, Wave_write]]:
 
     time_year = time.strftime('%Y', time.localtime(time_start))
     time_month = time.strftime('%m', time.localtime(time_start))

@@ -1,10 +1,11 @@
 from util.client_cosmic import Cosmic, console
 from pathlib import Path
+from typing import Union
 import time
 from os import makedirs
 
 
-def rename_audio(task_id, text, time_start) -> Path | None:
+def rename_audio(task_id, text, time_start) -> Union[Path, None]:
 
     # 获取旧文件名
     file_path = Path(Cosmic.audio_files.pop(task_id))
@@ -21,7 +22,7 @@ def rename_audio(task_id, text, time_start) -> Path | None:
     file_stem = f'({time_ymdhms}){text[:20]}'
 
     # 重命名
-    file_path_new = file_path.with_stem(file_stem)
+    file_path_new = file_path.with_name(file_stem + file_path.suffix)
     file_path.rename(file_path_new)
 
     # 返回新的录音文件路径

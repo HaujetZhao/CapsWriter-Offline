@@ -3,6 +3,7 @@ import websockets
 import sounddevice as sd
 import sys
 from pathlib import Path
+from typing import List, Union
 
 from rich.console import Console 
 from rich.theme import Theme
@@ -15,10 +16,10 @@ class Cosmic:
     用一个 class 存储需要跨模块访问的变量值，命名为 Cosmic
     """
     on = False
-    queue_in = Queue()
-    queue_out = Queue()
-    loop: None | AbstractEventLoop = None
+    queue_in: Queue
+    queue_out: Queue
+    loop: Union[None, AbstractEventLoop] = None
     websocket: websockets.WebSocketClientProtocol = None
     audio_files = {}
-    stream: None | sd.InputStream = None
-    kwd_list: list[str] = []
+    stream: Union[None, sd.InputStream] = None
+    kwd_list: List[str] = []

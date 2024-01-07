@@ -17,13 +17,14 @@
 import json
 from datetime import timedelta
 from pathlib import Path
+from typing import List, Dict, Union
 
 import typer
 import srt
 from rich import print
 
 
-def lines_match_words(text_lines: list[str], words: list[dict[str, str | float]]) -> list[srt.Subtitle]:
+def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
     """
     words[0] = {
                 'start': 0.0,
@@ -73,7 +74,7 @@ def lines_match_words(text_lines: list[str], words: list[dict[str, str | float]]
     return subtitle_list
 
 
-def get_words(json_file: Path) -> list[dict[str, str | float]]:
+def get_words(json_file: Path) -> list:
     # 读取分词 json 文件
     with open(json_file, 'r', encoding='utf-8') as f:
         json_info = json.load(f)
@@ -87,7 +88,7 @@ def get_words(json_file: Path) -> list[dict[str, str | float]]:
     return words
 
 
-def get_lines(txt_file: Path) -> list[str]:
+def get_lines(txt_file: Path) -> List[str]:
     # 读取分好行的字幕
     with open(txt_file, 'r', encoding='utf-8') as f:
         text_lines = f.readlines()
@@ -111,7 +112,7 @@ def one_task(media_file: Path):
     with open(srt_file, 'w', encoding='utf-8') as f:
         f.write(srt.compose(subtitle_list))
 
-def main(files: list[Path]):
+def main(files: List[Path]):
     for file in files:
         one_task(file)
         print(f'写入完成：{file}')
