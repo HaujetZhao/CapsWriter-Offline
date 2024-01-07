@@ -40,12 +40,11 @@ async def transcribe(file: Path):
     console.print(f'\n任务标识：{task_id}')
     console.print(f'    处理文件：{file}')
 
-    # 获取音频数据，采样率 16000，单声道，float32 格式
+    # 获取音频数据，ffmpeg 输出采样率 16000，单声道，float32 格式
     ffmpeg_cmd = [
         "ffmpeg",
         "-i", file,
-        "-f", "s16le",
-        "-acodec", "pcm_f32le",
+        "-f", "f32le",
         "-ac", "1",
         "-ar", "16000",
         "-",
@@ -58,8 +57,8 @@ async def transcribe(file: Path):
     # 构建消息，发送给服务端
     message = {
         'task_id': task_id,                     # 任务 ID
-        'seg_duration': Config.seg_duration,    # 分段长度
-        'seg_overlap': Config.seg_overlap,      # 分段重叠
+        'seg_duration': Config.file_seg_duration,    # 分段长度
+        'seg_overlap': Config.file_seg_overlap,      # 分段重叠
         'is_final': True,                       # 是否结束
         'time_start': time.time(),              # 录音起始时间
         'time_frame': time.time(),              # 该帧时间
