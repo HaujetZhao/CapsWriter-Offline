@@ -7,7 +7,7 @@ class ServerConfig:
     port = '6016'
 
     format_num = True  # 输出时是否将中文数字转为阿拉伯数字
-    format_punc = False  # 输出时是否启用标点符号引擎（在 MacOS 上标点引擎似乎有问题，应当改为 False）
+    format_punc = True  # 输出时是否启用标点符号引擎
     format_spell = True  # 输出时是否调整中英之间的空格
 
 
