@@ -79,7 +79,9 @@ async def message_mic_handler(websocket, message):
     data = b64decode(message['data'])
 
     if not message['is_final']:
-        status.start()
+        if not status.on:
+            status.start()
+            status.on = True
 
         # 将音频片段加入缓冲区
         chunks += data
@@ -99,6 +101,8 @@ async def message_mic_handler(websocket, message):
 
     elif message['is_final']:
         status.stop()
+        status.on = False
+
         # 客户端说片段结束，将缓冲区音频识别
         task = Task(source='mic',
                     data=chunks[0:], offset=offset,
@@ -117,6 +121,7 @@ async def ws_recv(websocket):
     global chunks, offset, status
 
     status = console.status('正在接收音频', spinner='point')
+    status.on = False
 
     # 登记 socket 到字典，以 socket id 字符串为索引
     connections[str(websocket.id)] = websocket
@@ -152,4 +157,5 @@ async def ws_recv(websocket):
         console.print("Exception:", e)
     finally:
         status.stop()
+        status.on = False
         connections.pop(str(websocket.id))
