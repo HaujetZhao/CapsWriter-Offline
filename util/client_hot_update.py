@@ -40,7 +40,19 @@ def update_hot_rule():
     if not path_rule.exists():
         with open(path_rule, "w", encoding='utf-8') as f:
             f.write(
-                '# 在此文件放置自定义规则，规则是每行一条的文本，以 # 开头的会被忽略，将查找和匹配用等号隔开，文本两边的空格会被省略。例如：\n\n毫安时 = mAh\n赫兹 = Hz')
+r'''# 在此文件放置自定义规则，每行一条正则表达式，
+# 左边是查找模式，右边是替换式，中间用带空格的等号分开
+# 以 # 开头的会被忽略，将查找和匹配用等号隔开，文本两边的空格会被省略。例如：
+
+毫安时     =      mAh
+赫兹      =      Hz
+伏特      =        V
+二、      =        二
+负一      =    -1
+(艾特)\s*(QQ)\s*点\s*            =     @qq.
+(艾特)\s*([一幺]六三)\s*点\s*     =     @163.
+(艾特)\s*(\w+)\s*(点)\s*(\w+)    =     @\2.\4
+''')
     with open(path_rule, "r", encoding="utf-8") as f:
         num_hot_rule = hot_sub_rule.更新热词词典(f.read())
     console.print(f'已载入 [green4]{num_hot_rule:5}[/] 条自定义替换规则')
