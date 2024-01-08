@@ -1,6 +1,7 @@
 from pathlib import Path
 
 
+# 服务端配置
 class ServerConfig:
     addr = '0.0.0.0'
     port = '6016'
@@ -10,6 +11,7 @@ class ServerConfig:
     format_spell = True  # 输出时是否调整中英之间的空格
 
 
+# 客户端配置
 class ClientConfig:
     addr = '127.0.0.1'          # Server 地址
     port = '6016'               # Server 端口

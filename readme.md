@@ -25,10 +25,11 @@
 
 对 Windows 端：
 
-1. 服务端载入模型所用的 onnxruntime 只能在 Windows 10 及以上版本的系统使用
-2. 服务端载入模型需要系统内存 4G，只能在 64 位系统上使用
-3. 额外打包了 32 位系统可用的客户端，在 Windows 7 及以上版本的系统可用
-4. 模型文件较大，单独打包，解压模型后请放入软件目录的 `models` 文件夹中
+1. 请确保电脑上安装了 [Microsoft Visual C++ Redistributable 运行库](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)
+2. 服务端载入模型所用的 onnxruntime 只能在 Windows 10 及以上版本的系统使用
+3. 服务端载入模型需要系统内存 4G，只能在 64 位系统上使用
+4. 额外打包了 32 位系统可用的客户端，在 Windows 7 及以上版本的系统可用
+5. 模型文件较大，单独打包，解压模型后请放入软件目录的 `models` 文件夹中
 
 其它系统：
 
