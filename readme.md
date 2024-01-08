@@ -1,44 +1,55 @@
 ## CapsWriter-Offline
 
-![image-20230606115728358](assets/image-20230606115728358.png) 
+![image-20240108115946521](assets/image-20240108115946521.png)  
 
-这是 `CapsWriter-Offline` ，一个 PC 端的语音输入工具。
+这是 `CapsWriter-Offline` ，一个 PC 端的语音输入、字幕转录工具。
 
-运行后，只要按下键盘上的 `大写锁定键`，就会开始录音，当你松开 `大写锁定键` 时，就会识别你的录音，并将识别结果立刻输入。
+两个功能：
+
+1. 按下键盘上的 `大写锁定键`，录音开始，当松开 `大写锁定键` 时，就会识别你的录音，并将识别结果立刻输入
+2. 将音视频文件拖动到客户端打开，即可转录生成 srt 字幕
 
 视频教程：[CapsWriter-Offline 电脑端离线语音输入工具](https://www.bilibili.com/video/BV1fo4y1T7KN/)  
 
 ## 特性
 
-1. 完全离线、低延迟、高准确率、中英混输、自动阿拉伯数字、自动调整中英间隔
+1. 完全离线、无限时长、低延迟、高准确率、中英混输、自动阿拉伯数字、自动调整中英间隔
 2. 热词功能：可以在 `hot-en.txt hot-zh.txt hot-rule.txt` 中添加三种热词，客户端动态载入
 3. 日记功能：默认每次录音识别后，识别结果记录在 `年份/月份/日期.md` ，录音文件保存在 `年份/月份/assets` 
-4. 关键词日记：识别结果若以关键词开头，会被额外记录在 `年份/月份/日期-关键词.md`，关键词在 `keywords.txt` 中定义
-5. 服务端、客户端分离，可以让一台主机为局域网内的电脑提供识别服务
-6. 用文本编辑器打开 `core_client.py` ，可以编辑服务端地址、快捷键、录音开关……
+4. 关键词日记：识别结果若以关键词开头，会被记录在 `年份/月份/关键词-日期.md`，关键词在 `keywords.txt` 中定义
+5. 转录功能：将音视频文件拖动到客户端打开，即可转录生成 srt 字幕
+6. 服务端、客户端分离，可以服务多台客户端
+7. 编辑 `config.py` ，可以配置服务端地址、快捷键、录音开关……
 
 ## 懒人包
 
-对于 Windows10 64 位用户，我打包了 `exe` 版本，可以从百度网盘或者 GitHub Releases界面下载。
+对 Windows 端：
 
-对于 MacOS ARM 用户，我也做了打包版本，可以从百度网盘或者 GitHub Releases界面下载。（由于系统限制，客户端需要 sudo 启动，且默认快捷键为 `right shift`）
+1. 服务端载入模型所用的 onnxruntime 只能在 Windows 10 及以上版本的系统使用
+2. 服务端载入模型需要系统内存 4G，只能在 64 位系统上使用
+3. 额外打包了 32 位系统可用的客户端，在 Windows 7 及以上版本的系统可用
+4. 模型文件较大，单独打包，解压模型后请放入软件目录的 `models` 文件夹中
 
-由于模型文件太大，为了方便更新，打包版本中没有包含模型文件，所以需要分别手动下载软件和模型，模型文件也放在了百度网盘和 GitHub Releases 界面里边。
+其它系统：
 
-打包版本里有一个 `models` 文件夹，请把模型文件解压后放到 `models` 里，之后双击 `exe`，分别打开 `Server` 和 `Client` 即可使用。
+1. 其它系统，可以下载模型、安装依赖后从 Python 源码运行。
+2. 由于我没有 Mac 电脑，无法打包 Mac 版本，只能从源码运行，可能会有诸多问题要解决。（由于系统限制，客户端需要 sudo 启动，且默认快捷键为 `right shift`）
+
+模型说明：
+
+1. 由于模型文件太大，为了方便更新，单独打包
+2. 解压模型后请放入软件目录的 `models` 文件夹中
 
 下载地址：
 
 - 百度盘: https://pan.baidu.com/s/1zNHstoWZDJVynCBz2yS9vg 提取码: eu4c 
 - GitHub Release: [Releases · HaujetZhao/CapsWriter-Offline](https://github.com/HaujetZhao/CapsWriter-Offline/releases) 
 
-打包后大小约 1.4G，下载要花些时间，主要是里面包含了模型文件。
-
 （百度网盘容易掉链接，补链接太麻烦了，我不一定会补链接。GitHub Releases 界面下载是最可靠的。）
 
-![image-20230606120607189](assets/image-20230606120607189.png) 
+![image-20240108114351535](assets/image-20240108114351535.png) 
 
-其它系统，可以下载模型、安装依赖后从 Python 源码运行。
+
 
 ## 功能：热词
 
@@ -77,44 +88,51 @@
 
 ![image-20230604144824341](assets/image-20230604144824341.png)  
 
+## 功能：转录文件
 
+在服务端运行后，将音视频文件拖动到客户端打开，即可转录生成四个同名文件：
+
+- `json` 文件，包含了字级时间戳
+- `txt` 文件，包含了分行结果
+- `merge.txt` 文件，包含了带标点的整段结果
+- `srt` 文件，字幕文件
+
+如果生成的字幕有微小错误，可以在分行的 `txt` 文件中修改，然后将 `txt` 文件拖动到客户端打开，客户端检测到输入的是 `txt` 文件，就会查到同名的 `json`  文件，结合 `json` 文件中的字级时间戳和 `txt` 文件中修正结果，更新 `srt` 字幕文件。
 
 ## 注意事项
 
-1. 目前使用的模型是 `Paraformer` 非流式模型，即录完再转，因此录音时间越长，上屏延迟越大。主流性能的 Windows 笔记本，RTF 大约 0.06，即大约每10s 录音需 0.6s 转录时长。
-2. 当用户安装了 `FFmpeg` 时，会以 `mp3` 格式保存录音；当用户没有装 `FFmpeg` 时，会以 `wav` 格式保存录音
+1. 当用户安装了 `FFmpeg` 时，会以 `mp3` 格式保存录音；当用户没有装 `FFmpeg` 时，会以 `wav` 格式保存录音
+2. 音视频文件转录功能依赖于 `FFmpeg`，打包版本已内置 `FFmpeg` 
 3. 默认的快捷键是 `caps lock`，你可以打开 `core_client.py` 进行修改
 4. MacOS 无法监测到 `caps lock` 按键，可改为 `right shift` 按键
 
 ## 修改配置
 
-你可以打开 `core_server.py` ，在开头部分有注释，指导你修改服务端的端口，默认是 `6006`
-
-你可以打开 `core_client.py` ，在开头部分有注释，指导你修改客户端的：
+你可以编辑 `config.py` ，在开头部分有注释，指导你修改服务端、客户端的：
 
 - 连接的地址和端口，默认是 `127.0.0.1` 和 `6006` 
 - 键盘快捷键
 - 是否要保存录音文件
-- 要移除识别结果末尾的哪些标点，（如果你想把问号也删除掉，可以在这边加上）
+- 要移除识别结果末尾的哪些标点，（如果你想把句尾的问号也删除掉，可以在这边加上）
 
-![image-20230606115835962](assets/image-20230606115835962.png)  
+![image-20240108114558762](assets/image-20240108114558762.png)  
 
 
 
 
 ## 下载模型
 
-本工具服务端使用了 [sherpa-onnx](https://k2-fsa.github.io/sherpa/onnx/index.html) ，载入阿里巴巴开源的 [Paraformer](https://www.modelscope.cn/models/damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch/summary) 模型（[转为onnx格式](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/offline-paraformer/paraformer-models.html)），来作语音识别，整个模型约 1GB 大小。下载有已转换好的模型文件：
+服务端使用了 [sherpa-onnx](https://k2-fsa.github.io/sherpa/onnx/index.html) ，载入阿里巴巴开源的 [Paraformer](https://www.modelscope.cn/models/damo/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch) 模型（[转为量化的onnx格式](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/offline-paraformer/paraformer-models.html)），来作语音识别，整个模型约 230MB 大小。下载有已转换好的模型文件：
 
-- [csukuangfj/sherpa-onnx-paraformer-zh-2023-03-28 at main (huggingface.co)](https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-03-28/tree/main) 
+- [csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14](https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14) 
 
-另外，还使用了阿里巴巴的标点符号模型（[转为了onnx格式](https://github.com/alibaba-damo-academy/FunASR/tree/main/funasr/export)）：
+另外，还使用了阿里巴巴的标点符号模型，大小约 1GB：
 
-- [CT-Transformer标点-中文-通用-pytorch ](https://modelscope.cn/models/damo/punc_ct-transformer_zh-cn-common-vocab272727-pytorch/summary) 
+- [CT-Transformer标点-中英文-通用-large-onnx](https://www.modelscope.cn/models/damo/punc_ct-transformer_cn-en-common-vocab471067-large-onnx/summary)
 
-**模型文件太大，并没有包含在 GitHub 库里面，你可以从百度网盘或者 GitHub Releases 界面下载已经转换好的模型文件，解压后，放入 `models` 文件夹。** 
+**模型文件太大，并没有包含在 GitHub 库里面，你可以从百度网盘或者 GitHub Releases 界面下载已经转换好的模型文件，解压后，将 `models` 文件夹放到软件根目录** 
 
-- 模型打包下载：[models-Paraformer-and-Punctuation-X86.zip](https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/v0.3/models-Paraformer-and-Punctuation-X86.zip) （包含了 onnx 格式的 Paraformer 语音模型和 Punctuation 标点模型）
+
 
 
 ## 源码安装依赖
@@ -140,7 +158,7 @@ pip install -r requirements-server.txt
 pip install -r requirements-client.txt
 ```
 
-有些依赖在3.11还暂时不无法安装，建议使用 `python 3.10` 
+有些依赖在 `Python 3.11` 还暂时不无法安装，建议使用 `Python 3.8 - Python3.10`  
 
 ### Mac 端
 
@@ -156,7 +174,7 @@ python3 setup.py install
 
 ## 源码运行
 
-1. 运行 `core_server.py` 脚本，会载入 Paraformer 模型识别模型（这会占用1GB的内存，载入时长约十几秒）
+1. 运行 `core_server.py` 脚本，会载入 Paraformer 模型识别模型和标点模型（这会占用2GB的内存，载入时长约 50 秒）
 2. 运行 `core_client.py` 脚本，它会打开系统默认麦克风，开始监听按键（`MacOS` 端需要 `sudo`）
 3. 按住 `CapsLock` 键，录音开始，松开 `CapsLock` 键，录音结束，识别结果立马被输入（录音时长短于0.3秒不算）
 
