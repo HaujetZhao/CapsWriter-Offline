@@ -1,7 +1,8 @@
-from util.client_cosmic import Cosmic, console
 from pathlib import Path
 from typing import Union
 import time
+from util.client_cosmic import Cosmic, console
+from config import ClientConfig as Config
 from os import makedirs
 
 
@@ -19,7 +20,7 @@ def rename_audio(task_id, text, time_start) -> Union[Path, None]:
     time_year = time.strftime('%Y', time.localtime(time_start))
     time_month = time.strftime('%m', time.localtime(time_start))
     time_ymdhms = time.strftime("%Y%m%d-%H%M%S", time.localtime(time_start))
-    file_stem = f'({time_ymdhms}){text[:20]}'
+    file_stem = f'({time_ymdhms}){text[:Config.audio_name_len]}'
 
     # 重命名
     file_path_new = file_path.with_name(file_stem + file_path.suffix)

@@ -52,14 +52,14 @@ async def send_audio():
             Cosmic.queue_in.task_done()
             if task['type'] == 'begin':
                 time_start = task['time']
-            elif task['type'] ==  'data':
+            elif task['type'] == 'data':
                 # 在阈值之前积攒音频数据
                 if task['time'] - time_start < Config.threshold:
                     cache.append(task['data'])
                     continue
 
                 # 创建音频文件
-                if not file_path:
+                if Config.save_audio and not file_path:
                     file_path, file = create_file(task['data'].shape[1], time_start)
                     Cosmic.audio_files[task_id] = file_path
 
@@ -72,7 +72,8 @@ async def send_audio():
 
                 # 保存音频至本地文件
                 duration += len(data) / 48000
-                write_file(file, data)
+                if Config.save_audio:
+                    write_file(file, data)
 
                 # 发送音频数据用于识别
                 message = {
@@ -90,7 +91,8 @@ async def send_audio():
                 task = asyncio.create_task(send_message(message))
             elif task['type'] ==  'finish':
                 # 完成写入本地文件
-                finish_file(file)
+                if Config.save_audio:
+                    finish_file(file)
 
                 console.print(f'任务标识：{task_id}')
                 console.print(f'    录音时长：{duration:.2f}s')

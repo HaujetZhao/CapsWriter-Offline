@@ -4,6 +4,7 @@ import time
 import numpy as np 
 
 from util.server_cosmic import console
+from config import ServerConfig as Config
 from util.server_classes import Task, Result
 from util.chinese_itn import chinese_to_num
 from util.format_tools import adjust_space
@@ -11,6 +12,18 @@ from rich import inspect
 
 
 results = {}
+
+
+def format_text(text, punc_model):
+    if Config.format_spell:
+        text = adjust_space(text)       # 调空格
+    if Config.format_punc and punc_model and text:
+        text = punc_model(text)[0]  # 加标点
+    if Config.format_num:
+        text = chinese_to_num(text)     # 转数字
+    if Config.format_spell:
+        text = adjust_space(text)       # 调空格
+    return text
 
 
 def recognize(recognizer, punc_model, task: Task):
@@ -42,7 +55,7 @@ def recognize(recognizer, punc_model, task: Task):
     result.time_submit = task.time_submit
     result.time_complete = time.time()
 
-    # 先粗去重
+    # 先粗去重，依据：字级时间戳
     m = n = len(stream.result.timestamps)
     for i, timestamp in enumerate(stream.result.timestamps, start=0):
         if timestamp > task.overlap / 2: 
@@ -57,7 +70,7 @@ def recognize(recognizer, punc_model, task: Task):
     if task.is_final:
         n = len(stream.result.timestamps)
 
-    # 再细去重
+    # 再细去重，依据：在端点是否有重复的字
     if result.tokens and result.tokens[-2:] == stream.result.tokens[m:n][:2]:
         m += 2
     elif result.tokens and result.tokens[-1:] == stream.result.tokens[m:n][:1]:
@@ -67,7 +80,6 @@ def recognize(recognizer, punc_model, task: Task):
     result.timestamps += [t + task.offset for t in stream.result.timestamps[m:n]]
     result.tokens += [token for token in stream.result.tokens[m:n]]
 
-    
     # token 合并为文本
     text = ' '.join(result.tokens).replace('@@ ', '')
     text = re.sub('([^a-zA-Z0-9]) (?![a-zA-Z0-9])', r'\1', text)
@@ -78,14 +90,7 @@ def recognize(recognizer, punc_model, task: Task):
         return result
 
     # 调整文本格式
-    text = adjust_space(text)       # 调空格
-    if punc_model and text:
-        text = punc_model(text)[0]  # 加标点
-    text = chinese_to_num(text)     # 转数字
-    text = adjust_space(text)       # 调空格
-
-    result.text = text
-
+    result.text = format_text(text, punc_model)
 
     # 若最后一个片段完成识别，从字典摘取任务
     result = results.pop(task.task_id)
