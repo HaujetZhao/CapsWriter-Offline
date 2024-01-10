@@ -17,7 +17,7 @@ import keyboard
 from config import ClientConfig as Config
 from util.client_cosmic import console, Cosmic
 from util.client_stream import stream_open, stream_close
-from util.client_shortcut_handler import shortcut_handler
+from util.client_shortcut_handler import bond_shortcut
 from util.client_recv_result import recv_result
 from util.client_show_tips import show_mic_tips, show_file_tips
 from util.client_hot_update import update_hot_all, observe_hot
@@ -62,7 +62,7 @@ async def main_mic():
     signal.signal(signal.SIGINT, stream_close)
 
     # 绑定按键
-    keyboard.hook_key(Config.shortcut, shortcut_handler)
+    bond_shortcut()
 
     # 清空物理内存工作集
     if system() == 'Windows':
