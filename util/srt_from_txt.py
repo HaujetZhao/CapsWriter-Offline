@@ -39,9 +39,15 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
     words_num = len(words)  # 词数，结束条件
     for index, line in enumerate(text_lines):
 
-        # 先清除空行
+        # 先清除空行：如果清除完空格，只剩 '' ，则 continue
         if not line.replace(' ', ''):
             continue
+        
+        # 避免越界
+        if cursor >= words_num:
+            break
+
+        # 初始化
         temp_text = line
         t1 = words[cursor]['start']
         t2 = words[cursor]['end']
@@ -53,13 +59,13 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
         while (not have_match) or (probe - cursor < threshold):
             if probe >= words_num:
                 break  # 探针越界，结束
-            w = words[probe]['word'].strip(' ,.?!，。？！')
+            w = words[probe]['word'].strip(' ,.?!，。？！@')
             t3 = words[probe]['start']
             t4 = words[probe]['end']
             probe += 1
             if w in temp_text:
                 have_match = True
-                temp_text = temp_text.replace(w, '')
+                temp_text = temp_text.replace(w, '', 1)
                 t2 = t4  # 延长字幕结束时间
                 cursor = probe
                 if not temp_text:
