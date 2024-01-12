@@ -39,8 +39,8 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
     words_num = len(words)  # 词数，结束条件
     for index, line in enumerate(text_lines):
 
-        # 先清除空行：如果清除完空格，只剩 '' ，则 continue
-        if not line.replace(' ', ''):
+        # 先清除空行
+        if not line.strip():
             continue
         
         # 避免越界
