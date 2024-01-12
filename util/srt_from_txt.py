@@ -22,6 +22,73 @@ from typing import List, Dict, Union
 import typer
 import srt
 from rich import print
+import re 
+
+
+class Scout: 
+    def __init__(self):
+        self.hit = 0
+        self.miss = 0
+        self.score = 0
+        self.start = 0
+        self.text = ''
+
+
+def get_scout(line, words, cursor):
+    words_num = len(words)
+    scout_list = []
+    scout_num, _ = 5, 0
+    while _ <= scout_num:
+
+        # 新建一个侦察兵
+        scout = Scout()
+        scout.text = re.sub('[,.?，。？、\s]', '', line.lower())
+        _ += 1
+
+        # 找到起始点
+        while cursor < words_num and \
+            words[cursor]['word'] not in scout.text:
+            cursor += 1
+        scout.start = cursor
+
+        # 如果到末尾了，就不必侦察了
+        if cursor == words_num:
+            break
+
+        # 开始侦察，容错5个词，查找连续匹配
+        tolerance = 5
+        while cursor < words_num and tolerance:
+            if words[cursor]['word'].lower() in scout.text:
+                scout.text = scout.text.replace(words[cursor]['word'].lower(), '', 1)
+                scout.hit += 1
+                cursor += 1
+                tolerance = 5
+            else:
+                if words[cursor]['word'] not in '零一二三四五六七八九十百千万':
+                    tolerance -= 1
+                    scout.miss += 1
+                cursor += 1
+            if not scout.text:
+                break
+
+        # 侦查完毕，带着得分入列
+        scout.score = scout.hit - scout.miss
+        scout_list.append(scout)
+
+        # 如果侦查分优秀，步进一步再重新细勘
+        if scout.hit >= 2:
+            cursor = scout.start + 1
+            scout_num += 1
+
+    # 找到得分最好的侦察员
+    best = scout_list[0]
+    for scout in scout_list:
+        if scout.score > best.score:
+            best = scout
+    
+    return best
+    ...
+
 
 
 def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
@@ -42,13 +109,17 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
         # 先清除空行
         if not line.strip():
             continue
-        
+            
+        # 侦察前方，得到起点、评分
+        scout = get_scout(line, words, cursor)
+        cursor, score = scout.start, scout.score 
+
         # 避免越界
         if cursor >= words_num:
             break
 
         # 初始化
-        temp_text = line
+        temp_text = re.sub('[,.?，。？、\s]', '', line.lower())
         t1 = words[cursor]['start']
         t2 = words[cursor]['end']
         threshold = 8
@@ -59,7 +130,7 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
         while (not have_match) or (probe - cursor < threshold):
             if probe >= words_num:
                 break  # 探针越界，结束
-            w = words[probe]['word'].strip(' ,.?!，。？！@')
+            w = words[probe]['word'].lower().strip(' ,.?!，。？！@')
             t3 = words[probe]['start']
             t4 = words[probe]['end']
             probe += 1
@@ -70,13 +141,18 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
                 cursor = probe
                 if not temp_text:
                     break  # 如果 temp 已清空,则代表本条字幕已完
-
+        
         # 新建字幕
         subtitle = srt.Subtitle(index=index,
                                 content=line,
                                 start=timedelta(seconds=t1),
                                 end=timedelta(seconds=t2))
         subtitle_list.append(subtitle)
+
+        # 如果本轮侦察评分不优秀，下一句应当回溯，避免本句识别末尾没刹住
+        if score <= 0:
+            cursor = max(0, cursor-20)
+            
     return subtitle_list
 
 
