@@ -8,6 +8,8 @@ class Handler:
     def __enter__(self):...
 
     def __exit__(self, exc_type, e, exc_tb):
+        if e == None:
+            return True
         if isinstance(e, ConnectionRefusedError):
             return True
         elif isinstance(e, TimeoutError):

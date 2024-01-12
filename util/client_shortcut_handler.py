@@ -7,10 +7,11 @@ import asyncio
 from threading import Event
 from concurrent.futures import ThreadPoolExecutor
 from util.client_send_audio import send_audio
+from util.my_status import Status
 
 
 task = asyncio.Future()
-status = console.status('开始录音', spinner='point')
+status = Status('开始录音', spinner='point')
 pool = ThreadPoolExecutor()
 pressed = False
 released = True

@@ -21,8 +21,8 @@ from util.client_check_websocket import check_websocket
 from config import ClientConfig as Config
 
 
-async def transcribe(file: Path):
 
+async def transcribe_check(file: Path):
     # 检查连接
     if not await check_websocket():
         console.print('无法连接到服务端')
@@ -31,6 +31,8 @@ async def transcribe(file: Path):
     if not file.exists():
         console.print(f'文件不存在：{file}')
         return False
+
+async def transcribe_send(file: Path):
 
     # 获取连接
     websocket = Cosmic.websocket
@@ -54,23 +56,39 @@ async def transcribe(file: Path):
     audio_duration = len(data) / 4 / 16000
     console.print(f'    音频长度：{audio_duration:.2f}s')
 
-    # 构建消息，发送给服务端
-    message = {
-        'task_id': task_id,                     # 任务 ID
-        'seg_duration': Config.file_seg_duration,    # 分段长度
-        'seg_overlap': Config.file_seg_overlap,      # 分段重叠
-        'is_final': True,                       # 是否结束
-        'time_start': time.time(),              # 录音起始时间
-        'time_frame': time.time(),              # 该帧时间
-        'source': 'file',                       # 数据来源：从文件读的数据
-        'data': base64.b64encode(data).decode('utf-8'),
-    }
-    await websocket.send(json.dumps(message))
+    # 构建分段消息，发送给服务端
+    offset = 0
+    while True:
+        chunk_end = offset + 16000*4*60
+        is_final = False if chunk_end < len(data) else True
+        message = {
+            'task_id': task_id,                     # 任务 ID
+            'seg_duration': Config.file_seg_duration,    # 分段长度
+            'seg_overlap': Config.file_seg_overlap,      # 分段重叠
+            'is_final': is_final,                       # 是否结束
+            'time_start': time.time(),              # 录音起始时间
+            'time_frame': time.time(),              # 该帧时间
+            'source': 'file',                       # 数据来源：从文件读的数据
+            'data': base64.b64encode(
+                        data[offset: chunk_end]
+                    ).decode('utf-8'),
+        }
+        offset = chunk_end
+        progress = min(offset / 4 / 16000, audio_duration)
+        await websocket.send(json.dumps(message))
+        console.print(f'    发送进度：{progress:.2f}s', end='\r')
+        if is_final:
+            break
+
+async def transcribe_recv(file: Path):
+
+    # 获取连接
+    websocket = Cosmic.websocket
 
     # 接收结果
     async for message in websocket:
         message = json.loads(message)
-        console.print(f'    转录进度：{message["duration"]:.2f}s', end='\r')
+        console.print(f'    转录进度: {message["duration"]:.2f}s', end='\r')
         if message['is_final']:
             break
 

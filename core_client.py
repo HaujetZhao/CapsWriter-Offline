@@ -22,7 +22,7 @@ from util.client_recv_result import recv_result
 from util.client_show_tips import show_mic_tips, show_file_tips
 from util.client_hot_update import update_hot_all, observe_hot
 
-from util.client_transcribe import transcribe
+from util.client_transcribe import transcribe_check, transcribe_send, transcribe_recv
 from util.client_adjust_srt import adjust_srt
 
 from util.empty_working_set import empty_current_working_set
@@ -80,7 +80,11 @@ async def main_file(files: List[Path]):
         if file.suffix in ['.txt', '.json', 'srt']:
             adjust_srt(file)
         else:
-            await transcribe(file)
+            await transcribe_check(file)
+            await asyncio.gather(
+                transcribe_send(file),
+                transcribe_recv(file)
+            )
 
     if Cosmic.websocket:
         await Cosmic.websocket.close()

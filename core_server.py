@@ -1,12 +1,12 @@
 import os
 import sys
 import asyncio
-from multiprocessing import Process
+from multiprocessing import Process, Manager
 from platform import system
 
 import websockets
 from config import ServerConfig as Config
-from util.server_cosmic import console, queue_in, queue_out
+from util.server_cosmic import Cosmic, console
 from util.server_check_model import check_model
 from util.server_ws_recv import ws_recv
 from util.server_ws_send import ws_send
@@ -14,7 +14,6 @@ from util.server_init_recognizer import init_recognizer
 from util.empty_working_set import empty_current_working_set
 
 BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)    # 确保 os.getcwd() 位置正确，用相对路径加载模型
-
 
 async def main():
 
@@ -27,10 +26,17 @@ async def main():
     console.print(f'当前基文件夹：[cyan underline]{BASE_DIR}', end='\n\n')
     console.print(f'绑定的服务地址：[cyan underline]{Config.addr}:{Config.port}', end='\n\n')
 
+    # 跨进程列表，用于保存 socket 的 id，用于让识别进程查看连接是否中断
+    Cosmic.sockets_id = Manager().list()
+
     # 负责识别的子进程
-    recognize_process = Process(target=init_recognizer, args=(queue_in, queue_out), daemon=True)
+    recognize_process = Process(target=init_recognizer,
+                                args=(Cosmic.queue_in,
+                                      Cosmic.queue_out,
+                                      Cosmic.sockets_id),
+                                daemon=True)
     recognize_process.start()
-    queue_out.get()
+    Cosmic.queue_out.get()
     console.rule('[green3]开始服务')
     console.line()
 
@@ -60,7 +66,7 @@ def init():
     except Exception as e:
         print(e)
     finally:
-        queue_out.put(None)
+        Cosmic.queue_out.put(None)
         sys.exit(0)
         # os._exit(0)
      

@@ -18,7 +18,7 @@ def disable_jieba_debug():
     jieba.setLogLevel(logging.INFO)
 
 
-def init_recognizer(queue_in: Queue, queue_out: Queue):
+def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
 
     # Ctrl-C 退出
     signal.signal(signal.SIGINT, lambda signum, frame: exit())
@@ -53,7 +53,16 @@ def init_recognizer(queue_in: Queue, queue_out: Queue):
     queue_out.put(True)  # 通知主进程加载完了
 
     while True:
-        task = queue_in.get()       # 从队列中获取任务消息
+        # 从队列中获取任务消息
+        # 阻塞最多1秒，便于中断退出
+        try:
+            task = queue_in.get(timeout=1)       
+        except:
+            continue
+
+        if task.socket_id not in sockets_id:    # 检查任务所属的连接是否存活
+            continue
+
         result = recognize(recognizer, punc_model, task)   # 执行识别
         queue_out.put(result)      # 返回结果
 

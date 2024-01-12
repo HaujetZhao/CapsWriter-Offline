@@ -3,13 +3,17 @@ import base64
 import asyncio
 from multiprocessing import Queue
 
-from util.server_cosmic import console, connections, queue_out, connections
+from util.server_cosmic import console, Cosmic
 from util.server_classes import Result
 from util.asyncio_to_thread import to_thread
 from rich import inspect
 
 
 async def ws_send():
+
+    queue_out = Cosmic.queue_out
+    sockets = Cosmic.sockets
+
     while True:
         try:
             # 获取识别结果（从多进程队列）
@@ -34,9 +38,12 @@ async def ws_send():
 
             # 获得 socket
             websocket = next(
-                (ws for ws in connections.values() if str(ws.id) == result.socket_id),
+                (ws for ws in sockets.values() if str(ws.id) == result.socket_id),
                 None,
             )
+
+            if not websocket:
+                continue
 
             # 发送消息
             await websocket.send(json.dumps(message))
