@@ -64,7 +64,7 @@ def get_scout(line, words, cursor):
                 cursor += 1
                 tolerance = 5
             else:
-                if words[cursor]['word'] not in '零一二三四五六七八九十百千万':
+                if words[cursor]['word'] not in '零一二三四五六七八九十百千万幺两点时分秒之':
                     tolerance -= 1
                     scout.miss += 1
                 cursor += 1
@@ -79,6 +79,10 @@ def get_scout(line, words, cursor):
         if scout.hit >= 2:
             cursor = scout.start + 1
             scout_num += 1
+
+    # 如果因越界导致无法探察，说明出现严重错误
+    if not scout_list:
+        return False
 
     # 找到得分最好的侦察员
     best = scout_list[0]
@@ -112,7 +116,15 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
             
         # 侦察前方，得到起点、评分
         scout = get_scout(line, words, cursor)
+        if not scout: # 没有结果表明出错，应提前结束
+            print('字幕匹配出现错误')
+            break
         cursor, score = scout.start, scout.score 
+
+
+        tokens = ''.join([x['word'] for x in words[cursor:cursor+50]])
+        print(f'{line=}\n{tokens=}\n{score=}\n{cursor=}\n\n')
+
 
         # 避免越界
         if cursor >= words_num:
@@ -142,6 +154,7 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
                 if not temp_text:
                     break  # 如果 temp 已清空,则代表本条字幕已完
         
+
         # 新建字幕
         subtitle = srt.Subtitle(index=index,
                                 content=line,
