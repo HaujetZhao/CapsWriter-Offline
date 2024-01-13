@@ -1,4 +1,5 @@
 import json 
+import time
 import base64 
 import asyncio
 import websockets
@@ -61,7 +62,7 @@ async def message_handler(websocket, message, cache: Cache):
                         task_id=task_id, socket_id=socket_id,
                         overlap=seg_overlap, is_final=False,
                         time_start=message['time_start'],
-                        time_submit=message['time_frame'])
+                        time_submit=time.time())
             cache.offset += seg_duration
             queue_in.put(task)
 
@@ -78,7 +79,7 @@ async def message_handler(websocket, message, cache: Cache):
                     task_id=task_id, socket_id=socket_id,
                     overlap=seg_overlap, is_final=True,
                     time_start=message['time_start'],
-                    time_submit=message['time_frame'])
+                    time_submit=time.time())
         queue_in.put(task)
 
         # 还原缓冲区、偏移时长
