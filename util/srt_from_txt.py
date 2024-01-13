@@ -42,12 +42,13 @@ def get_scout(line, words, cursor):
 
         # 新建一个侦察兵
         scout = Scout()
-        scout.text = re.sub('[,.?，。？、\s]', '', line.lower())
+        scout.text = re.sub('[,.?:%，。？、\s\d]', '', line.lower())
         _ += 1
 
         # 找到起始点
-        while cursor < words_num and \
-            words[cursor]['word'] not in scout.text:
+        while cursor < words_num \
+            and scout.text \
+            and words[cursor]['word'] not in scout.text:
             cursor += 1
         scout.start = cursor
 
@@ -122,8 +123,8 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
         cursor, score = scout.start, scout.score 
 
 
-        tokens = ''.join([x['word'] for x in words[cursor:cursor+50]])
-        print(f'{line=}\n{tokens=}\n{score=}\n{cursor=}\n\n')
+        # tokens = ''.join([x['word'] for x in words[cursor:cursor+50]])
+        # print(f'{line=}\n{tokens=}\n{score=}\n{cursor=}\n\n')
 
 
         # 避免越界
@@ -135,11 +136,10 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
         t1 = words[cursor]['start']
         t2 = words[cursor]['end']
         threshold = 8
-        have_match = False
 
         # 开始匹配
         probe = cursor  # 重置探针
-        while (not have_match) or (probe - cursor < threshold):
+        while (probe - cursor < threshold):
             if probe >= words_num:
                 break  # 探针越界，结束
             w = words[probe]['word'].lower().strip(' ,.?!，。？！@')
@@ -147,7 +147,6 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
             t4 = words[probe]['end']
             probe += 1
             if w in temp_text:
-                have_match = True
                 temp_text = temp_text.replace(w, '', 1)
                 t2 = t4  # 延长字幕结束时间
                 cursor = probe
