@@ -42,7 +42,7 @@ def write_md(text: str, time_start: float, file_audio: Path):
     time_month = time.strftime('%m', time.localtime(time_start))
     time_day = time.strftime('%d', time.localtime(time_start))
     time_hms = time.strftime('%H:%M:%S', time.localtime(time_start))
-    folder_path = Path() / time_year / time_month
+    folder_path = Path() / 'records' / time_year / time_month
     makedirs(folder_path, exist_ok=True)
 
     # 列表内的元素是元组，元组内包含了：关键词、md路径
