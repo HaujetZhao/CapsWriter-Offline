@@ -29,11 +29,11 @@ async def recv_result():
             if not message['is_final']:
                 continue
 
-            # 热词替换
-            text = hot_sub(text)
-
             # 消除末尾标点
             text = strip_punc(text)
+
+            # 热词替换
+            text = hot_sub(text)
 
             # 打字
             await type_result(text)
