@@ -60,16 +60,8 @@
 
    下载地址：
 
-- 123 盘：https://www.123pan.com/s/qBxUVv-z1Zq3.html 提取码:h8vb
+- 123 盘：https://www.123pan.com/s/qBxUVv-H4Zq3.html 提取码:h8vb)
 - GitHub Release: [Releases · H1DDENADM1N/CapsWriter-Offline](https://github.com/H1DDENADM1N/CapsWriter-Offline/releases)
-
-> 如果你遇到了能识别，但无法输出文字，而且 Client 提示`Could not setup clipboard`， 请用 pyperclip 替代 pyclip 库，具体这样做：
->
-> `pip install pyperclip`
->
-> 然后 把 pyperclip 库复制到 site-packages 目录，
->
-> 并这样[修改](https://github.com/H1DDENADM1N/CapsWriter-Offline/commit/1ae380145c688efc5081d82618a7698ff972146a#diff-b09b873a39b68d9e52ff0b543a54e83bb310ec13b4a5a6914a25c849f9b91997)
 
 ![start_server_and_client_in_tray](assets/start_server_and_client_in_tray.gif)
 
