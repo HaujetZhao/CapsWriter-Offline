@@ -57,6 +57,7 @@
 3. Server 和 Client 以 tab 集成在一个 gui，无任务栏占用。
 4. 双击 start.exe 运行，可自行设置开机自启动。
 5. 已包含所有 Python 环境和 models 模型，解压即用。
+6. 支持转录功能，将文件拖动到 start_client_gui.exe
 
    下载地址：
 

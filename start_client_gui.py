@@ -1,3 +1,4 @@
+import os
 import sys
 import subprocess
 from queue import Queue
@@ -116,8 +117,17 @@ class GUI(QMainWindow):
             self.text_box_client.append(line)
 
 if __name__ == '__main__':
-    app = QApplication([])
-    apply_stylesheet(app, theme='dark_teal.xml')
-    gui = GUI()
-    gui.show()
-    sys.exit(app.exec())
+    if sys.argv[1:]:
+        # 如果参数传入文件，那就转录文件
+        CapsWriter_path = os.path.dirname(os.path.abspath(__file__))
+        script_path = os.path.join(CapsWriter_path, 'core_client.py')
+        python_exe_path = os.path.join(CapsWriter_path, 'runtime\\python.exe')
+        args = [arg for arg in sys.argv[1:]]
+        subprocess.run([python_exe_path, script_path] + args)
+    else:
+        # GUI
+        app = QApplication([])
+        apply_stylesheet(app, theme='dark_teal.xml')
+        gui = GUI()
+        gui.show()
+        sys.exit(app.exec())
