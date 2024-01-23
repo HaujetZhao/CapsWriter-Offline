@@ -1,4 +1,3 @@
-import os
 import sys
 import subprocess
 from queue import Queue
@@ -110,7 +109,7 @@ class GUI(QMainWindow):
         QApplication.quit()
         
         # TODO: Quit models The above method can not completely exit the model, rename pythonw.exe to pythonw_CapsWriter.exe and taskkill. It's working but not the best way.
-        os.system('taskkill /IM pythonw_CapsWriter.exe /F')
+        proc = subprocess.Popen('taskkill /IM pythonw_CapsWriter.exe /F', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
 
     def on_tray_icon_activated(self, reason):
         # Called when the system tray icon is activated
