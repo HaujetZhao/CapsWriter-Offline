@@ -65,7 +65,9 @@
 
 ![start_server_and_client_in_tray](assets/start_server_and_client_in_tray.gif)
 
-![PixPin_2024-01-22_16-58-37](assets/PixPin_2024-01-22_16-58-37.png)
+![start_server_or_client_in_tray](assets/start_server_or_client_in_tray.gif)
+
+![PixPin_2024-01-23_14-27-35](assets/PixPin_2024-01-23_14-27-35.png)
 
 ## 功能：热词
 
