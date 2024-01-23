@@ -109,7 +109,7 @@ class GUI(QMainWindow):
         QApplication.quit()
         
         # TODO: Quit models The above method can not completely exit the model, rename pythonw.exe to pythonw_CapsWriter.exe and taskkill. It's working but not the best way.
-        proc = subprocess.Popen('taskkill /IM pythonw_CapsWriter.exe /F', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
+        proc = subprocess.Popen('taskkill /IM pythonw_CapsWriter_Server.exe /IM pythonw_CapsWriter_Client.exe /F', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
 
     def on_tray_icon_activated(self, reason):
         # Called when the system tray icon is activated
@@ -118,11 +118,11 @@ class GUI(QMainWindow):
 
     def start_script(self):
         # Start core_server.py and redirect output to the server queue
-        self.core_server_process = subprocess.Popen(['.\\runtime\\pythonw_CapsWriter.exe', 'core_server.py'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.core_server_process = subprocess.Popen(['.\\runtime\\pythonw_CapsWriter_Server.exe', 'core_server.py'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         threading.Thread(target=self.enqueue_output, args=(self.core_server_process.stdout, self.output_queue_server), daemon=True).start()
 
         # Start core_client.py and redirect output to the client queue
-        self.core_client_process = subprocess.Popen(['.\\runtime\\pythonw_CapsWriter.exe', 'core_client.py'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.core_client_process = subprocess.Popen(['.\\runtime\\pythonw_CapsWriter_Client.exe', 'core_client.py'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         threading.Thread(target=self.enqueue_output, args=(self.core_client_process.stdout, self.output_queue_client), daemon=True).start()
 
         # Update text boxes
