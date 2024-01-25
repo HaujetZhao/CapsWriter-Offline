@@ -1,6 +1,6 @@
 rich
 keyboard
-pyclip
+pyperclip
 numpy
 sounddevice
 websockets
