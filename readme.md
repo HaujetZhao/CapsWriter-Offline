@@ -58,6 +58,7 @@
 4. 双击 start.exe 运行，可自行设置开机自启动。
 5. 已包含所有 Python 环境和 models 模型，解压即用。
 6. 支持转录功能，将文件拖动到 start_client_gui.exe
+7. 按下 Capslock 键会在光标处提示 [✦ 语音输入中‧‧‧](https://github.com/HaujetZhao/CapsWriter-Offline/issues/52#issuecomment-1905758203)
 
    下载地址：
 
@@ -68,7 +69,7 @@
 
 ![start_server_or_client_in_tray](assets/start_server_or_client_in_tray.gif)
 
-![PixPin_2024-01-23_14-27-35](assets/PixPin_2024-01-23_14-27-35.png)
+![PixPin_2024-01-25_08-45-54](assets/PixPin_2024-01-25_08-45-54.png)
 
 ## 功能：热词
 
