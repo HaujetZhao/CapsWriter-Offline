@@ -55,7 +55,7 @@
 1. 基于 [PySide6](https://pypi.org/project/PySide6/) 的 GUI，默认使用 [Qt-Material](https://github.com/UN-GCPDS/qt-material) dark_yellow 主题；基于 [PyStand](https://github.com/skywind3000/PyStand) 绿化便携 `start.exe`。
 2. 支持最小化到系统托盘。
 3. ~~Server 和 Client 以 tab 集成在一个 gui，无任务栏占用。~~
-4. ~~双击 start.exe 运行，可自行设置开机自启动。~~ 不建议使用，参考[这里](<[text](https://github.com/HaujetZhao/CapsWriter-Offline/pull/53#issuecomment-1903681063)>)。
+4. ~~双击 start.exe 运行，可自行设置开机自启动。~~ 不建议使用，参考[这里](https://github.com/HaujetZhao/CapsWriter-Offline/pull/53#issuecomment-1903681063)。
 5. 已包含所有 Python 环境和 models 模型，解压即用。
 6. 支持转录功能，将文件拖动到 `start_client_gui.exe`
 7. `hint_while_recording.exe`跟随`start_client_gui.exe`启停，实现按下 Capslock 键会在光标处提示 [✦ 语音输入中‧‧‧](https://github.com/HaujetZhao/CapsWriter-Offline/issues/52#issuecomment-1905758203)
