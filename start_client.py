@@ -7,7 +7,7 @@
 
 import sys
 import typer
-from core_client import init_file, init_mic
+from core_client import init_file, init_mic,client_is_running
 
 if __name__ == "__main__":
     # 如果参数传入文件，那就转录文件
@@ -15,4 +15,4 @@ if __name__ == "__main__":
     if sys.argv[1:]:
         typer.run(init_file)
     else:
-        init_mic()
+        init_mic(client_is_running)

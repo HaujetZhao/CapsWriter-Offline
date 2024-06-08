@@ -9,7 +9,7 @@
 1. 按下键盘上的 `大写锁定键`，录音开始，当松开 `大写锁定键` 时，就会识别你的录音，并将识别结果立刻输入
 2. 将音视频文件拖动到客户端打开，即可转录生成 srt 字幕
 
-视频教程：[CapsWriter-Offline 电脑端离线语音输入工具](https://www.bilibili.com/video/BV1tt4y1d75s/)  
+视频教程：[CapsWriter-Offline 电脑端离线语音输入工具](https://www.bilibili.com/video/BV1fo4y1T7KN/)  
 
 ## 特性
 
@@ -25,11 +25,10 @@
 
 对 Windows 端：
 
-1. 请确保电脑上安装了 [Microsoft Visual C++ Redistributable 运行库](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)
-2. 服务端载入模型所用的 onnxruntime 只能在 Windows 10 及以上版本的系统使用
-3. 服务端载入模型需要系统内存 4G，只能在 64 位系统上使用
-4. 额外打包了 32 位系统可用的客户端，在 Windows 7 及以上版本的系统可用
-5. 模型文件较大，单独打包，解压模型后请放入软件目录的 `models` 文件夹中
+1. 服务端载入模型所用的 onnxruntime 只能在 Windows 10 及以上版本的系统使用
+2. 服务端载入模型需要系统内存 4G，只能在 64 位系统上使用
+3. 额外打包了 32 位系统可用的客户端，在 Windows 7 及以上版本的系统可用
+4. 模型文件较大，单独打包，解压模型后请放入软件目录的 `models` 文件夹中
 
 其它系统：
 
@@ -133,20 +132,7 @@
 
 **模型文件太大，并没有包含在 GitHub 库里面，你可以从百度网盘或者 GitHub Releases 界面下载已经转换好的模型文件，解压后，将 `models` 文件夹放到软件根目录** 
 
-## 自启动、隐藏窗口、拖盘图标、Docker
 
-Windows 隐藏黑窗口启动，见 [\#49](https://github.com/HaujetZhao/CapsWriter-Offline/issues/49)，将下述内容保存为 vbs 运行：
-
-```
-CreateObject("Wscript.Shell").Run "start_server.exe",0,True
-CreateObject("Wscript.Shell").Run "start_client.exe",0,True
-```
-
-Windows 自启动，新建快捷方式，放到 `shell:startup` 目录下即可。
-
-带拖盘图标的 GUI 版，见 [H1DDENADM1N/CapsWriter-Offline](https://github.com/H1DDENADM1N/CapsWriter-Offline/tree/GUI-(PySide6)-and-Portable-(PyStand)) 
-
-Docker 版，见 [Garonix/CapsWriter-Offline at docker-support ](https://github.com/Garonix/CapsWriter-Offline/tree/docker-support) 
 
 
 ## 源码安装依赖

@@ -7,13 +7,12 @@ import signal
 from pathlib import Path
 from platform import system
 from typing import List
-
+import time
 
 
 import typer
 import colorama
 import keyboard
-
 from config import ClientConfig as Config
 from util.client_cosmic import console, Cosmic
 from util.client_stream import stream_open, stream_close
@@ -21,10 +20,8 @@ from util.client_shortcut_handler import bond_shortcut
 from util.client_recv_result import recv_result
 from util.client_show_tips import show_mic_tips, show_file_tips
 from util.client_hot_update import update_hot_all, observe_hot
-
 from util.client_transcribe import transcribe_check, transcribe_send, transcribe_recv
 from util.client_adjust_srt import adjust_srt
-
 from util.empty_working_set import empty_current_working_set
 
 # 确保根目录位置正确，用相对路径加载模型
@@ -58,8 +55,8 @@ async def main_mic():
     # 打开音频流
     Cosmic.stream = stream_open()
 
-    # Ctrl-C 关闭音频流，触发自动重启
-    signal.signal(signal.SIGINT, stream_close)
+    # # Ctrl-C 关闭音频流，触发自动重启
+    # signal.signal(signal.SIGINT, stream_close)
 
     # 绑定按键
     bond_shortcut()
@@ -90,14 +87,22 @@ async def main_file(files: List[Path]):
         await Cosmic.websocket.close()
     input('\n按回车退出\n')
 
+from util.server_client_state import client_is_running
 
-def init_mic():
+
+def init_mic(client_is_running):
     try:
-        asyncio.run(main_mic())
+        #print(client_is_running.value)
+        if client_is_running.value:
+            asyncio.run(main_mic())
+        else:
+            console.print(f'客户端已经关闭')
+            sys.exit()
     except KeyboardInterrupt:
         console.print(f'再见！')
     finally:
         print('...')
+
 
 
 def init_file(files: List[Path]):
@@ -117,4 +122,4 @@ if __name__ == "__main__":
     if sys.argv[1:]:
         typer.run(init_file)
     else:
-        init_mic()
+        init_mic(client_is_running)
