@@ -12,11 +12,12 @@
 视频教程：[CapsWriter-Offline 电脑端离线语音输入工具](https://www.bilibili.com/video/BV1fo4y1T7KN/)  
 
 ## 更新的GUI版本，添加LLM应用
-![image](https://github.com/Walkman1W/CapsWriter-Offline/assets/48667439/d3021597-7804-4390-8b60-6fde0a54abbb)
+![GUI](https://github.com/Walkman1W/CapsWriter-Offline/assets/48667439/b6832daa-9564-4c51-9624-3a46a44487d0)
 
 添加了GUI界面和LLM应用：
 1. GUI界面，设置了热词、配置的按钮。
-2. 一个纯翻译Agent，一个全能Agent。
+2. 一个纯翻译Agent，选择目标语言即可把语音转的文字翻译成另一种语言。
+3. 一个全能Agent，可以根据用户的语音指令以及取鼠标所选内容，完成任务。可在`config.py`中设置记轮数。
 
 
 ## 特性
@@ -30,7 +31,8 @@
 7. 编辑 `config.py` ，可以配置服务端地址、快捷键、录音开关……
 8. 添加了GUI界面，设置了热词、配置的按钮。
 9. 添加了LLM应用，在`config.py`中可以配置LLM入口。
-10. 添加了一个纯翻译Agent，一个全能Agent。
+10. 一个纯翻译Agent，选择目标语言即可把语音转的文字翻译成另一种语言。
+11.  一个全能Agent，可以根据用户的语音指令以及取鼠标所选内容，完成任务。可在`config.py`中设置记轮数。
 
 ## 懒人包
 
