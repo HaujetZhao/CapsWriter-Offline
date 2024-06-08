@@ -11,6 +11,14 @@
 
 视频教程：[CapsWriter-Offline 电脑端离线语音输入工具](https://www.bilibili.com/video/BV1fo4y1T7KN/)  
 
+## 更新的GUI版本，添加LLM应用
+![image](https://github.com/Walkman1W/CapsWriter-Offline/assets/48667439/d3021597-7804-4390-8b60-6fde0a54abbb)
+
+添加了GUI界面和LLM应用：
+1. GUI界面，设置了热词、配置的按钮。
+2. 一个纯翻译Agent，一个全能Agent。
+
+
 ## 特性
 
 1. 完全离线、无限时长、低延迟、高准确率、中英混输、自动阿拉伯数字、自动调整中英间隔
