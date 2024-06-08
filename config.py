@@ -15,8 +15,8 @@ class ServerConfig:
 # 大语言模型配置
 class ModelConfig:
     #通义千问
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-    api_key="sk-797b55f4fca64f6f8e7b6449845e6fec"
+    base_url="******"
+    api_key="*****"
     model = "qwen-long"
 
 class MemoryConfig:
