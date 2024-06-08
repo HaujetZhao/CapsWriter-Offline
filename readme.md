@@ -9,7 +9,16 @@
 1. 按下键盘上的 `大写锁定键`，录音开始，当松开 `大写锁定键` 时，就会识别你的录音，并将识别结果立刻输入
 2. 将音视频文件拖动到客户端打开，即可转录生成 srt 字幕
 
-视频教程：[CapsWriter-Offline 电脑端离线语音输入工具](https://www.bilibili.com/video/BV1tt4y1d75s/)  
+视频教程：[CapsWriter-Offline 电脑端离线语音输入工具](https://www.bilibili.com/video/BV1fo4y1T7KN/)  
+
+## 更新的GUI版本，添加LLM应用
+![GUI](https://github.com/Walkman1W/CapsWriter-Offline/assets/48667439/b6832daa-9564-4c51-9624-3a46a44487d0)
+
+添加了GUI界面和LLM应用：
+1. GUI界面，设置了热词、配置的按钮。
+2. 一个纯翻译Agent，选择目标语言即可把语音转的文字翻译成另一种语言。
+3. 一个全能Agent，可以根据用户的语音指令以及取鼠标所选内容，完成任务。可在`config.py`中设置记轮数。
+
 
 ## 特性
 
@@ -20,16 +29,19 @@
 5. 转录功能：将音视频文件拖动到客户端打开，即可转录生成 srt 字幕
 6. 服务端、客户端分离，可以服务多台客户端
 7. 编辑 `config.py` ，可以配置服务端地址、快捷键、录音开关……
+8. 添加了GUI界面，设置了热词、配置的按钮。
+9. 添加了LLM应用，在`config.py`中可以配置LLM入口。
+10. 一个纯翻译Agent，选择目标语言即可把语音转的文字翻译成另一种语言。
+11.  一个全能Agent，可以根据用户的语音指令以及取鼠标所选内容，完成任务。可在`config.py`中设置记轮数。
 
 ## 懒人包
 
 对 Windows 端：
 
-1. 请确保电脑上安装了 [Microsoft Visual C++ Redistributable 运行库](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)
-2. 服务端载入模型所用的 onnxruntime 只能在 Windows 10 及以上版本的系统使用
-3. 服务端载入模型需要系统内存 4G，只能在 64 位系统上使用
-4. 额外打包了 32 位系统可用的客户端，在 Windows 7 及以上版本的系统可用
-5. 模型文件较大，单独打包，解压模型后请放入软件目录的 `models` 文件夹中
+1. 服务端载入模型所用的 onnxruntime 只能在 Windows 10 及以上版本的系统使用
+2. 服务端载入模型需要系统内存 4G，只能在 64 位系统上使用
+3. 额外打包了 32 位系统可用的客户端，在 Windows 7 及以上版本的系统可用
+4. 模型文件较大，单独打包，解压模型后请放入软件目录的 `models` 文件夹中
 
 其它系统：
 
@@ -133,20 +145,7 @@
 
 **模型文件太大，并没有包含在 GitHub 库里面，你可以从百度网盘或者 GitHub Releases 界面下载已经转换好的模型文件，解压后，将 `models` 文件夹放到软件根目录** 
 
-## 自启动、隐藏窗口、拖盘图标、Docker
 
-Windows 隐藏黑窗口启动，见 [\#49](https://github.com/HaujetZhao/CapsWriter-Offline/issues/49)，将下述内容保存为 vbs 运行：
-
-```
-CreateObject("Wscript.Shell").Run "start_server.exe",0,True
-CreateObject("Wscript.Shell").Run "start_client.exe",0,True
-```
-
-Windows 自启动，新建快捷方式，放到 `shell:startup` 目录下即可。
-
-带拖盘图标的 GUI 版，见 [H1DDENADM1N/CapsWriter-Offline](https://github.com/H1DDENADM1N/CapsWriter-Offline/tree/GUI-(PySide6)-and-Portable-(PyStand)) 
-
-Docker 版，见 [Garonix/CapsWriter-Offline at docker-support ](https://github.com/Garonix/CapsWriter-Offline/tree/docker-support) 
 
 
 ## 源码安装依赖
@@ -210,3 +209,8 @@ Windows/MacOS/Linux均使用如下命令完成打包:
 如果你愿意，可以以打赏的方式支持我一下：
 
 ![sponsor](assets/sponsor.jpg)
+
+## 此版本作者
+![FengGuo-QC](https://github.com/Walkman1W/CapsWriter-Offline/assets/48667439/f2dff3a8-a89c-4a36-9021-1b4b4ee87dd7)
+
+

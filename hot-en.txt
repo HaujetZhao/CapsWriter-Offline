@@ -11,7 +11,7 @@ MB
 GB
 TB
 PB
-
+IPO
 
 PDF
 DPI
@@ -52,6 +52,8 @@ Merlin
 Transformer
 Paraformer
 
+
+CrewAI
 China
 Chinese
 England
@@ -69,6 +71,7 @@ Japan
 Japanese
 Korea
 Korean
+AIGC
 
 # 数字开头
 7-Zip
@@ -90,6 +93,7 @@ App
 Bandizip
 BIOS
 Blender
+BIM
 
 # C开头
 CAD
@@ -113,6 +117,7 @@ Dell
 Dolby
 Dropbox
 Directory OPUS
+Docker
 
 # E开头
 Edge
@@ -161,6 +166,7 @@ iPhone
 # J开头
 Java
 JavaScript
+JSD
 
 # K开头
 Kotlin
@@ -172,6 +178,9 @@ LinkedIn
 Linux
 Logic Pro
 Lua
+LangChain
+
+
 
 # M开头
 Maya
@@ -215,6 +224,8 @@ Reddit
 RGB
 Ruby
 Rust
+Revit
+Rhino
 
 # S开头
 Sketch
@@ -260,6 +271,7 @@ Wix
 Word
 WordPress
 WTO
+WPS
 
 # X开头
 Xbox
