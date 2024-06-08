@@ -20,6 +20,9 @@
 5. 转录功能：将音视频文件拖动到客户端打开，即可转录生成 srt 字幕
 6. 服务端、客户端分离，可以服务多台客户端
 7. 编辑 `config.py` ，可以配置服务端地址、快捷键、录音开关……
+8. 添加了GUI界面，设置了热词、配置的按钮。
+9. 添加了LLM应用，在`config.py`中可以配置LLM入口。
+10. 添加了一个纯翻译Agent，一个全能Agent。
 
 ## 懒人包
 
@@ -196,3 +199,8 @@ Windows/MacOS/Linux均使用如下命令完成打包:
 如果你愿意，可以以打赏的方式支持我一下：
 
 ![sponsor](assets/sponsor.jpg)
+
+## 此版本作者
+![FengGuo-QC](https://github.com/Walkman1W/CapsWriter-Offline/assets/48667439/f2dff3a8-a89c-4a36-9021-1b4b4ee87dd7)
+
+
