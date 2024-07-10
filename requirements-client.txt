@@ -1,7 +1,7 @@
 rich
 keyboard
 pyclip
-numpy
+numpy==1.26.4
 sounddevice
 websockets
 pypinyin
