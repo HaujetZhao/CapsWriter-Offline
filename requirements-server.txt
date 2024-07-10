@@ -1,6 +1,6 @@
 rich
 websockets
-numpy
+numpy==1.26.4
 typeguard==2.13.3
 sherpa_onnx==1.8.11
 funasr_onnx==0.2.5
