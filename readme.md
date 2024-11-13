@@ -133,7 +133,20 @@
 
 **模型文件太大，并没有包含在 GitHub 库里面，你可以从百度网盘或者 GitHub Releases 界面下载已经转换好的模型文件，解压后，将 `models` 文件夹放到软件根目录** 
 
+## 自启动、隐藏窗口、拖盘图标、Docker
 
+Windows 隐藏黑窗口启动，见 [\#49](https://github.com/HaujetZhao/CapsWriter-Offline/issues/49)，将下述内容保存为 vbs 运行：
+
+```
+CreateObject("Wscript.Shell").Run "start_server.exe",0,True
+CreateObject("Wscript.Shell").Run "start_client.exe",0,True
+```
+
+Windows 自启动，新建快捷方式，放到 `shell:startup` 目录下即可。
+
+带拖盘图标的 GUI 版，见 [H1DDENADM1N/CapsWriter-Offline](https://github.com/H1DDENADM1N/CapsWriter-Offline/tree/GUI-(PySide6)-and-Portable-(PyStand)) 
+
+Docker 版，见 [Garonix/CapsWriter-Offline at docker-support ](https://github.com/Garonix/CapsWriter-Offline/tree/docker-support) 
 
 
 ## 源码安装依赖
