@@ -3,8 +3,9 @@ keyboard
 pyclip
 numpy
 sounddevice
-websockets
+websockets==13.1
 pypinyin
 watchdog
 typer
 srt
+colorama
