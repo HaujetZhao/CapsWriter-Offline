@@ -2,14 +2,15 @@ from importlib.util import find_spec
 
 relies = ["markdown_it", "rich"]
 if not all([find_spec(x) for x in relies]):
-    print("这个脚本需要用到第三方库：markdown_it rich\n请先用 pip 安装后再运行")
+    print(
+        "这个脚本需要用到第三方库：markdown_it rich\n请先用 pip 安装后再运行"
+    )
     input("按回车退出")
 
 import re
 import sys
 from os import remove
 from pathlib import Path
-from typing import List
 from urllib.parse import unquote
 
 from markdown_it import MarkdownIt
@@ -64,7 +65,7 @@ def get_links(text: str):  # 查找文本内的所有链接
     return links
 
 
-def absolutify_links(file, links: List[str]):  # 验证链接是本地文件
+def absolutify_links(file, links: list[str]):  # 验证链接是本地文件
     if type(file) is not Path:
         file = Path(file)
 
@@ -129,7 +130,9 @@ def main():
         console.print(f"    {file}")
     for i in range(3):
         if (
-            console.input("[yellow]如果确认删除，请手动输入单词 delete 后回车\n")
+            console.input(
+                "[yellow]如果确认删除，请手动输入单词 delete 后回车\n"
+            )
             == "delete"
         ):
             break

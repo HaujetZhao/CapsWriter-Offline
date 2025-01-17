@@ -25,7 +25,9 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
     signal.signal(signal.SIGINT, lambda signum, frame: exit())
 
     # 导入模块
-    with console.status("载入模块中…", spinner="bouncingBall", spinner_style="yellow"):
+    with console.status(
+        "载入模块中…", spinner="bouncingBall", spinner_style="yellow"
+    ):
         import sherpa_onnx
         from funasr_onnx import CT_Transformer
 

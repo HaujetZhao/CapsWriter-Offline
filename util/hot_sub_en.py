@@ -70,7 +70,9 @@ def replace_trending_words(sentence):
             + r"(?=[^a-zA-z]|\b)"
         )
         regex_pattern2 = (
-            r"(?<=\b)" + re.sub("(.)", r"\1 *?", regex_pattern) + r"(?=[^a-zA-z]|\b)"
+            r"(?<=\b)"
+            + re.sub("(.)", r"\1 *?", regex_pattern)
+            + r"(?=[^a-zA-z]|\b)"
         )
         sentence = re.sub(regex_pattern1, match_item, sentence, flags=re.I)
         sentence = re.sub(regex_pattern2, match_item, sentence, flags=re.I)

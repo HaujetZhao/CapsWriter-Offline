@@ -16,7 +16,9 @@ path_kwds = Path() / "keywords.txt"
 def update_hot_zh():
     if not path_zh.exists():
         with open(path_zh, "w", encoding="utf-8") as f:
-            f.write("# 在此文件放置中文热词，每行一个，开头带井号表示注释，会被省略")
+            f.write(
+                "# 在此文件放置中文热词，每行一个，开头带井号表示注释，会被省略"
+            )
     with open(path_zh, "r", encoding="utf-8") as f:
         num_hot_zh = hot_sub_zh.update_trending_words_dict(f.read())
     console.print(f"已载入 [green4]{num_hot_zh:5}[/] 条中文热词")

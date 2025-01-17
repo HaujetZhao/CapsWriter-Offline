@@ -4,6 +4,7 @@ from base64 import b64decode
 from dataclasses import dataclass
 
 import websockets
+
 from util.my_status import Status
 from util.server_classes import Task
 from util.server_cosmic import Cosmic, console

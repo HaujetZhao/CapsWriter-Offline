@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -25,8 +25,8 @@ class Result:
     time_start: float = 0  # Recording start time
     time_submit: float = 0  # Segment submission time
     time_complete: float = 0  # Recognition completion time
-    tokens: List[str] = field(default_factory=list)  # Character-level tokens
-    timestamps: List[float] = field(
+    tokens: list[str] = field(default_factory=list)  # Character-level tokens
+    timestamps: list[float] = field(
         default_factory=list
     )  # Timestamps of character-level tokens
     text: str = ""  # Merged text

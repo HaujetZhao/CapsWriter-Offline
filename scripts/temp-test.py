@@ -1,7 +1,6 @@
 import subprocess
 from time import sleep
 
-
 if __name__ != "__main__":
     raise ImportError(f"Script {__file__} should not be imported as a module")
 

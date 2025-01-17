@@ -13,4 +13,3 @@ class Cosmic:
 
     # not implemented
     # pylint: disable=unnecessary-pass
-    pass

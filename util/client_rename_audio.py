@@ -1,13 +1,12 @@
 import re
 import time
 from pathlib import Path
-from typing import Union
 
 from config import ClientConfig as Config
 from util.client_cosmic import Cosmic, console
 
 
-def rename_audio(task_id, text, time_start) -> Union[Path, None]:
+def rename_audio(task_id, text, time_start) -> Path | None:
 
     # 获取旧文件名
     file_path = Path(Cosmic.audio_files.pop(task_id))
