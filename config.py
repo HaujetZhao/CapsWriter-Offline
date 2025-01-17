@@ -28,23 +28,17 @@ class ClientConfig:
     restore_clip = True  # 模拟粘贴后是否恢复剪贴板
 
     save_audio = True  # 是否保存录音文件
-    audio_name_len = (
-        20  # 将录音识别结果的前多少个字存储到录音文件名中，建议不要超过200
-    )
+    audio_name_len = 20  # 将录音识别结果的前多少个字存储到录音文件名中，建议不要超过200
 
     trash_punc = "，。,."  # 识别结果要消除的末尾标点
 
     hot_zh = True  # 是否启用中文热词替换，中文热词存储在 hot_zh.txt 文件里
-    多音字 = True  # True 表示多音字匹配
-    声调 = False  # False 表示忽略声调区别，这样「黄章」就能匹配「慌张」
+    polyphonic_characters = True  # True 表示多音字匹配
+    tones = False  # False 表示忽略声调区别，这样「黄章」就能匹配「慌张」
 
     hot_en = True  # 是否启用英文热词替换，英文热词存储在 hot_en.txt 文件里
-    hot_rule = (
-        True  # 是否启用自定义规则替换，自定义规则存储在 hot_rule.txt 文件里
-    )
-    hot_kwd = (
-        True  # 是否启用关键词日记功能，自定义关键词存储在 keyword.txt 文件里
-    )
+    hot_rule = True  # 是否启用自定义规则替换，自定义规则存储在 hot_rule.txt 文件里
+    hot_kwd = True  # 是否启用关键词日记功能，自定义关键词存储在 keyword.txt 文件里
 
     mic_seg_duration = 15  # 麦克风听写时分段长度：15秒
     mic_seg_overlap = 2  # 麦克风听写时分段重叠：2秒
@@ -55,9 +49,7 @@ class ClientConfig:
 
 class ModelPaths:
     model_dir = Path() / "models"
-    paraformer_path = (
-        Path() / "models" / "paraformer-offline-zh" / "model.int8.onnx"
-    )
+    paraformer_path = Path() / "models" / "paraformer-offline-zh" / "model.int8.onnx"
     tokens_path = Path() / "models" / "paraformer-offline-zh" / "tokens.txt"
     punc_model_dir = Path() / "models" / "punc_ct-transformer_cn-en"
 

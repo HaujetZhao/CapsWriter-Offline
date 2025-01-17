@@ -16,11 +16,9 @@ path_kwds = Path() / "keywords.txt"
 def update_hot_zh():
     if not path_zh.exists():
         with open(path_zh, "w", encoding="utf-8") as f:
-            f.write(
-                "# 在此文件放置中文热词，每行一个，开头带井号表示注释，会被省略"
-            )
+            f.write("# 在此文件放置中文热词，每行一个，开头带井号表示注释，会被省略")
     with open(path_zh, "r", encoding="utf-8") as f:
-        num_hot_zh = hot_sub_zh.更新热词词典(f.read())
+        num_hot_zh = hot_sub_zh.update_trending_words_dict(f.read())
     console.print(f"已载入 [green4]{num_hot_zh:5}[/] 条中文热词")
 
 
@@ -31,7 +29,7 @@ def update_hot_en():
                 "# 在此文件放置英文热词 \n# Put English hot words here, one per line. Line starts with # will be ignored. "
             )
     with open(path_en, "r", encoding="utf-8") as f:
-        num_hot_en = hot_sub_en.更新热词词典(f.read())
+        num_hot_en = hot_sub_en.update_trending_words_dict(f.read())
     console.print(f"已载入 [green4]{num_hot_en:5}[/] 条英文热词")
 
 
@@ -48,13 +46,14 @@ def update_hot_rule():
 伏特      =        V
 二、      =        二
 负一      =    -1
-(艾特)\s*(QQ)\s*点\s*            =     @qq.
-(艾特)\s*([一幺]六三)\s*点\s*     =     @163.
-(艾特)\s*(\w+)\s*(点)\s*(\w+)    =     @\2.\4
+(艾特)\\s*(QQ)\\s*点\\s*            =     @qq.
+(艾特)\\s*([一幺]六三)\\s*点\\s*     =     @163.
+(艾特)\\s*(\w+)\\s*(点)\\s*(\w+)    =     @\2.\4
+# note: we write `\\s` here to represent `\s` in the actual regex
 """
             )
     with open(path_rule, "r", encoding="utf-8") as f:
-        num_hot_rule = hot_sub_rule.更新热词词典(f.read())
+        num_hot_rule = hot_sub_rule.update_trending_words_dict(f.read())
     console.print(f"已载入 [green4]{num_hot_rule:5}[/] 条自定义替换规则")
 
 

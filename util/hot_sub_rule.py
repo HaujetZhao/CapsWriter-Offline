@@ -17,73 +17,73 @@ import re
 
 更新热词词典(热词文本)
 
-热词替换('这款手机有5000毫安时的大电池')   # 输出：这款手机有5000mAh的大电池
-热词替换('国内交流电一般是50赫兹')               # 输出：国内交流电一般是50Hz
+replace_trending_words('这款手机有5000毫安时的大电池')   # 输出：这款手机有5000mAh的大电池
+replace_trending_words('国内交流电一般是50赫兹')               # 输出：国内交流电一般是50Hz
 
 '''
 
 
-__all__ = ["更新热词词典", "热词替换"]
+__all__ = ["update_trending_words_dict", "replace_trending_words"]
 
-模式词典 = {}
+pattern_dict = {}
 
 
-def 更新热词词典(热词文本: str):
+def update_trending_words_dict(trending_words_text: str):
     """
     把热词规则文本中的每一行用 = 分开，去除多余空格后添加到热词词典，
     key     是被替换的词，
     value   是将被替换成的词
     """
-    global 模式词典
-    模式词典.clear()
-    for 热词 in 热词文本.splitlines():
-        if not 热词 or 热词.startswith("#"):
+    global pattern_dict
+    pattern_dict.clear()
+    for trending_word in trending_words_text.splitlines():
+        if not trending_word or trending_word.startswith("#"):
             continue
-        key_value = 热词.split(" = ")
+        key_value = trending_word.split(" = ")
         if len(key_value) == 2:
             key = key_value[0].strip()
             value = key_value[1].strip()
-            模式词典[key] = value
-    return len(模式词典)
+            pattern_dict[key] = value
+    return len(pattern_dict)
 
 
-def 匹配热词(句子: str):
+def match_trending_words(sentence: str):
     """
     将全局「热词词典」中的热词按照 key 依次与句子匹配，将所有匹配到的热词放到列表
     """
-    global 模式词典
+    global pattern_dict
 
-    所有匹配 = []
-    for 模式 in 模式词典:
-        if re.findall(模式, 句子):
-            所有匹配.append(模式)
+    all_matches = []
+    for pattern in pattern_dict:
+        if re.findall(pattern, sentence):
+            all_matches.append(pattern)
 
-    return 所有匹配
+    return all_matches
 
 
-def 热词替换(句子: str):
+def replace_trending_words(sentence: str):
     """
     从热词词典中查找匹配的热词，替换句子
 
     句子：       被查找和替换的句子
     """
-    所有匹配模式 = 匹配热词(句子)
-    for 模式 in 所有匹配模式:
-        句子 = re.sub(模式, 模式词典[模式], 句子)
-    return 句子
+    all_match_patterns = match_trending_words(sentence)
+    for pattern in all_match_patterns:
+        sentence = re.sub(pattern, pattern_dict[pattern], sentence)
+    return sentence
 
 
 if __name__ == "__main__":
     print(f"\x9b42m-------------开始---------------\x9b0m")
 
-    热词文本 = """
+    trending_words_text = """
         毫安时  =  mAh
         伏特   =   V
         赫兹   =   Hz
     """
 
-    更新热词词典(热词文本)
+    update_trending_words_dict(trending_words_text)
 
-    res = 热词替换("这款手机有5000毫安时的大电池")
+    res = replace_trending_words("这款手机有5000毫安时的大电池")
 
     print(f"{res}")
