@@ -122,7 +122,7 @@ def main():
         links_used.extend(links)
 
     # 收集所有的附件文件夹
-    folders = set(l.parent for l in links_used)
+    folders = set(link.parent for link in links_used)
 
     # 收集所有附件文件夹中的附件
     links_all = []

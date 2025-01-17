@@ -1,5 +1,5 @@
 """
-Trending words are one per line text, first update the trending words 
+Trending words are one per line text, first update the trending words
 dictionary, and then replace the trending words in the sentence.
 Usage example: See the __main__ part
 """

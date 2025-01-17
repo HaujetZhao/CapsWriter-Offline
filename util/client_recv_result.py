@@ -51,7 +51,7 @@ async def recv_result():
             console.print(f"    识别结果：[green]{text}")
             console.line()
 
-    # #TODO: consider if these exceptions are expected or not. mb use green font.
+    # #TODO: consider if these exceptions are expected? mb use green font.
     except websockets.ConnectionClosedError:
         console.print("[red]连接断开\n")
     except websockets.ConnectionClosedOK:

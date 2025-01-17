@@ -6,7 +6,11 @@ from util.client_cosmic import Cosmic
 
 # #TODO: look deeper into this
 class Handler:
-    def __enter__(self): ...
+    def __enter__(self):
+        """
+        No resource is allocated here, so nothing to return.
+        """
+        ...
 
     def __exit__(self, exc_type, e, exc_tb):
         if e is None or isinstance(

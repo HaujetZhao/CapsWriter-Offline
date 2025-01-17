@@ -12,13 +12,13 @@ def check_model():
             continue
         console.print(
             f"""
-    未能找到模型文件 
+    未能找到模型文件
 
     未找到：{path}
 
     本服务端需要 paraformer-offline-zh 模型和 punc_ct-transformer_zh-cn 模型，
-    请下载模型并放置到： {ModelPaths.model_dir} 
-    
+    请下载模型并放置到： {ModelPaths.model_dir}
+
     下载地址在： https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/v0.3 
 
         """,

@@ -24,7 +24,7 @@ HEADER_MD = r"""```txt
 替换为 HTML 控件：<audio controls><source src="$2" type="audio/mpeg">$1</audio>\n\n
 
 匹配 HTML 控件：<audio controls><source src="(.+)" type="audio/mpeg">(.+)</audio>\n\n
-替换为文件链接：[$2]($1) 
+替换为文件链接：[$2]($1)
 ```
 
 

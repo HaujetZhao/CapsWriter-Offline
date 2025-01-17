@@ -27,7 +27,8 @@ async def main():
     console.rule("[bold #d55252]CapsWriter Offline Server")
     console.line()
     console.print(
-        "项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline",
+        "项目地址：[cyan underline]"
+        + "https://github.com/HaujetZhao/CapsWriter-Offline",
         end="\n\n",
     )
     console.print(f"当前基文件夹：[cyan underline]{BASE_DIR}", end="\n\n")

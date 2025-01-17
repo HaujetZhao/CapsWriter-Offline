@@ -15,8 +15,10 @@ console = Console(highlight=False, soft_wrap=False, theme=my_theme)
 @dataclass(frozen=False)
 class Cosmic:
     """
-    A class to store variables that need to be accessed across modules, named Cosmic
-    #TODO: wrong place of initiation: I think it's done in util/client_check_websocket.py
+    A global storage to be accessed across modules, named Cosmic
+
+    #TODO: wrong place of initiation: I think it's
+        done in util/client_check_websocket.py
     """
 
     on: bool = False

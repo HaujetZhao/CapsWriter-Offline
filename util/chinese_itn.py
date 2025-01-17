@@ -8,7 +8,7 @@
 
 from chinese_itn import chinese_to_num
 
-res = chinese_to_num('幺九二点幺六八点幺点幺')  
+res = chinese_to_num('幺九二点幺六八点幺点幺')
 print(res)  # 192.168.1.1
 
 """
@@ -23,13 +23,13 @@ COMMON_UNITS = r"个只分万亿秒"
 
 # 以空格分隔开的常用语，如成语、日常短语，用于避免误转
 IDIOMS = """
-正经八百  五零二落 五零四散 
-五十步笑百步 乌七八糟 污七八糟 四百四病 思绪万千 
+正经八百  五零二落 五零四散
+五十步笑百步 乌七八糟 污七八糟 四百四病 思绪万千
 十有八九 十之八九 三十而立 三十六策 三十六计 三十六行
-三五成群 三百六十行 三六九等 
-七老八十 七零八落 七零八碎 七七八八 乱七八遭 乱七八糟 略知一二 零零星星 零七八碎 
-九九归一 二三其德 二三其意 无银三百两 八九不离十 
-百分之百 年三十 烂七八糟 一点一滴 路易十六 九三学社 五四运动 入木三分 三十六计 
+三五成群 三百六十行 三六九等
+七老八十 七零八落 七零八碎 七七八八 乱七八遭 乱七八糟 略知一二 零零星星 零七八碎
+九九归一 二三其德 二三其意 无银三百两 八九不离十
+百分之百 年三十 烂七八糟 一点一滴 路易十六 九三学社 五四运动 入木三分 三十六计
 """
 
 IDIOMS = [x.strip() for x in IDIOMS.split()]
@@ -276,8 +276,11 @@ def replace(original):
 
         if head:
             final = head + final
-    except:
-        final = original
+    except Exception as e:
+        print(type(e))
+        print(e)
+        print(f"Error: {original} in chinese_itn.py")
+        return original
     return final
 
 

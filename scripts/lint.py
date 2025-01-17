@@ -12,7 +12,8 @@ PYLINT_DISABLED = (
 
 def run_autoflake():
     print(
-        "Running autoflake to clean up unused imports, variables, and duplicate keys..."
+        "Running autoflake to clean up unused imports, variables, "
+        + "and duplicate keys..."
     )
     python_files = glob.glob("**/*.py", recursive=True)
     for folder in IGNORED_FOLDERS:
@@ -63,6 +64,9 @@ def run_flake8():
         ".",
         "--exclude",
         ",".join(IGNORED_FOLDERS),
+        "--ignore=E203,W503",
+        # E203: whitespace before ':' (black compatibility)
+        # W503: line break before binary operator (black compatibility)
         "--max-line-length=79",
     ]
     print("flake8 arguments:", " ".join(flake8_args))
