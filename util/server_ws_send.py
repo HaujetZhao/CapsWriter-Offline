@@ -34,7 +34,11 @@ async def ws_send():
 
             # 获得 socket
             websocket = next(
-                (ws for ws in sockets.values() if str(ws.id) == result.socket_id),
+                (
+                    ws
+                    for ws in sockets.values()
+                    if str(ws.id) == result.socket_id
+                ),
                 None,
             )
 
@@ -47,7 +51,9 @@ async def ws_send():
             if result.source == "mic":
                 console.print(f"识别结果：\n    [green]{result.text}")
             elif result.source == "file":
-                console.print(f"    转录进度：{result.duration:.2f}s", end="\r")
+                console.print(
+                    f"    转录进度：{result.duration:.2f}s", end="\r"
+                )
                 if result.is_final:
                     console.print("\n    [green]转录完成")
         except Exception as e:  # pylint: disable=broad-exception-caught

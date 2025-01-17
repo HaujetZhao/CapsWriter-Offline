@@ -29,7 +29,9 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
     signal.signal(signal.SIGINT, lambda _signum, _frame: sys.exit())
 
     # 导入模块
-    with console.status("载入模块中…", spinner="bouncingBall", spinner_style="yellow"):
+    with console.status(
+        "载入模块中…", spinner="bouncingBall", spinner_style="yellow"
+    ):
 
         disable_jieba_debug()
     console.print("[green4]模块加载完成", end="\n\n")

@@ -36,7 +36,9 @@ def recognize(recognizer, punc_model, task: Task):
 
     # 确保结果容器存在
     if task.task_id not in results:
-        results[task.task_id] = Result(task.task_id, task.socket_id, task.source)
+        results[task.task_id] = Result(
+            task.task_id, task.socket_id, task.source
+        )
 
     # 取出结果容器
     result = results[task.task_id]
@@ -80,7 +82,9 @@ def recognize(recognizer, punc_model, task: Task):
         m += 1
 
     # 最后与先前的结果合并
-    result.timestamps += [t + task.offset for t in stream.result.timestamps[m:n]]
+    result.timestamps += [
+        t + task.offset for t in stream.result.timestamps[m:n]
+    ]
     result.tokens += stream.result.tokens[m:n]
 
     # token 合并为文本

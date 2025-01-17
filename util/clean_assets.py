@@ -69,7 +69,9 @@ def get_links(text: str):  # 查找文本内的所有链接
     return links
 
 
-def absolutify_links(file_path: str | Path, links: list[str]):  # 验证链接是本地文件
+def absolutify_links(
+    file_path: str | Path, links: list[str]
+):  # 验证链接是本地文件
     # if type(file) is not Path:
     #     file = Path(file)
     if not isinstance(file_path, Path):
@@ -138,7 +140,9 @@ def main():
         console.print(f"    {file}")
     for _ in range(3):
         if (
-            console.input("[yellow]如果确认删除，请手动输入单词 delete 后回车\n")
+            console.input(
+                "[yellow]如果确认删除，请手动输入单词 delete 后回车\n"
+            )
             == "delete"
         ):
             break

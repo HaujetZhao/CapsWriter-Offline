@@ -8,7 +8,9 @@ from subprocess import DEVNULL, PIPE, Popen
 from wave import Wave_write
 
 
-def create_file(channels: int, time_start: float) -> tuple[Path, Popen | Wave_write]:
+def create_file(
+    channels: int, time_start: float
+) -> tuple[Path, Popen | Wave_write]:
 
     time_year = time.strftime("%Y", time.localtime(time_start))
     time_month = time.strftime("%m", time.localtime(time_start))
@@ -42,7 +44,9 @@ def create_file(channels: int, time_start: float) -> tuple[Path, Popen | Wave_wr
             file_path,
         ]
         # 执行ffmpeg命令行，得到 Popen
-        with Popen(ffmpeg_command, stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL) as file:
+        with Popen(
+            ffmpeg_command, stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL
+        ) as file:
             return file_path, file
     else:  # 用户未安装 ffmpeg，则输出为 wav 格式
         file_path = file_path.with_suffix(".wav")

@@ -6,7 +6,6 @@ Usage example: See the __main__ part
 
 import re
 
-
 __all__ = ["update_trending_words_dict", "replace_trending_words"]
 
 trending_words_dict = {}
@@ -37,7 +36,10 @@ def match_trending_words(sentence: str):
 
     all_matches = []
     lowercase_no_space_sentence = sentence.lower().replace(" ", "")
-    for word, word_value in trending_words_dict.items():  # #TODO: ren `word_value`
+    for (
+        word,
+        word_value,
+    ) in trending_words_dict.items():  # #TODO: ren `word_value`
         if word_value in lowercase_no_space_sentence:
             all_matches.append(word)
 
@@ -59,7 +61,9 @@ def replace_trending_words(sentence):
             + r"(?=[^a-zA-z]|\b)"
         )
         regex_pattern2 = (
-            r"(?<=\b)" + re.sub("(.)", r"\1 *?", regex_pattern) + r"(?=[^a-zA-z]|\b)"
+            r"(?<=\b)"
+            + re.sub("(.)", r"\1 *?", regex_pattern)
+            + r"(?=[^a-zA-z]|\b)"
         )
         sentence = re.sub(regex_pattern1, match_item, sentence, flags=re.I)
         sentence = re.sub(regex_pattern2, match_item, sentence, flags=re.I)
@@ -84,5 +88,7 @@ if __name__ == "__main__":
     res = replace_trending_words("7 zip测试")
     print(f"{res}")
 
-    res = replace_trending_words("the chat gpt is now fully supported by microsoft")
+    res = replace_trending_words(
+        "the chat gpt is now fully supported by microsoft"
+    )
     print(f"{res}")

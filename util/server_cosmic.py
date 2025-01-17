@@ -16,7 +16,9 @@ console = Console(highlight=False)
 
 @dataclass(frozen=False)
 class CosmicType:
-    sockets: dict[str, websockets.WebSocketClientProtocol] = field(default_factory=dict)
+    sockets: dict[str, websockets.WebSocketClientProtocol] = field(
+        default_factory=dict
+    )
     sockets_id: ListProxy = field(default_factory=list)
     queue_in: Queue = field(default_factory=Queue)
     queue_out: Queue = field(default_factory=Queue)

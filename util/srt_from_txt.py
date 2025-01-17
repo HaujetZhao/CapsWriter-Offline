@@ -61,7 +61,9 @@ def get_scout(line, words, cursor):
         tolerance = 5
         while cursor < words_num and tolerance:
             if words[cursor]["word"].lower() in scout.text:
-                scout.text = scout.text.replace(words[cursor]["word"].lower(), "", 1)
+                scout.text = scout.text.replace(
+                    words[cursor]["word"].lower(), "", 1
+                )
                 scout.hit += 1
                 cursor += 1
                 tolerance = 5
@@ -98,7 +100,9 @@ def get_scout(line, words, cursor):
     return best
 
 
-def lines_match_words(text_lines: list[str], words: list) -> list[srt.Subtitle]:
+def lines_match_words(
+    text_lines: list[str], words: list
+) -> list[srt.Subtitle]:
     """
     words[0] = {
                 'start': 0.0,
@@ -181,7 +185,9 @@ def get_words(json_file: Path) -> list:
             "start": timestamp,
             "end": timestamp + 0.2,
         }
-        for (timestamp, token) in zip(json_info["timestamps"], json_info["tokens"])
+        for (timestamp, token) in zip(
+            json_info["timestamps"], json_info["tokens"]
+        )
     ]
     for i in range(len(words) - 1):
         words[i]["end"] = min(words[i]["end"], words[i + 1]["start"])

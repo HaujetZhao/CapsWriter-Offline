@@ -184,7 +184,9 @@ def click_handler(e: keyboard.KeyboardEvent) -> None:
 
 def bond_shortcut():
     if Config.hold_mode:
-        keyboard.hook_key(Config.shortcut, hold_handler, suppress=Config.suppress)
+        keyboard.hook_key(
+            Config.shortcut, hold_handler, suppress=Config.suppress
+        )
     else:
         # 单击模式，必须得阻塞快捷键
         # 收到长按时，再模拟发送按键

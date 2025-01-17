@@ -3,9 +3,9 @@ from dataclasses import dataclass, field
 from typing import Union
 
 import sounddevice as sd
-from websockets.legacy.client import WebSocketClientProtocol
 from rich.console import Console
 from rich.theme import Theme
+from websockets.legacy.client import WebSocketClientProtocol
 
 my_theme = Theme({"markdown.code": "cyan", "markdown.item.number": "yellow"})
 console = Console(highlight=False, soft_wrap=False, theme=my_theme)

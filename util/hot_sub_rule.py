@@ -8,7 +8,6 @@ see the __main__ part
 
 import re
 
-
 __all__ = ["update_trending_words_dict", "replace_trending_words"]
 
 pattern_dict = {}
@@ -72,5 +71,7 @@ if __name__ == "__main__":
 
     res = replace_trending_words("这款手机有5000毫安时的大电池")
     print(f"{res}")
-    replace_trending_words("国内交流电一般是50赫兹")  # 输出：国内交流电一般是50Hz
+    replace_trending_words(
+        "国内交流电一般是50赫兹"
+    )  # 输出：国内交流电一般是50Hz
     print(f"{res}")

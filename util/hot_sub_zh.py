@@ -19,7 +19,6 @@ from time import time
 
 from pypinyin import pinyin as get_pinyin
 
-
 __all__ = [
     "update_trending_words_dict",
     "replace_trending_words",
@@ -72,10 +71,14 @@ def update_trending_words_dict(trending_words_text: str):
         word = word.strip()  # 给热词去掉多余的空格
         if not word or word.startswith("#"):
             continue  # 过滤掉注释
-        word_pinyin = get_pinyin(word, STYLE, POLYPHONIC_CHARACTERS)  # 得到拼音
+        word_pinyin = get_pinyin(
+            word, STYLE, POLYPHONIC_CHARACTERS
+        )  # 得到拼音
 
         if len(word_pinyin) != len(word):
-            print(f"\x9b31m    热词「{word}」得到的拼音数量与字数不符，抛弃\x9b0m")
+            print(
+                f"\x9b31m    热词「{word}」得到的拼音数量与字数不符，抛弃\x9b0m"
+            )
             continue
 
         pinyin_list = [
@@ -86,7 +89,9 @@ def update_trending_words_dict(trending_words_text: str):
             if num_sounds > 1:
                 original_list, pinyin_list = pinyin_list, []
                 for sound in polyphonic:
-                    pinyin_list.extend([x.copy() + [sound] for x in original_list])
+                    pinyin_list.extend(
+                        [x.copy() + [sound] for x in original_list]
+                    )
             else:
                 for x in pinyin_list:
                     x.append(polyphonic[0])
@@ -133,9 +138,9 @@ def get_pinyin_index(sentence: str):
     pinyin_with_index_ = iter(pinyin_with_index)
     pinyin = next(pinyin_with_index_)
     for i, char in enumerate(sentence):
-        if pinyin["pinyin"] in pinyin(char, STYLE, POLYPHONIC_CHARACTERS)[0] or pinyin[
-            "pinyin"
-        ].startswith(char):
+        if pinyin["pinyin"] in pinyin(char, STYLE, POLYPHONIC_CHARACTERS)[
+            0
+        ] or pinyin["pinyin"].startswith(char):
             pinyin["index"] = i
             try:
                 pinyin = next(pinyin_with_index_)
@@ -152,7 +157,9 @@ def replace_trending_words(sentence):
     """
     all_matches = match_trending_words(sentence)
     for match_items in all_matches:
-        word, pinyin_sequence = match_items  # 从字典中找到可以替换的热词和对应的拼音
+        word, pinyin_sequence = (
+            match_items  # 从字典中找到可以替换的热词和对应的拼音
+        )
 
         sentence_index_list = get_pinyin_index(sentence)
         replace_range = []

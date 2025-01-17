@@ -17,8 +17,11 @@ from util.client_recv_result import recv_result
 from util.client_shortcut_handler import bond_shortcut
 from util.client_show_tips import show_file_tips, show_mic_tips
 from util.client_stream import stream_close, stream_open
-from util.client_transcribe import (transcribe_check, transcribe_recv,
-                                    transcribe_send)
+from util.client_transcribe import (
+    transcribe_check,
+    transcribe_recv,
+    transcribe_send,
+)
 from util.empty_working_set import empty_current_working_set
 
 # 确保根目录位置正确，用相对路径加载模型
