@@ -60,5 +60,7 @@ async def recv_result():
         console.print("[red] !!! 未知错误\n")
         print(type(e))
         print(e)
-    finally:
-        return
+    # finally:
+    #     return
+    # this return might wants to swallow exception. It's not a good pattern
+    # W0150: return statement in finally block may swallow exception (lost-exception)

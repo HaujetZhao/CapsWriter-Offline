@@ -9,12 +9,14 @@ class Handler:
     def __enter__(self): ...
 
     def __exit__(self, exc_type, e, exc_tb):
-        if (
-            e is None
-            or isinstance(e, websockets.exceptions.ConnectionClosedError)
-            or isinstance(e, ConnectionRefusedError)
-            or isinstance(e, TimeoutError)
-            or isinstance(e, Exception)
+        if e is None or isinstance(
+            e,
+            (
+                ConnectionRefusedError,
+                Exception,
+                TimeoutError,
+                websockets.exceptions.ConnectionClosedError,
+            ),
         ):
             return True
         print(e)

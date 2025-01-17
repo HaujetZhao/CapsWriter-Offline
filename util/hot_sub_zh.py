@@ -1,5 +1,6 @@
 '''
-Trending words are text with one word per line. First, update the hot words dictionary, and then replace the hot words in the sentence.
+Trending words are text with one word per line. First, update the trending
+words dictionary, and then replace the hot words in the sentence.
 Usage example:
 
 trending_words_text = """

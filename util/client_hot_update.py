@@ -26,7 +26,9 @@ def update_hot_en():
     if not path_en.exists():
         with open(path_en, "w", encoding="utf-8") as f:
             f.write(
-                "# 在此文件放置英文热词 \n# Put English hot words here, one per line. Line starts with # will be ignored. "
+                "# 在此文件放置英文热词 \n"
+                + "# Put English hot words here, one per line. "
+                + "Line starts with # will be ignored. "
             )
     with open(path_en, "r", encoding="utf-8") as f:
         num_hot_en = hot_sub_en.update_trending_words_dict(f.read())
@@ -61,7 +63,9 @@ def update_hot_kwds():
     if not path_kwds.exists():
         with open(path_kwds, "w", encoding="utf-8") as f:
             f.write(
-                "# 在此文件放置日记关键词，每行一个，开头带井号表示注释，会被省略\n# 当识别结果以关键词开头时，会被记录到 「年份/月份/关键词-日期.md」文件中\n重要\n健康\n学习"
+                "# 在此文件放置日记关键词，每行一个，开头带井号表示注释，会被省略\n"
+                + "# 当识别结果以关键词开头时，会被记录到 「年份/月份/关键词-日期.md」"
+                + "文件中\n重要\n健康\n学习"
             )
     with open(path_kwds, "r", encoding="utf-8") as f:
         num_kwd = hot_kwds.do_updata_kwd(f.read())

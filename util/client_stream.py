@@ -10,7 +10,7 @@ from util.client_cosmic import Cosmic, console
 
 
 def record_callback(
-    indata: np.ndarray, frames: int, time_info, status: sd.CallbackFlags
+    indata: np.ndarray, _frames: int, _time_info, _status: sd.CallbackFlags
 ) -> None:
     if not Cosmic.on:
         return

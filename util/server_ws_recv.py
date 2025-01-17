@@ -109,9 +109,10 @@ async def ws_recv(websocket):
     console.print(f"接客了：{websocket}\n", style="yellow")
 
     # 设定分段长度
-    seg_duration = 15
-    seg_overlap = 2
-    seg_duration + seg_overlap * 2  # #TODO: not used?
+    # seg_duration = 15
+    # seg_overlap = 2
+    # seg_duration += seg_overlap * 2
+    # #TODO: consider if this is necessary, and use constants
 
     # 片段缓冲区、偏移时长
     cache = Cache()

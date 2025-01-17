@@ -21,7 +21,7 @@ from pathlib import Path
 
 import srt
 import typer
-from rich import print
+from rich import print as rich_print
 
 
 @dataclass(frozen=False)  # we need to mutate `text`
@@ -41,7 +41,7 @@ def get_scout(line, words, cursor):
 
         # 新建一个侦察兵
         scout = Scout()
-        scout.text = re.sub("[,.?:%，。？、\s\d]", "", line.lower())
+        scout.text = re.sub(r"[,.?:%，。？、\s\d]", "", line.lower())
         _ += 1
 
         # 找到起始点
@@ -61,9 +61,7 @@ def get_scout(line, words, cursor):
         tolerance = 5
         while cursor < words_num and tolerance:
             if words[cursor]["word"].lower() in scout.text:
-                scout.text = scout.text.replace(
-                    words[cursor]["word"].lower(), "", 1
-                )
+                scout.text = scout.text.replace(words[cursor]["word"].lower(), "", 1)
                 scout.hit += 1
                 cursor += 1
                 tolerance = 5
@@ -98,12 +96,9 @@ def get_scout(line, words, cursor):
             best = scout
 
     return best
-    ...
 
 
-def lines_match_words(
-    text_lines: list[str], words: list
-) -> list[srt.Subtitle]:
+def lines_match_words(text_lines: list[str], words: list) -> list[srt.Subtitle]:
     """
     words[0] = {
                 'start': 0.0,
@@ -125,7 +120,7 @@ def lines_match_words(
         # 侦察前方，得到起点、评分
         scout = get_scout(line, words, cursor)
         if not scout:  # 没有结果表明出错，应提前结束
-            print("字幕匹配出现错误")
+            rich_print("字幕匹配出现错误")
             break
         cursor, score = scout.start, scout.score
 
@@ -137,7 +132,7 @@ def lines_match_words(
             break
 
         # 初始化
-        temp_text = re.sub("[,.?，。？、\s]", "", line.lower())
+        temp_text = re.sub(r"[,.?，。？、\s]", "", line.lower())
         t1 = words[cursor]["start"]
         t2 = words[cursor]["end"]
         threshold = 8
@@ -148,7 +143,7 @@ def lines_match_words(
             if probe >= words_num:
                 break  # 探针越界，结束
             w = words[probe]["word"].lower().strip(" ,.?!，。？！@")
-            words[probe]["start"]
+            # words[probe]["start"]
             t4 = words[probe]["end"]
             probe += 1
             if w in temp_text:
@@ -186,9 +181,7 @@ def get_words(json_file: Path) -> list:
             "start": timestamp,
             "end": timestamp + 0.2,
         }
-        for (timestamp, token) in zip(
-            json_info["timestamps"], json_info["tokens"]
-        )
+        for (timestamp, token) in zip(json_info["timestamps"], json_info["tokens"])
     ]
     for i in range(len(words) - 1):
         words[i]["end"] = min(words[i]["end"], words[i + 1]["start"])
@@ -209,8 +202,8 @@ def one_task(media_file: Path):
     json_file = media_file.with_suffix(".json")
     srt_file = media_file.with_suffix(".srt")
     if (not txt_file.exists()) or (not json_file.exists()):
-        print(f"无法找到 {media_file}对应的txt、json文件，跳过")
-        return None
+        rich_print(f"无法找到 {media_file}对应的txt、json文件，跳过")
+        return
 
     # 获取带有时间戳的分词列表，获取分行稿件，匹配得到 srt
     words = get_words(json_file)
@@ -225,7 +218,7 @@ def one_task(media_file: Path):
 def main(files: list[Path]):
     for file in files:
         one_task(file)
-        print(f"写入完成：{file}")
+        rich_print(f"写入完成：{file}")
 
 
 if __name__ == "__main__":

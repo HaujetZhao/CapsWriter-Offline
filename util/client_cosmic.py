@@ -11,7 +11,8 @@ my_theme = Theme({"markdown.code": "cyan", "markdown.item.number": "yellow"})
 console = Console(highlight=False, soft_wrap=False, theme=my_theme)
 
 
-@dataclass
+# pylint: disable=too-many-instance-attributes
+@dataclass(frozen=False)
 class Cosmic:
     """
     A class to store variables that need to be accessed across modules, named Cosmic
