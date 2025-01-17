@@ -25,9 +25,7 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
     signal.signal(signal.SIGINT, lambda signum, frame: exit())
 
     # 导入模块
-    with console.status(
-        "载入模块中…", spinner="bouncingBall", spinner_style="yellow"
-    ):
+    with console.status("载入模块中…", spinner="bouncingBall", spinner_style="yellow"):
         import sherpa_onnx
         from funasr_onnx import CT_Transformer
 
@@ -44,14 +42,14 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
             if not key.startswith("_")
         }
     )
-    console.print(f"[green4]语音模型载入完成", end="\n\n")
+    console.print("[green4]语音模型载入完成", end="\n\n")
 
     # 载入标点模型
     punc_model = None
     if Config.format_punc:
         console.print("[yellow]标点模型载入中", end="\r")
         punc_model = CT_Transformer(ModelPaths.punc_model_dir, quantize=True)
-        console.print(f"[green4]标点模型载入完成", end="\n\n")
+        console.print("[green4]标点模型载入完成", end="\n\n")
 
     console.print(f"模型加载耗时 {time.time() - t1 :.2f}s", end="\n\n")
 

@@ -2,9 +2,7 @@ from importlib.util import find_spec
 
 relies = ["markdown_it", "rich"]
 if not all([find_spec(x) for x in relies]):
-    print(
-        "这个脚本需要用到第三方库：markdown_it rich\n请先用 pip 安装后再运行"
-    )
+    print("这个脚本需要用到第三方库：markdown_it rich\n请先用 pip 安装后再运行")
     input("按回车退出")
 
 import re
@@ -90,18 +88,18 @@ def main():
         if p.exists() and p.is_dir():
             root = p
     console.print(
-        f"[yellow]本脚本的作用是，递归清理所有未被 Markdown 引用的图片、音频附件\n"
+        "[yellow]本脚本的作用是，递归清理所有未被 Markdown 引用的图片、音频附件\n"
     )
     console.print(f"[green]当前所要清理的根目录是：{root}\n")
-    console.input(f"[green]确认请按回车，接下来将搜索 Markdown 文件\n")
+    console.input("[green]确认请按回车，接下来将搜索 Markdown 文件\n")
 
     # 收集到所有的 Markdown 文件
     md_files = get_md_files(root)
-    console.print(f"[green]共找到了如下 Markdown 文件：")
+    console.print("[green]共找到了如下 Markdown 文件：")
     for f in md_files:
         console.print(f"    {f}")
     console.line()
-    console.input(f"[green]确认请按回车，接下来将搜索未被引用的附件\n")
+    console.input("[green]确认请按回车，接下来将搜索未被引用的附件\n")
 
     # 收集到所有被引用的附件
     links_used = []
@@ -131,9 +129,7 @@ def main():
         console.print(f"    {file}")
     for i in range(3):
         if (
-            console.input(
-                f"[yellow]如果确认删除，请手动输入单词 delete 后回车\n"
-            )
+            console.input("[yellow]如果确认删除，请手动输入单词 delete 后回车\n")
             == "delete"
         ):
             break
@@ -146,7 +142,7 @@ def main():
     for f in links_unused:
         remove(f)
         console.print(f"    [red]{f}")
-    console.input(f"[green]清理完成，按回车退出")
+    console.input("[green]清理完成，按回车退出")
 
 
 if __name__ == "__main__":

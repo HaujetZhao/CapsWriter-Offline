@@ -74,7 +74,7 @@ def replace_trending_words(sentence: str):
 
 
 if __name__ == "__main__":
-    print(f"\x9b42m-------------开始---------------\x9b0m")
+    print("\x9b42m-------------开始---------------")
 
     trending_words_text = """
         毫安时  =  mAh

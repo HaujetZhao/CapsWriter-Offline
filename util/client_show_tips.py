@@ -44,9 +44,7 @@ def show_mic_tips():
     console.print(Markdown(markdown), highlight=True)
     console.rule()
     console.print(f"\n当前基文件夹：[cyan underline]{os.getcwd()}")
-    console.print(
-        f"\n服务端地址： [cyan underline]{Config.addr}:{Config.port}"
-    )
+    console.print(f"\n服务端地址： [cyan underline]{Config.addr}:{Config.port}")
     console.print(f"\n当前所用快捷键：[green4]{Config.shortcut}")
 
     console.line()

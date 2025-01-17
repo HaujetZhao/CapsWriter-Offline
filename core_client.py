@@ -18,8 +18,7 @@ from util.client_recv_result import recv_result
 from util.client_shortcut_handler import bond_shortcut
 from util.client_show_tips import show_file_tips, show_mic_tips
 from util.client_stream import stream_close, stream_open
-from util.client_transcribe import (transcribe_check, transcribe_recv,
-                                    transcribe_send)
+from util.client_transcribe import transcribe_check, transcribe_recv, transcribe_send
 from util.empty_working_set import empty_current_working_set
 
 # 确保根目录位置正确，用相对路径加载模型
@@ -32,9 +31,7 @@ colorama.init()
 # MacOS 的权限设置
 if system() == "Darwin" and not sys.argv[1:]:
     if os.getuid() != 0:
-        print(
-            "在 MacOS 上需要以管理员启动客户端才能监听键盘活动，请 sudo 启动"
-        )
+        print("在 MacOS 上需要以管理员启动客户端才能监听键盘活动，请 sudo 启动")
         input("按回车退出")
         sys.exit()
     else:
@@ -91,7 +88,7 @@ def init_mic():
     try:
         asyncio.run(main_mic())
     except KeyboardInterrupt:
-        console.print(f"再见！")
+        console.print("再见！")
     finally:
         print("...")
 
@@ -103,7 +100,7 @@ def init_file(files: List[Path]):
     try:
         asyncio.run(main_file(files))
     except KeyboardInterrupt:
-        console.print(f"再见！")
+        console.print("再见！")
         sys.exit()
 
 

@@ -14,4 +14,4 @@ def adjust_srt(file: Path):
 
     # 调整 srt
     srt_from_txt.one_task(file)
-    console.print(f"    [green]srt 调整完成")
+    console.print("    [green]srt 调整完成")
