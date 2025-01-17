@@ -37,7 +37,7 @@ IDIOMS = [x.strip() for x in IDIOMS.split()]
 # 总模式，筛选出可能需要替换的内容
 # 测试链接  https://regex101.com/r/tFqg9S/3
 pattern = re.compile(
-    f"""(?ix)          # i 表示忽略大小写，x 表示开启注释模式
+    rf"""(?ix)          # i 表示忽略大小写，x 表示开启注释模式
 ([a-z]\s*)?
 (
   (
@@ -166,7 +166,9 @@ def convert_value_num(original):
         stripped += "点"
     int_part, decimal_part = stripped.split("点")  # 分离小数
     if not int_part:
-        return original  # 如果没有整数部分，表面匹配到的是「点一」这样的形式，应当不处理
+        return (
+            original  # 如果没有整数部分，表面匹配到的是「点一」这样的形式，应当不处理
+        )
 
     # 计算整数部分的值
     value, temp, base = 0, 0, 1
@@ -226,7 +228,6 @@ def convert_time_value(original):
     if len(res) > 3:
         final += "." + convert_pure_num(res[3])
     return final
-    ...
 
 
 def convert_date_value(original):
@@ -255,7 +256,7 @@ def replace(original):
     original = original.group(2)
     try:
         if IDIOMS and any(
-            [string.find(idiom) in range(l_pos, r_pos) for idiom in IDIOMS]
+            string.find(idiom) in range(l_pos, r_pos) for idiom in IDIOMS
         ):
             final = original
         elif pure_num.fullmatch(original.strip(COMMON_UNITS)):
