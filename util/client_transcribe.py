@@ -50,7 +50,7 @@ async def transcribe_send(file: Path):
     process = subprocess.Popen(
         ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
     )
-    console.print(f"    正在提取音频", end="\r")
+    console.print("    正在提取音频", end="\r")
     data = process.stdout.read()
     audio_duration = len(data) / 4 / 16000
     console.print(f"    音频长度：{audio_duration:.2f}s")
@@ -107,9 +107,7 @@ async def transcribe_recv(file: Path):
     with open(txt_filename, "w", encoding="utf-8") as f:
         f.write(text_split)
     with open(json_filename, "w", encoding="utf-8") as f:
-        json.dump(
-            {"timestamps": timestamps, "tokens": tokens}, f, ensure_ascii=False
-        )
+        json.dump({"timestamps": timestamps, "tokens": tokens}, f, ensure_ascii=False)
     srt_from_txt.one_task(txt_filename)
 
     process_duration = message["time_complete"] - message["time_start"]

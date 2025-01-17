@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+# pylint: disable=too-many-instance-attributes
 @dataclass(frozen=True)
 class Task:
     source: str

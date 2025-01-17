@@ -136,7 +136,7 @@ async def ws_recv(websocket):
     except websockets.InvalidState:
         console.print("InvalidState...")
     except Exception as e:
-        console.print("!!! Unexpected Exception !!!")
+        console.print("!!! Unexpected Exception !!! in server_ws_recv.py")
         console.print("Exception:", e)
     finally:
         status_mic.stop()

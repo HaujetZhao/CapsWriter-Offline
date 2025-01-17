@@ -8,7 +8,6 @@ from util.client_cosmic import console
 
 def show_mic_tips():
     console.rule("[bold #d55252]CapsWriter Offline Client")
-    # console.print(f'\n项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
     markdown = f"""
 
 项目地址：https://github.com/HaujetZhao/CapsWriter-Offline
@@ -44,16 +43,14 @@ def show_mic_tips():
     console.print(Markdown(markdown), highlight=True)
     console.rule()
     console.print(f"\n当前基文件夹：[cyan underline]{os.getcwd()}")
-    console.print(
-        f"\n服务端地址： [cyan underline]{Config.addr}:{Config.port}"
-    )
+    console.print(f"\n服务端地址： [cyan underline]{Config.addr}:{Config.port}")
     console.print(f"\n当前所用快捷键：[green4]{Config.shortcut}")
 
     console.line()
 
 
 def show_file_tips():
-    markdown = f"\n项目地址：https://github.com/HaujetZhao/CapsWriter-Offline"
+    markdown = "\n项目地址：https://github.com/HaujetZhao/CapsWriter-Offline"
     console.print(Markdown(markdown), height=True)
     console.print(f"当前基文件夹：[cyan underline]{os.getcwd()}")
     console.print(f"服务端地址： [cyan underline]{Config.addr}:{Config.port}")

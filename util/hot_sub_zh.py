@@ -1,6 +1,7 @@
 from time import time
 
-from pypinyin import pinyin
+from pypinyin import pinyin as get_pinyin
+
 
 '''
 Trending words are text with one word per line. First, update the hot words dictionary, and then replace the hot words in the sentence.
@@ -71,7 +72,7 @@ def update_trending_words_dict(trending_words_text: str):
         word = word.strip()  # 给热词去掉多余的空格
         if not word or word.startswith("#"):
             continue  # 过滤掉注释
-        word_pinyin = pinyin(word, STYLE, POLYPHONIC_CHARACTERS)  # 得到拼音
+        word_pinyin = get_pinyin(word, STYLE, POLYPHONIC_CHARACTERS)  # 得到拼音
 
         if len(word_pinyin) != len(word):
             print(f"\x9b31m    热词「{word}」得到的拼音数量与字数不符，抛弃\x9b0m")
@@ -103,7 +104,7 @@ def match_trending_words(sentence: str):
 
     all_matches = []
     sentence_pinyin = "".join(
-        [x[0] for x in pinyin(sentence, STYLE, POLYPHONIC_CHARACTERS)]
+        [x[0] for x in get_pinyin(sentence, STYLE, POLYPHONIC_CHARACTERS)]
     )  # 字符串形式的句子拼音
     for word, pronunciations in trending_words_dict.items():
         for pinyin_sequence in pronunciations:
@@ -164,7 +165,7 @@ def replace_trending_words(sentence):
             else:
                 replace_range.append(
                     [
-                        sentence_index_list[i]["index"],
+                        item["index"],
                         sentence_index_list[i + j]["index"],
                     ]
                 )

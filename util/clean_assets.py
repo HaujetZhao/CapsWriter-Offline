@@ -1,3 +1,13 @@
+import re
+import sys
+from os import remove
+from pathlib import Path
+from urllib.parse import unquote
+
+from markdown_it import MarkdownIt
+from markdown_it.token import Token
+from rich.console import Console
+
 if __name__ != "__main__":
     raise ImportError(f"Script {__file__} should not be imported as a module")
 
@@ -10,16 +20,6 @@ if __name__ != "__main__":
 # if not all([find_spec(x) for x in relies]):
 #     print("这个脚本需要用到第三方库：markdown_it rich\n请先用 pip 安装后再运行")
 #     input("按回车退出")
-
-import re
-import sys
-from os import remove
-from pathlib import Path
-from urllib.parse import unquote
-
-from markdown_it import MarkdownIt
-from markdown_it.token import Token
-from rich.console import Console
 
 console = Console(highlight=False, soft_wrap=False)
 
@@ -69,18 +69,22 @@ def get_links(text: str):  # 查找文本内的所有链接
     return links
 
 
-def absolutify_links(file, links: list[str]):  # 验证链接是本地文件
-    if type(file) is not Path:
-        file = Path(file)
+def absolutify_links(file_path: str | Path, links: list[str]):  # 验证链接是本地文件
+    # if type(file) is not Path:
+    #     file = Path(file)
+    if not isinstance(file_path, Path):
+        file_path = Path(file_path)
 
     temp_links = links.copy()
     links.clear()
     for link in temp_links:
-        if (file.parent / link).exists():
-            links.append(file.parent / link)
+        if (file_path.parent / link).exists():
+            links.append(file_path.parent / link)
             continue
         elif Path(link).exists():
             links.append(link)
+            continue
+        console.print(f"[red]文件 {file_path} 中的链接 {link} 不存在")
 
 
 def main():
@@ -123,8 +127,8 @@ def main():
     for folder in folders:
         if not folder.is_relative_to(root):
             continue
-        for markdown_ext in asset_ext:
-            links_all.extend(list(folder.glob("**/*." + markdown_ext)))
+        for ext in asset_ext:
+            links_all.extend(list(folder.glob("**/*." + ext)))
     links_all = list(set(links_all))
 
     # 得到没有被使用的附件
@@ -132,7 +136,7 @@ def main():
     console.print("[yellow]共查找到以下没有被引用的附件：")
     for file in sorted(links_unused):
         console.print(f"    {file}")
-    for i in range(3):
+    for _ in range(3):
         if (
             console.input("[yellow]如果确认删除，请手动输入单词 delete 后回车\n")
             == "delete"

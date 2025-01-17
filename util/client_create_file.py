@@ -19,6 +19,9 @@ def create_file(channels: int, time_start: float) -> tuple[Path, Popen | Wave_wr
     file_path = tempfile.mktemp(prefix=f"({time_ymdhms})", dir=folder_path)
     file_path = Path(file_path)
 
+    # #TODO: assert ffmpeg is installed. When I used it, it passes the if
+    #    statement but the ffmpeg command fails.
+    # #TODO: add error handling for ffmpeg call failure
     if shutil.which("ffmpeg"):
         # 用户已安装 ffmpeg，则输出到 mp3 文件
         file_path = file_path.with_suffix(".mp3")
@@ -38,7 +41,6 @@ def create_file(channels: int, time_start: float) -> tuple[Path, Popen | Wave_wr
             "192k",
             file_path,
         ]
-        # #TODO: assert ffmpeg is installed
         # 执行ffmpeg命令行，得到 Popen
         with Popen(ffmpeg_command, stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL) as file:
             return file_path, file

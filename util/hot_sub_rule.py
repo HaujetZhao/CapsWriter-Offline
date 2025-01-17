@@ -1,26 +1,12 @@
-import re
-
-'''
-规则是每行一条的文本，左边是正则规则，右边是替换词，将中间用带空格的等号隔开，文本两边的空格会被省略。
-
-导入模块后，先更新热词词典，然后再替换句子中的热词。
+"""
+# 规则是每行一条的文本，左边是正则规则，右边是替换词，将中间用带空格的等号隔开，文本两边的空格会被省略。
+# 导入模块后，先更新热词词典，然后再替换句子中的热词。
 
 使用方法示例：
-
-
-热词文本 = """
-    毫安时  =  mAh
-    伏特   =   V
-    赫兹   =   Hz
-    (艾特)\\s*(\w+)\\s*(点)\\s*(\\w+)    =    @$2.$4
+see the __main__ part
 """
 
-更新热词词典(热词文本)
-
-replace_trending_words('这款手机有5000毫安时的大电池')   # 输出：这款手机有5000mAh的大电池
-replace_trending_words('国内交流电一般是50赫兹')               # 输出：国内交流电一般是50Hz
-
-'''
+import re
 
 
 __all__ = ["update_trending_words_dict", "replace_trending_words"]
@@ -85,5 +71,6 @@ if __name__ == "__main__":
     update_trending_words_dict(TRENDING_WORDS_TEXT)
 
     res = replace_trending_words("这款手机有5000毫安时的大电池")
-
+    print(f"{res}")
+    replace_trending_words("国内交流电一般是50赫兹")  # 输出：国内交流电一般是50Hz
     print(f"{res}")

@@ -1,25 +1,10 @@
-import re
-
-'''
+"""
 Trending words are one per line text, first update the trending words 
 dictionary, and then replace the trending words in the sentence.
-Usage example:
-
-
-TRENDING_WORDS_TEXT = """
-    ChatGPT
-    Microsoft
+Usage example: See the __main__ part
 """
 
-update_trending_words_dict(TRENDING_WORDS_TEXT)
-
-res = replace_trending_words(
-    'the chat gpt is now fully supported by microsoft'
-)
-
-print(res)
-
-'''
+import re
 
 
 __all__ = ["update_trending_words_dict", "replace_trending_words"]
@@ -52,8 +37,8 @@ def match_trending_words(sentence: str):
 
     all_matches = []
     lowercase_no_space_sentence = sentence.lower().replace(" ", "")
-    for word in trending_words_dict:
-        if trending_words_dict[word] in lowercase_no_space_sentence:
+    for word, word_value in trending_words_dict.items():  # #TODO: ren `word_value`
+        if word_value in lowercase_no_space_sentence:
             all_matches.append(word)
 
     return all_matches
@@ -82,8 +67,7 @@ def replace_trending_words(sentence):
 
 
 if __name__ == "__main__":
-    print(f"\x9b42m-------------开始---------------\x9b0m")
-
+    print("\x9b42m-------------开始---------------\x9b0m")
     TRENDING_WORDS_TEXT = """
         ChatGPT
         Microsoft
@@ -95,9 +79,10 @@ if __name__ == "__main__":
         GB
         IP
     """
-
     update_trending_words_dict(TRENDING_WORDS_TEXT)
 
     res = replace_trending_words("7 zip测试")
+    print(f"{res}")
 
+    res = replace_trending_words("the chat gpt is now fully supported by microsoft")
     print(f"{res}")

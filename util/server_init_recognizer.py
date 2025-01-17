@@ -1,5 +1,7 @@
 import logging
+import queue
 import signal
+import sys
 import time
 from multiprocessing import Queue
 from platform import system
@@ -23,7 +25,7 @@ def disable_jieba_debug():
 def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
 
     # Ctrl-C 退出
-    signal.signal(signal.SIGINT, lambda signum, frame: exit())
+    signal.signal(signal.SIGINT, lambda _signum, _frame: sys.exit())
 
     # 导入模块
     with console.status("载入模块中…", spinner="bouncingBall", spinner_style="yellow"):
@@ -63,7 +65,13 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
         # 阻塞最多1秒，便于中断退出
         try:
             task = queue_in.get(timeout=1)
-        except:
+        except queue.Empty:
+            # Handle the case where the queue is empty after the timeout
+            continue
+        except Exception as e:
+            print("!!! Unexpected Exception !!! in server_init_recognizer.py")
+            print(type(e))
+            print(e)
             continue
 
         if task.socket_id not in sockets_id:  # 检查任务所属的连接是否存活
