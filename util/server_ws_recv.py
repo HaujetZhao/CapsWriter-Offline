@@ -1,9 +1,9 @@
 import json
 import time
 from base64 import b64decode
+from dataclasses import dataclass
 
 import websockets
-
 from util.my_status import Status
 from util.server_classes import Task
 from util.server_cosmic import Cosmic, console
@@ -11,12 +11,13 @@ from util.server_cosmic import Cosmic, console
 status_mic = Status("正在接收音频", spinner="point")
 
 
+@dataclass(frozen=False)
 class Cache:
-    # 定义一个可变对象，用于保存音频数据、偏移时间
-    def __init__(self):
-        self.chunks = b""
-        self.offset = 0
-        self.frame_num = 0
+    """A mutable object to store audio data and offset time"""
+
+    chunks: bytes = b""
+    offset: int = 0
+    frame_num: int = 0
 
 
 async def message_handler(websocket, message, cache: Cache):

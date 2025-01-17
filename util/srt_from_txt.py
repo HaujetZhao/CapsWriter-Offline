@@ -18,19 +18,20 @@ import re
 from datetime import timedelta
 from pathlib import Path
 from typing import List
+from dataclasses import dataclass
 
 import srt
 import typer
 from rich import print
 
 
+@dataclass(frozen=False)  # we need to mutate `text`
 class Scout:
-    def __init__(self):
-        self.hit = 0
-        self.miss = 0
-        self.score = 0
-        self.start = 0
-        self.text = ""
+    hit: int = 0
+    miss: int = 0
+    score: int = 0
+    start: int = 0
+    text: str = ""
 
 
 def get_scout(line, words, cursor):
@@ -61,9 +62,7 @@ def get_scout(line, words, cursor):
         tolerance = 5
         while cursor < words_num and tolerance:
             if words[cursor]["word"].lower() in scout.text:
-                scout.text = scout.text.replace(
-                    words[cursor]["word"].lower(), "", 1
-                )
+                scout.text = scout.text.replace(words[cursor]["word"].lower(), "", 1)
                 scout.hit += 1
                 cursor += 1
                 tolerance = 5
@@ -101,9 +100,7 @@ def get_scout(line, words, cursor):
     ...
 
 
-def lines_match_words(
-    text_lines: List[str], words: List
-) -> List[srt.Subtitle]:
+def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
     """
     words[0] = {
                 'start': 0.0,
@@ -186,9 +183,7 @@ def get_words(json_file: Path) -> list:
             "start": timestamp,
             "end": timestamp + 0.2,
         }
-        for (timestamp, token) in zip(
-            json_info["timestamps"], json_info["tokens"]
-        )
+        for (timestamp, token) in zip(json_info["timestamps"], json_info["tokens"])
     ]
     for i in range(len(words) - 1):
         words[i]["end"] = min(words[i]["end"], words[i + 1]["start"])

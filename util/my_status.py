@@ -1,9 +1,9 @@
 from rich.console import RenderableType
-from rich.status import Status as St
+from rich.status import Status as RichStatus
 from rich.style import StyleType
 
 
-class Status(St):
+class Status(RichStatus):
     """
     重写 rich 的 Status，让它知道自己是否正在播放
     """

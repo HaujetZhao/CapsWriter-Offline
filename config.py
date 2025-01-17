@@ -1,17 +1,19 @@
+from dataclasses import dataclass
 from pathlib import Path
 
 
 # 服务端配置
+@dataclass(frozen=True)
 class ServerConfig:
     addr = "0.0.0.0"
     port = "6016"
-
     format_num = True  # 输出时是否将中文数字转为阿拉伯数字
     format_punc = True  # 输出时是否启用标点符号引擎
     format_spell = True  # 输出时是否调整中英之间的空格
 
 
 # 客户端配置
+@dataclass(frozen=True)
 class ClientConfig:
     addr = "127.0.0.1"  # Server 地址
     port = "6016"  # Server 端口
@@ -47,6 +49,7 @@ class ClientConfig:
     file_seg_overlap = 2  # 转录文件时分段重叠
 
 
+@dataclass(frozen=True)
 class ModelPaths:
     model_dir = Path() / "models"
     paraformer_path = Path() / "models" / "paraformer-offline-zh" / "model.int8.onnx"
@@ -54,6 +57,7 @@ class ModelPaths:
     punc_model_dir = Path() / "models" / "punc_ct-transformer_cn-en"
 
 
+@dataclass(frozen=True)
 class ParaformerArgs:
     paraformer = f"{ModelPaths.paraformer_path}"
     tokens = f"{ModelPaths.tokens_path}"
