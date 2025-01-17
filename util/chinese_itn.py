@@ -19,10 +19,10 @@ import re
 from string import ascii_letters
 
 # 常见的跟在数字后面的单位
-common_units = r"个只分万亿秒"
+COMMON_UNITS = r"个只分万亿秒"
 
 # 以空格分隔开的常用语，如成语、日常短语，用于避免误转
-idioms = """
+IDIOMS = """
 正经八百  五零二落 五零四散 
 五十步笑百步 乌七八糟 污七八糟 四百四病 思绪万千 
 十有八九 十之八九 三十而立 三十六策 三十六计 三十六行
@@ -32,7 +32,7 @@ idioms = """
 百分之百 年三十 烂七八糟 一点一滴 路易十六 九三学社 五四运动 入木三分 三十六计 
 """
 
-idioms = [x.strip() for x in idioms.split()]
+IDIOMS = [x.strip() for x in IDIOMS.split()]
 
 # 总模式，筛选出可能需要替换的内容
 # 测试链接  https://regex101.com/r/tFqg9S/3
@@ -47,7 +47,7 @@ pattern = re.compile(
     |(分之)
   )+
   (
-    (?<=[一二两三四五六七八九十])[a-zA-Z年月日号{common_units}]
+    (?<=[一二两三四五六七八九十])[a-zA-Z年月日号{COMMON_UNITS}]
     |(?<=[一二两三四五六七八九十]\s)[a-zA-Z]
   )?
   (?(1)
@@ -68,12 +68,12 @@ pattern = re.compile(
 
 # 纯数字序号
 pure_num = re.compile(
-    f"[零幺一二三四五六七八九]+(点[零幺一二三四五六七八九]+)* *[a-zA-Z{common_units}]?"
+    f"[零幺一二三四五六七八九]+(点[零幺一二三四五六七八九]+)* *[a-zA-Z{COMMON_UNITS}]?"
 )
 
 # 数值
 value_num = re.compile(
-    f"十?(零?[一二两三四五六七八九十][十百千万]{{1,2}})*零?[一二三四五六七八九]?(点[零一二三四五六七八九]+)? *[a-zA-Z{common_units}]?"
+    f"十?(零?[一二两三四五六七八九十][十百千万]{{1,2}})*零?[一二三四五六七八九]?(点[零一二三四五六七八九]+)? *[a-zA-Z{COMMON_UNITS}]?"
 )
 
 # 百分值
@@ -141,7 +141,7 @@ value_mapper = {
 def strip_unit(original):
     """把数字后面跟着的单位剥离开"""
     unit = ""
-    stripped = original.strip(common_units + ascii_letters).strip()
+    stripped = original.strip(COMMON_UNITS + ascii_letters).strip()
     if stripped != original:
         unit = original[len(stripped) :]
     return stripped, unit
@@ -166,7 +166,9 @@ def convert_value_num(original):
         stripped += "点"
     int_part, decimal_part = stripped.split("点")  # 分离小数
     if not int_part:
-        return original  # 如果没有整数部分，表面匹配到的是「点一」这样的形式，应当不处理
+        return (
+            original  # 如果没有整数部分，表面匹配到的是「点一」这样的形式，应当不处理
+        )
 
     # 计算整数部分的值
     value, temp, base = 0, 0, 1
@@ -254,13 +256,13 @@ def replace(original):
     head = original.group(1)
     original = original.group(2)
     try:
-        if idioms and any(
-            [string.find(idiom) in range(l_pos, r_pos) for idiom in idioms]
+        if IDIOMS and any(
+            [string.find(idiom) in range(l_pos, r_pos) for idiom in IDIOMS]
         ):
             final = original
-        elif pure_num.fullmatch(original.strip(common_units)):
+        elif pure_num.fullmatch(original.strip(COMMON_UNITS)):
             final = convert_pure_num(original)
-        elif value_num.fullmatch(original.strip(common_units)):
+        elif value_num.fullmatch(original.strip(COMMON_UNITS)):
             final = convert_value_num(original)
         elif percent_value.fullmatch(original):
             final = convert_percent_value(original)

@@ -5,12 +5,12 @@ Trending words are one per line text, first update the trending words dictionary
 Usage example:
 
 
-trending_words_text = """
+TRENDING_WORDS_TEXT = """
     ChatGPT
     Microsoft
 """
 
-update_trending_words_dict(trending_words_text)
+update_trending_words_dict(TRENDING_WORDS_TEXT)
 
 res = replace_trending_words('the chat gpt is now fully supported by microsoft')
 
@@ -80,7 +80,7 @@ def replace_trending_words(sentence):
 if __name__ == "__main__":
     print(f"\x9b42m-------------开始---------------\x9b0m")
 
-    trending_words_text = """
+    TRENDING_WORDS_TEXT = """
         ChatGPT
         Microsoft
         CD-ROM
@@ -92,7 +92,7 @@ if __name__ == "__main__":
         IP
     """
 
-    update_trending_words_dict(trending_words_text)
+    update_trending_words_dict(TRENDING_WORDS_TEXT)
 
     res = replace_trending_words("7 zip测试")
 

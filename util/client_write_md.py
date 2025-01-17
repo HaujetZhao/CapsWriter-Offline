@@ -17,7 +17,7 @@ from util.hot_kwds import kwd_list
 #         kwd_list.append(kwd)
 #     return len(kwd_list)
 
-header_md = r"""```txt
+HEADER_MD = r"""```txt
 正则表达式 Tip
 
 匹配到音频文件链接：\[(.+)\]\((.{10,})\)[\s]*
@@ -33,7 +33,7 @@ header_md = r"""```txt
 
 def create_md(file_md):
     with open(file_md, "w", encoding="utf-8") as f:
-        f.write(header_md)
+        f.write(HEADER_MD)
 
 
 def write_md(text: str, time_start: float, file_audio: Path):

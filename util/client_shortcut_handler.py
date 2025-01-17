@@ -13,8 +13,8 @@ from util.my_status import Status
 task = asyncio.Future()
 status = Status("开始录音", spinner="point")
 pool = ThreadPoolExecutor()
-pressed = False
-released = True
+PRESSED = False
+RELEASED = True
 event = Event()
 
 
@@ -120,16 +120,16 @@ def manage_task(e: Event):
 
 
 def click_mode(e: keyboard.KeyboardEvent):
-    global pressed, released, event
+    global PRESSED, RELEASED, event
 
-    if e.event_type == "down" and released:
-        pressed, released = True, False
+    if e.event_type == "down" and RELEASED:
+        PRESSED, RELEASED = True, False
         event = Event()
         pool.submit(count_down, event)
         pool.submit(manage_task, event)
 
-    elif e.event_type == "up" and pressed:
-        pressed, released = False, True
+    elif e.event_type == "up" and PRESSED:
+        PRESSED, RELEASED = False, True
         event.set()
 
 
@@ -184,9 +184,7 @@ def click_handler(e: keyboard.KeyboardEvent) -> None:
 
 def bond_shortcut():
     if Config.hold_mode:
-        keyboard.hook_key(
-            Config.shortcut, hold_handler, suppress=Config.suppress
-        )
+        keyboard.hook_key(Config.shortcut, hold_handler, suppress=Config.suppress)
     else:
         # 单击模式，必须得阻塞快捷键
         # 收到长按时，再模拟发送按键

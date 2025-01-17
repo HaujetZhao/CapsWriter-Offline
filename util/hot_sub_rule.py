@@ -76,13 +76,13 @@ def replace_trending_words(sentence: str):
 if __name__ == "__main__":
     print("\x9b42m-------------开始---------------")
 
-    trending_words_text = """
+    TRENDING_WORDS_TEXT = """
         毫安时  =  mAh
         伏特   =   V
         赫兹   =   Hz
     """
 
-    update_trending_words_dict(trending_words_text)
+    update_trending_words_dict(TRENDING_WORDS_TEXT)
 
     res = replace_trending_words("这款手机有5000毫安时的大电池")
 

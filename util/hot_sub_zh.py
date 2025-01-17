@@ -35,14 +35,14 @@ __all__ = [
 
 
 trending_words_dict = {}
-polyphonic_characters = True
-tones = False  # 是否要求匹配声调
+POLYPHONIC_CHARACTERS = True
+TONES = False  # 是否要求匹配声调
 
 
 # ===========================================
 
 
-style = 1 if tones else 0  # 依据是否需要声调，设置拼音风格
+STYLE = 1 if TONES else 0  # 依据是否需要声调，设置拼音风格
 
 
 def update_trending_words_dict(trending_words_text: str):
@@ -75,7 +75,7 @@ def update_trending_words_dict(trending_words_text: str):
         word = word.strip()  # 给热词去掉多余的空格
         if not word or word.startswith("#"):
             continue  # 过滤掉注释
-        word_pinyin = pinyin(word, style, polyphonic_characters)  # 得到拼音
+        word_pinyin = pinyin(word, STYLE, POLYPHONIC_CHARACTERS)  # 得到拼音
 
         if len(word_pinyin) != len(word):
             print(f"\x9b31m    热词「{word}」得到的拼音数量与字数不符，抛弃\x9b0m")
@@ -107,7 +107,7 @@ def match_trending_words(sentence: str):
 
     all_matches = []
     sentence_pinyin = "".join(
-        [x[0] for x in pinyin(sentence, style, polyphonic_characters)]
+        [x[0] for x in pinyin(sentence, STYLE, POLYPHONIC_CHARACTERS)]
     )  # 字符串形式的句子拼音
     for word in trending_words_dict.keys():
         for pinyin_sequence in trending_words_dict[word]:
@@ -131,12 +131,12 @@ def get_pinyin_index(sentence: str):
     """
     pinyin_with_index = [
         {"pinyin": x[0], "index": None}
-        for x in pinyin(sentence, style, polyphonic_characters)
+        for x in pinyin(sentence, STYLE, POLYPHONIC_CHARACTERS)
     ]
     pinyin_with_index_ = iter(pinyin_with_index)
     pinyin = next(pinyin_with_index_)
     for i, char in enumerate(sentence):
-        if pinyin["pinyin"] in pinyin(char, style, polyphonic_characters)[0] or pinyin[
+        if pinyin["pinyin"] in pinyin(char, STYLE, POLYPHONIC_CHARACTERS)[0] or pinyin[
             "pinyin"
         ].startswith(char):
             pinyin["index"] = i
@@ -182,14 +182,14 @@ def replace_trending_words(sentence):
 if __name__ == "__main__":
     print(f"\x9b42m-------------开始---------------\x9b0m")
 
-    trending_words_text = """
+    TRENDING_WORDS_TEXT = """
         撒贝宁
         康辉
         周涛
         乐清
     """
 
-    update_trending_words_dict(trending_words_text)
+    update_trending_words_dict(TRENDING_WORDS_TEXT)
 
     t3 = time()
     res = replace_trending_words("在乐清在")
