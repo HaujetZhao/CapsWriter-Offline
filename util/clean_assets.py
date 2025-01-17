@@ -1,11 +1,15 @@
-from importlib.util import find_spec
+if __name__ != "__main__":
+    raise ImportError(f"Script {__file__} should not be imported as a module")
 
-relies = ["markdown_it", "rich"]
-if not all([find_spec(x) for x in relies]):
-    print(
-        "这个脚本需要用到第三方库：markdown_it rich\n请先用 pip 安装后再运行"
-    )
-    input("按回车退出")
+# we banned importing this file so it's safe to do the import
+# moreover, we are managing the dependencies by ourselves
+
+# from importlib.util import find_spec
+
+# relies = ["markdown_it", "rich"]
+# if not all([find_spec(x) for x in relies]):
+#     print("这个脚本需要用到第三方库：markdown_it rich\n请先用 pip 安装后再运行")
+#     input("按回车退出")
 
 import re
 import sys
@@ -17,7 +21,7 @@ from markdown_it import MarkdownIt
 from markdown_it.token import Token
 from rich.console import Console
 
-console = Console(highlight=0, soft_wrap=False)
+console = Console(highlight=False, soft_wrap=False)
 
 markdown_ext = ["md", "markdown"]
 asset_ext = ["jpg", "jpeg", "png", "wav", "mp3", "mp4"]
@@ -130,9 +134,7 @@ def main():
         console.print(f"    {file}")
     for i in range(3):
         if (
-            console.input(
-                "[yellow]如果确认删除，请手动输入单词 delete 后回车\n"
-            )
+            console.input("[yellow]如果确认删除，请手动输入单词 delete 后回车\n")
             == "delete"
         ):
             break
