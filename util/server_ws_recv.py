@@ -26,7 +26,7 @@ async def message_handler(websocket, message, cache: Cache):
 
     queue_in = Cosmic.queue_in
 
-    global status_mic
+    global status_mic  # pylint: disable=global-variable-not-assigned
     source = message["source"]
     is_final = message["is_final"]
     is_start = not bool(cache.chunks)
@@ -99,7 +99,7 @@ async def message_handler(websocket, message, cache: Cache):
 
 
 async def ws_recv(websocket):
-    global status_mic
+    global status_mic  # pylint: disable=global-variable-not-assigned
 
     # 登记 socket 到字典，以 socket id 字符串为索引
     sockets = Cosmic.sockets
@@ -111,7 +111,7 @@ async def ws_recv(websocket):
     # 设定分段长度
     seg_duration = 15
     seg_overlap = 2
-    seg_duration + seg_overlap * 2
+    seg_duration + seg_overlap * 2  # #TODO: not used?
 
     # 片段缓冲区、偏移时长
     cache = Cache()
@@ -136,6 +136,7 @@ async def ws_recv(websocket):
     except websockets.InvalidState:
         console.print("InvalidState...")
     except Exception as e:
+        console.print("!!! Unexpected Exception !!!")
         console.print("Exception:", e)
     finally:
         status_mic.stop()

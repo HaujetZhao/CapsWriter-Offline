@@ -27,7 +27,7 @@ async def main():
     console.rule("[bold #d55252]CapsWriter Offline Server")
     console.line()
     console.print(
-        f"项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline",
+        "项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline",
         end="\n\n",
     )
     console.print(f"当前基文件夹：[cyan underline]{BASE_DIR}", end="\n\n")
@@ -77,6 +77,7 @@ def init():
         console.print(f"出错了：{e}", style="bright_red")
         console.input("...")
     except Exception as e:
+        print("!!! Unexpected Exception !!!")
         print(e)
     finally:
         Cosmic.queue_out.put(None)

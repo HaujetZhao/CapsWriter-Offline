@@ -66,7 +66,7 @@ def cancel_task():
 
 
 def finish_task():
-    global task
+    global task  # pylint: disable=global-variable-not-assigned
 
     # 通知停止录音，关掉滚动条
     Cosmic.on = False
@@ -138,7 +138,7 @@ def click_mode(e: keyboard.KeyboardEvent):
 
 def hold_mode(e: keyboard.KeyboardEvent):
     """像对讲机一样，按下录音，松开停止"""
-    global task
+    global task  # pylint: disable=global-variable-not-assigned
 
     if e.event_type == "down" and not Cosmic.on:
         # 记录开始时间
@@ -184,9 +184,7 @@ def click_handler(e: keyboard.KeyboardEvent) -> None:
 
 def bond_shortcut():
     if Config.hold_mode:
-        keyboard.hook_key(
-            Config.shortcut, hold_handler, suppress=Config.suppress
-        )
+        keyboard.hook_key(Config.shortcut, hold_handler, suppress=Config.suppress)
     else:
         # 单击模式，必须得阻塞快捷键
         # 收到长按时，再模拟发送按键

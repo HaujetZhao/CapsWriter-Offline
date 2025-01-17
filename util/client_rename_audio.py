@@ -14,7 +14,7 @@ def rename_audio(task_id, text, time_start) -> Path | None:
     # 确保旧文件存在
     if not file_path.exists():
         console.print(f"    文件不存在：{file_path}")
-        return
+        return None
 
     # 构建新文件名
     time.strftime("%Y", time.localtime(time_start))

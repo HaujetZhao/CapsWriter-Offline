@@ -3,31 +3,27 @@ from time import time
 from pypinyin import pinyin
 
 '''
-热词是每行一个的文本，先更新热词词典，然后再替换句子中的热词。
-使用方法示例：
+Trending words are text with one word per line. First, update the hot words dictionary, and then replace the hot words in the sentence.
+Usage example:
 
-
-热词文本 = """
+trending_words_text = """
     撒贝宁
     康辉
     周涛
     李嘉懿
 """
 
-更新热词词典(热词文本)
-
+update_trending_words_dict(trending_words_text)
 res = replace_trending_words('我有个同学叫李佳一')
-
 print(res)
-
 '''
 
 
 __all__ = [
     "update_trending_words_dict",
     "replace_trending_words",
-    "polyphonic_characters",
-    "tones",
+    "POLYPHONIC_CHARACTERS",
+    "TONES",
 ]
 
 
@@ -36,7 +32,7 @@ __all__ = [
 
 trending_words_dict = {}
 POLYPHONIC_CHARACTERS = True
-TONES = False  # 是否要求匹配声调
+TONES = False  # 是否要求匹配声调 #TODO: ren to MATCH_TONES
 
 
 # ===========================================
@@ -69,7 +65,7 @@ def update_trending_words_dict(trending_words_text: str):
                 ]
         }
     """
-    global trending_words_dict
+    global trending_words_dict  # pylint: disable=global-variable-not-assigned
     trending_words_dict.clear()
     for word in trending_words_text.splitlines():
         word = word.strip()  # 给热词去掉多余的空格
@@ -78,9 +74,7 @@ def update_trending_words_dict(trending_words_text: str):
         word_pinyin = pinyin(word, STYLE, POLYPHONIC_CHARACTERS)  # 得到拼音
 
         if len(word_pinyin) != len(word):
-            print(
-                f"\x9b31m    热词「{word}」得到的拼音数量与字数不符，抛弃\x9b0m"
-            )
+            print(f"\x9b31m    热词「{word}」得到的拼音数量与字数不符，抛弃\x9b0m")
             continue
 
         pinyin_list = [
@@ -91,9 +85,7 @@ def update_trending_words_dict(trending_words_text: str):
             if num_sounds > 1:
                 original_list, pinyin_list = pinyin_list, []
                 for sound in polyphonic:
-                    pinyin_list.extend(
-                        [x.copy() + [sound] for x in original_list]
-                    )
+                    pinyin_list.extend([x.copy() + [sound] for x in original_list])
             else:
                 for x in pinyin_list:
                     x.append(polyphonic[0])
@@ -107,14 +99,14 @@ def match_trending_words(sentence: str):
     将全局「热词词典」中的热词按照拼音依次与句子匹配，将所有匹配到的「热词、拼音」以元组放到列表
     将列表返回
     """
-    global trending_words_dict
+    global trending_words_dict  # pylint: disable=global-variable-not-assigned
 
     all_matches = []
     sentence_pinyin = "".join(
         [x[0] for x in pinyin(sentence, STYLE, POLYPHONIC_CHARACTERS)]
     )  # 字符串形式的句子拼音
-    for word in trending_words_dict.keys():
-        for pinyin_sequence in trending_words_dict[word]:
+    for word, pronunciations in trending_words_dict.items():
+        for pinyin_sequence in pronunciations:
             if "".join(pinyin_sequence) in sentence_pinyin:
                 all_matches.append((word, pinyin_sequence))
             else:
@@ -140,14 +132,14 @@ def get_pinyin_index(sentence: str):
     pinyin_with_index_ = iter(pinyin_with_index)
     pinyin = next(pinyin_with_index_)
     for i, char in enumerate(sentence):
-        if pinyin["pinyin"] in pinyin(char, STYLE, POLYPHONIC_CHARACTERS)[
-            0
-        ] or pinyin["pinyin"].startswith(char):
+        if pinyin["pinyin"] in pinyin(char, STYLE, POLYPHONIC_CHARACTERS)[0] or pinyin[
+            "pinyin"
+        ].startswith(char):
             pinyin["index"] = i
             try:
                 pinyin = next(pinyin_with_index_)
-            except:
-                ...
+            except StopIteration:
+                break
     return pinyin_with_index
 
 
@@ -159,9 +151,7 @@ def replace_trending_words(sentence):
     """
     all_matches = match_trending_words(sentence)
     for match_items in all_matches:
-        word, pinyin_sequence = (
-            match_items  # 从字典中找到可以替换的热词和对应的拼音
-        )
+        word, pinyin_sequence = match_items  # 从字典中找到可以替换的热词和对应的拼音
 
         sentence_index_list = get_pinyin_index(sentence)
         replace_range = []
@@ -186,7 +176,7 @@ def replace_trending_words(sentence):
 
 
 if __name__ == "__main__":
-    print(f"\x9b42m-------------开始---------------\x9b0m")
+    print("\x9b42m-------------开始---------------\x9b0m")
 
     TRENDING_WORDS_TEXT = """
         撒贝宁

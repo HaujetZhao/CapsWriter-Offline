@@ -1,7 +1,8 @@
 import re
 
 '''
-Trending words are one per line text, first update the trending words dictionary, and then replace the trending words in the sentence.
+Trending words are one per line text, first update the trending words 
+dictionary, and then replace the trending words in the sentence.
 Usage example:
 
 
@@ -12,7 +13,9 @@ TRENDING_WORDS_TEXT = """
 
 update_trending_words_dict(TRENDING_WORDS_TEXT)
 
-res = replace_trending_words('the chat gpt is now fully supported by microsoft')
+res = replace_trending_words(
+    'the chat gpt is now fully supported by microsoft'
+)
 
 print(res)
 
@@ -26,25 +29,26 @@ trending_words_dict = {}
 
 def update_trending_words_dict(trending_words_text: str):
     """
-    Remove extra spaces from each line in the trending words text and add it to the trending words dictionary,
-    key is the trending word,
-    value is the lowercase of the trending word
+    Remove extra spaces from each line in the trending words text and add it to
+    the trending words dictionary, key is the trending word, value is the
+    lowercase of the trending word
     """
-    global trending_words_dict
+    global trending_words_dict  # pylint: disable=global-variable-not-assigned
     trending_words_dict.clear()
     for word in trending_words_text.splitlines():
         word = word.strip()
         if not word or word.startswith("#"):
             continue
-        trending_words_dict[word] = re.sub("[^\w]", "", word.lower())
+        trending_words_dict[word] = re.sub(r"[^\w]", "", word.lower())
     return len(trending_words_dict)
 
 
 def match_trending_words(sentence: str):
     """
-    Match the trending words in the global "trending_words_dict" with the sentence in lowercase, and put all matched trending words into a list
+    Match the trending words in the global "trending_words_dict" with the
+    sentence in lowercase, and put all matched trending words into a list
     """
-    global trending_words_dict
+    global trending_words_dict  # pylint: disable=global-variable-not-assigned
 
     all_matches = []
     lowercase_no_space_sentence = sentence.lower().replace(" ", "")
@@ -63,16 +67,14 @@ def replace_trending_words(sentence):
     """
     all_matches = match_trending_words(sentence)
     for match_item in all_matches:
-        regex_pattern = re.sub("[^\w]", "", match_item)
+        regex_pattern = re.sub(r"[^\w]", "", match_item)
         regex_pattern1 = (
             r"(?<=[^a-zA-z])"
             + re.sub("(.)", r"\1 *?", regex_pattern)
             + r"(?=[^a-zA-z]|\b)"
         )
         regex_pattern2 = (
-            r"(?<=\b)"
-            + re.sub("(.)", r"\1 *?", regex_pattern)
-            + r"(?=[^a-zA-z]|\b)"
+            r"(?<=\b)" + re.sub("(.)", r"\1 *?", regex_pattern) + r"(?=[^a-zA-z]|\b)"
         )
         sentence = re.sub(regex_pattern1, match_item, sentence, flags=re.I)
         sentence = re.sub(regex_pattern2, match_item, sentence, flags=re.I)

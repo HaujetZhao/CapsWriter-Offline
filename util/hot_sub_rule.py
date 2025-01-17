@@ -12,7 +12,7 @@ import re
     毫安时  =  mAh
     伏特   =   V
     赫兹   =   Hz
-    (艾特)\s*(\w+)\s*(点)\s*(\w+)    =    @$2.$4
+    (艾特)\\s*(\w+)\\s*(点)\\s*(\\w+)    =    @$2.$4
 """
 
 更新热词词典(热词文本)
@@ -34,7 +34,7 @@ def update_trending_words_dict(trending_words_text: str):
     key     是被替换的词，
     value   是将被替换成的词
     """
-    global pattern_dict
+    global pattern_dict  # pylint: disable=global-variable-not-assigned
     pattern_dict.clear()
     for trending_word in trending_words_text.splitlines():
         if not trending_word or trending_word.startswith("#"):
@@ -51,7 +51,7 @@ def match_trending_words(sentence: str):
     """
     将全局「热词词典」中的热词按照 key 依次与句子匹配，将所有匹配到的热词放到列表
     """
-    global pattern_dict
+    global pattern_dict  # pylint: disable=global-variable-not-assigned
 
     all_matches = []
     for pattern in pattern_dict:

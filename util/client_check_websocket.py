@@ -4,20 +4,20 @@ from config import ClientConfig as Config
 from util.client_cosmic import Cosmic
 
 
+# #TODO: look deeper into this
 class Handler:
     def __enter__(self): ...
 
     def __exit__(self, exc_type, e, exc_tb):
-        if e == None:
+        if (
+            e is None
+            or isinstance(e, websockets.exceptions.ConnectionClosedError)
+            or isinstance(e, ConnectionRefusedError)
+            or isinstance(e, TimeoutError)
+            or isinstance(e, Exception)
+        ):
             return True
-        if isinstance(e, ConnectionRefusedError):
-            return True
-        elif isinstance(e, TimeoutError):
-            return True
-        elif isinstance(e, Exception):
-            return True
-        else:
-            print(e)
+        print(e)
 
 
 async def check_websocket() -> bool:
@@ -29,19 +29,4 @@ async def check_websocket() -> bool:
                 f"ws://{Config.addr}:{Config.port}", max_size=None
             )
             return True
-    else:
-        return False
-
-    # for _ in range(3):
-    #     try:
-    #         Cosmic.websocket = await websockets.connect(f"ws://{Config.addr}:{Config.port}", max_size=None)
-    #         return True
-    #     except ConnectionRefusedError as e:
-    #         continue
-    #     except TimeoutError:
-    #         continue
-    #     except Exception as e:
-    #         print(e)
-    #
-    # else:
-    #     return False
+    return False
