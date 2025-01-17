@@ -14,79 +14,71 @@ def run_autoflake():
     print(
         "Running autoflake to clean up unused imports, variables, and duplicate keys..."
     )
-    # Expand the **/*.py pattern using glob
     python_files = glob.glob("**/*.py", recursive=True)
-
     for folder in IGNORED_FOLDERS:
         python_files = [file for file in python_files if folder not in file]
-
-    # Run autoflake only if there are Python files
     if python_files:
-        subprocess.run(
-            [
-                "autoflake",
-                "--in-place",
-                "--remove-unused-variables",
-                "--remove-all-unused-imports",
-                "--remove-duplicate-keys",
-                "--expand-star-imports",
-                "--ignore-pass-after-docstring",
-            ]
-            + python_files,
-            check=True,
-        )
+        autoflake_args = [
+            "autoflake",
+            "--in-place",
+            "--remove-unused-variables",
+            "--remove-all-unused-imports",
+            "--remove-duplicate-keys",
+            "--expand-star-imports",
+            "--ignore-pass-after-docstring",
+        ] + python_files
+        print("autoflake arguments:", " ".join(autoflake_args))
+        subprocess.run(autoflake_args, check=True)
     else:
         print("No Python files found for autoflake.")
 
 
 def run_black():
     print("Running black...")
-    subprocess.run(
-        [
-            "black",
-            ".",
-            "--exclude",
-            "|".join(IGNORED_FOLDERS),
-            "--line-length",
-            "79",
-        ],
-        check=True,
-    )
+    black_args = [
+        "black",
+        ".",
+        "--exclude",
+        "|".join(IGNORED_FOLDERS),
+        "--line-length",
+        "79",
+    ]
+    print("black arguments:", " ".join(black_args))
+    subprocess.run(black_args, check=True)
 
 
 def run_isort():
     print("Running isort...")
-    subprocess.run(
-        ["isort", "."] + [f"--skip={folder}" for folder in IGNORED_FOLDERS],
-        check=True,
-    )
+    isort_args = ["isort", "."] + [
+        f"--skip={folder}" for folder in IGNORED_FOLDERS
+    ]
+    print("isort arguments:", " ".join(isort_args))
+    subprocess.run(isort_args, check=True)
 
 
 def run_flake8():
     print("Running flake8...")
+    flake8_args = [
+        "flake8",
+        ".",
+        "--exclude",
+        ",".join(IGNORED_FOLDERS),
+        "--max-line-length=79",
+    ]
+    print("flake8 arguments:", " ".join(flake8_args))
     try:
-        subprocess.run(
-            [
-                "flake8",
-                ".",
-                "--exclude",
-                ",".join(IGNORED_FOLDERS),
-                "--max-line-length=79",
-            ],
-            check=True,
-        )
+        subprocess.run(flake8_args, check=True)
     except subprocess.CalledProcessError as e:
         print(f"flake8 failed with error: {e}")
 
 
 def run_pylint():
+    pylint_args = ["pylint", ".", "--ignore", ",".join(IGNORED_FOLDERS)] + [
+        f"--disable={d}" for d in PYLINT_DISABLED
+    ]
     print("Running pylint...")
-    result = subprocess.run(
-        ["pylint", ".", "--ignore", ",".join(IGNORED_FOLDERS)]
-        + [f"--disable={d}" for d in PYLINT_DISABLED],
-        capture_output=True,
-        text=True,
-    )
+    print("pylint arguments:", " ".join(pylint_args))
+    result = subprocess.run(pylint_args, capture_output=True, text=True)
     print(result.stdout)
     if result.returncode == 32:  # fatal error
         print(f"pylint failed with fatal error {result.returncode}")
