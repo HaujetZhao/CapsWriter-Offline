@@ -41,7 +41,17 @@ def run_autoflake():
 
 def run_black():
     print("Running black...")
-    subprocess.run(["black", ".", "--exclude", "|".join(IGNORED_FOLDERS)], check=True)
+    subprocess.run(
+        [
+            "black",
+            ".",
+            "--exclude",
+            "|".join(IGNORED_FOLDERS),
+            "--line-length",
+            "79",
+        ],
+        check=True,
+    )
 
 
 def run_isort():
