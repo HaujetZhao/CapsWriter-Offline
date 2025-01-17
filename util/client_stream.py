@@ -26,7 +26,7 @@ def record_callback(
     )
 
 
-def stream_close(signum, frame):
+def stream_close(_signum, _frame):
     Cosmic.stream.close()
 
 

@@ -243,7 +243,6 @@ def convert_date_value(original):
         day, original = original.split("号")
         final += convert_value_num(day) + "号"
     return final
-    ...
 
 
 def replace(original):
@@ -277,6 +276,7 @@ def replace(original):
         if head:
             final = head + final
     except Exception as e:
+        print(f"!!! Unhandled Error: {e} in chinese_itn.py")
         print(type(e))
         print(e)
         print(f"Error: {original} in chinese_itn.py")

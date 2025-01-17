@@ -25,7 +25,9 @@ class Cosmic:
     queue_in: Queue = field(default_factory=Queue)
     queue_out: Queue = field(default_factory=Queue)
     loop: Union[None, AbstractEventLoop] = None
-    websocket: WebSocketClientProtocol = None
+    websocket: WebSocketClientProtocol = field(
+        default_factory=WebSocketClientProtocol
+    )
     audio_files: dict = field(default_factory=dict)
     stream: Union[None, sd.InputStream] = None
     kwd_list: list[str] = field(default_factory=list)

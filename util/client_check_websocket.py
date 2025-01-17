@@ -10,7 +10,7 @@ class Handler:
         """
         No resource is allocated here, so nothing to return.
         """
-        ...
+        pass
 
     def __exit__(self, exc_type, e, exc_tb):
         if e is None or isinstance(
@@ -24,6 +24,7 @@ class Handler:
         ):
             return True
         print(e)
+        return False
 
 
 async def check_websocket() -> bool:

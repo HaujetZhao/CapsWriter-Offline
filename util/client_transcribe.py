@@ -5,8 +5,9 @@ import subprocess
 import sys
 import time
 import uuid
+from collections.abc import AsyncIterable, Iterable
 from pathlib import Path
-
+from websockets.legacy.client import WebSocketClientProtocol
 from config import ClientConfig as Config
 from util import srt_from_txt
 from util.client_check_websocket import check_websocket
@@ -81,10 +82,9 @@ async def transcribe_send(file: Path):
 async def transcribe_recv(file: Path):
 
     # 获取连接
-    websocket = Cosmic.websocket
+    websocket: WebSocketClientProtocol = Cosmic.websocket
 
     message = None
-    print(f"{websocket=}")
     # 接收结果
     async for message in websocket:
         message = json.loads(message)
@@ -92,7 +92,6 @@ async def transcribe_recv(file: Path):
         if message["is_final"]:
             break
 
-    print(f"{message=}")
     if message is None:
         console.print("    !!! ERROR: 无法获取结果 !!!")
         return
