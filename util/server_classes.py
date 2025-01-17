@@ -16,7 +16,7 @@ class Task:
     samplerate: int = 16000
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)  # need to assign "duration"
 class Result:
     task_id: str  # Task ID
     socket_id: str  # Socket ID
