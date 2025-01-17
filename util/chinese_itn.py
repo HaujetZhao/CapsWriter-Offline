@@ -275,7 +275,7 @@ def replace(original):
 
         if head:
             final = head + final
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"!!! Unhandled Error: {e} in chinese_itn.py")
         print(type(e))
         print(e)
