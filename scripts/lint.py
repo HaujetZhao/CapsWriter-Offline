@@ -1,7 +1,13 @@
-# #TODO: CONST var for excluded folders. (.venv, etc)
-
 import glob
 import subprocess
+
+IGNORED_FOLDERS = (".venv", ".venv310", ".venv311", "models", ".dev")
+PYLINT_DISABLED = (
+    "C0114",  # Missing module docstring
+    "C0115",  # Missing class docstring
+    "C0116",  # Missing function or method docstring
+    "W2402",  # File name contains a non-ASCII character. (non-ascii-file-name)
+)
 
 
 def run_autoflake():
@@ -11,10 +17,8 @@ def run_autoflake():
     # Expand the **/*.py pattern using glob
     python_files = glob.glob("**/*.py", recursive=True)
 
-    # exclude folder .venv
-    python_files = [file for file in python_files if ".venv" not in file]
-    python_files = [file for file in python_files if ".venv310" not in file]
-    python_files = [file for file in python_files if ".venv311" not in file]
+    for folder in IGNORED_FOLDERS:
+        python_files = [file for file in python_files if folder not in file]
 
     # Run autoflake only if there are Python files
     if python_files:
@@ -37,13 +41,13 @@ def run_autoflake():
 
 def run_black():
     print("Running black...")
-    subprocess.run(["black", ".", "--exclude", ".venv|.venv310|.venv311"], check=True)
+    subprocess.run(["black", ".", "--exclude", "|".join(IGNORED_FOLDERS)], check=True)
 
 
 def run_isort():
     print("Running isort...")
     subprocess.run(
-        ["isort", ".", "--skip", ".venv", "--skip", ".venv310", "--skip", ".venv311"],
+        ["isort", "."] + [f"--skip={folder}" for folder in IGNORED_FOLDERS],
         check=True,
     )
 
@@ -56,7 +60,7 @@ def run_flake8():
                 "flake8",
                 ".",
                 "--exclude",
-                ".venv,.venv310,.venv311",
+                ",".join(IGNORED_FOLDERS),
                 "--max-line-length=79",
             ],
             check=True,
@@ -67,12 +71,18 @@ def run_flake8():
 
 def run_pylint():
     print("Running pylint...")
-    try:
-        subprocess.run(
-            ["pylint", ".", "--ignore", ".venv,.venv310,.venv311"], check=True
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"pylint failed with error: {e}")
+    result = subprocess.run(
+        ["pylint", ".", "--ignore", ",".join(IGNORED_FOLDERS)]
+        + [f"--disable={d}" for d in PYLINT_DISABLED],
+        capture_output=True,
+        text=True,
+    )
+    print(result.stdout)
+    if result.returncode == 32:  # fatal error
+        print(f"pylint failed with fatal error {result.returncode}")
+        raise OSError("pylint failed with fatal error")
+    if result.returncode != 0:
+        print(f"pylint failed with exit status {result.returncode}")
 
 
 def run_lint():
