@@ -25,8 +25,8 @@ async def send_message(message):
         except websockets.ConnectionClosedError as e:
             if message["is_final"]:
                 console.print(f"[red]连接中断了")
-        except Exception as e:
-            print("出错了")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print("!!! UNEXPECTED ERROR !!! in client_send_audio.py")
             print(e)
 
 
@@ -60,9 +60,7 @@ async def send_audio():
 
                 # 创建音频文件
                 if Config.save_audio and not file_path:
-                    file_path, file = create_file(
-                        task["data"].shape[1], time_start
-                    )
+                    file_path, file = create_file(task["data"].shape[1], time_start)
                     Cosmic.audio_files[task_id] = file_path
 
                 # 获取音频数据
@@ -112,5 +110,7 @@ async def send_audio():
                 }
                 task = asyncio.create_task(send_message(message))
                 break
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print("!!! UNEXPECTED ERROR !!! in client_send_audio.py")
+        print(type(e))
         print(e)

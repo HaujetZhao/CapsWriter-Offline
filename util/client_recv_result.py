@@ -51,11 +51,14 @@ async def recv_result():
             console.print(f"    识别结果：[green]{text}")
             console.line()
 
+    # #TODO: consider if these exceptions are expected or not. mb use green font.
     except websockets.ConnectionClosedError:
         console.print("[red]连接断开\n")
     except websockets.ConnectionClosedOK:
         console.print("[red]连接断开\n")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        console.print("[red] !!! 未知错误\n")
+        print(type(e))
         print(e)
     finally:
         return

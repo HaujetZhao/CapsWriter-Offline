@@ -17,7 +17,7 @@ async def type_result(text):
             temp = pyclip.paste().decode("utf-8")
         except UnicodeDecodeError:
             temp = ""
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             print("!!! UNEXPECTED ERROR !!! in client_type_result.py")
             print(e)
 

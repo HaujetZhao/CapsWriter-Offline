@@ -50,6 +50,6 @@ async def ws_send():
                 console.print(f"    转录进度：{result.duration:.2f}s", end="\r")
                 if result.is_final:
                     console.print("\n    [green]转录完成")
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             print("!!! Unexpected Exception !!! in server_ws_send.py")
             print(e)

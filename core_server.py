@@ -76,7 +76,7 @@ def init():
     except OSError as e:  # 端口占用
         console.print(f"出错了：{e}", style="bright_red")
         console.input("...")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print("!!! Unexpected Exception !!! in core_server.py")
         print(e)
     finally:

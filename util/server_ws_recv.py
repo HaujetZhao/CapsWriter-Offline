@@ -135,7 +135,7 @@ async def ws_recv(websocket):
         )
     except websockets.InvalidState:
         console.print("InvalidState...")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         console.print("!!! Unexpected Exception !!! in server_ws_recv.py")
         console.print("Exception:", e)
     finally:

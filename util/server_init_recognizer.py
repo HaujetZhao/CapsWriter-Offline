@@ -69,7 +69,7 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
         except queue.Empty:
             # Handle the case where the queue is empty after the timeout
             continue
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             print("!!! Unexpected Exception !!! in server_init_recognizer.py")
             print(type(e))
             print(e)
