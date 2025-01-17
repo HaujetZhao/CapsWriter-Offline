@@ -1,16 +1,17 @@
 import sys
-from pathlib import Path
-
 
 from config import ModelPaths
 from util.server_cosmic import console
 
 
 def check_model():
-    for key, path in ModelPaths.__dict__.items() :
-        if key.startswith('_'): continue
-        if path.exists(): continue
-        console.print(f'''
+    for key, path in ModelPaths.__dict__.items():
+        if key.startswith("_"):
+            continue
+        if path.exists():
+            continue
+        console.print(
+            f"""
     未能找到模型文件 
 
     未找到：{path}
@@ -20,6 +21,8 @@ def check_model():
     
     下载地址在： https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/v0.3 
 
-        ''', style='bright_red')
-        input('按回车退出')
+        """,
+            style="bright_red",
+        )
+        input("按回车退出")
         sys.exit()

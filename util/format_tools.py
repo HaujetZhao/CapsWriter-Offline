@@ -1,46 +1,53 @@
 import re
-from string import digits, ascii_letters
+from string import digits
 
-en_in_zh = re.compile(r"""(?ix)    # i 表示忽略大小写，x 表示开启注释模式
+en_in_zh = re.compile(
+    r"""(?ix)    # i 表示忽略大小写，x 表示开启注释模式
     ([\u4e00-\u9fa5]|[a-z0-9]+\s)?      # 左侧是中文，或者英文加空格
     ([a-z0-9 ]+)                    # 中间是一个或多个「英文数字加空格」
     ([\u4e00-\u9fa5]|[a-z0-9]+)?       # 右是中文，或者英文加空格
-""")
+"""
+)
+
 
 def replacer(original: re.Match):
-    left : str = original.group(1)
-    center : str = original.group(2)
-    right : str = original.group(3)
+    left: str = original.group(1)
+    center: str = original.group(2)
+    right: str = original.group(3)
     # 如果拼写字母中间有空格，就把空格都去掉
     if center:
-        final = re.sub(r'((\d) )?(\b\w) ?(?!\w{2})', r'\2\3', center).strip()
+        final = re.sub(r"((\d) )?(\b\w) ?(?!\w{2})", r"\2\3", center).strip()
         # 测试地址 https://regex101.com/r/1Vtu7V/1
         # final = re.sub(r'(\b\w) (?!\w{2})', r'\1', original.group(2)).strip()
-    
+
     # 如果英文的左边有汉字或英文，给两组之间加上空格
-    if left :
-        if left.strip(digits) == left and center.lstrip(digits) == center :  # 左侧结尾不是数字，中间开头不是数字
-            final = ' ' + final
+    if left:
+        if (
+            left.strip(digits) == left and center.lstrip(digits) == center
+        ):  # 左侧结尾不是数字，中间开头不是数字
+            final = " " + final
         final = left.rstrip() + final
-    
+
     # 如果英文左边的汉字被前一个组消费了，就要手动去看一下前一个字是不是中文
-    elif re.match(r'[\u4e00-\u9fa5]', original.string[original.start(2) - 1]): 
-        if center.lstrip(digits) == center:     # 确保中间开头不是数字
-            final = ' ' + final
-        
+    elif re.match(r"[\u4e00-\u9fa5]", original.string[original.start(2) - 1]):
+        if center.lstrip(digits) == center:  # 确保中间开头不是数字
+            final = " " + final
+
     # 如果英文的右边有汉字，给中英之间加上空格
     if right:
-        if center.rstrip(digits) == center:     # 确保中间结尾不是数字
-            final += ' '
+        if center.rstrip(digits) == center:  # 确保中间结尾不是数字
+            final += " "
         final += right.lstrip()
 
     return final
 
+
 def adjust_space(txt):
     return en_in_zh.sub(replacer, txt)
 
-if __name__ == '__main__':
-    txt = '''
+
+if __name__ == "__main__":
+    txt = """
 由个人的需求呢写了这么一个程序，嗯，转字幕视频音频，转字幕不知道取什么名，暂时先叫separwator吧，这是服务端只是客户端，因为服务端需要载入模型，嗯
 ，把服务端分离出来，可以让它一直运行。这是服务端运行之后，载入模型总共要53秒，语音模型56秒就载入完了。但是这个标点符号模型要花40多秒，载入完之后
 ，现在我把这音频文件拖动到这个服务客户端上面，然后松手就开始转入了。这是服务端这边总共时长127秒，这样再转入到90秒。好，转入完成了。这个时候在这 
@@ -54,5 +61,5 @@ if __name__ == '__main__':
 改。然后它的转录时间r t f0.061，现在是电脑是没有插电，插上电的话是0.03，也就是每100秒钟。嗯 ，每100秒钟只需要3秒钟。嗯，是的，100秒钟，只要3秒钟
 就能转录，然后再去试一下。这个这是个两分钟的音频，把它拖动到client上边。在这边我们看一下sir的状态态到133秒，音频30秒60秒、90秒，在这动完成。好，
 它完完好，千万不能轻易渡人 的直接嗯，这个速度要比whisper要快多了。
-'''
+"""
     print(adjust_space(txt))

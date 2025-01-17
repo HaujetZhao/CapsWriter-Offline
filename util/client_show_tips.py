@@ -1,14 +1,15 @@
 import os
 
-from util.client_cosmic import console
-from config import ClientConfig as Config
 from rich.markdown import Markdown
+
+from config import ClientConfig as Config
+from util.client_cosmic import console
 
 
 def show_mic_tips():
-    console.rule('[bold #d55252]CapsWriter Offline Client')
+    console.rule("[bold #d55252]CapsWriter Offline Client")
     # console.print(f'\n项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
-    markdown = (f'''
+    markdown = f"""
 
 项目地址：https://github.com/HaujetZhao/CapsWriter-Offline
 
@@ -39,18 +40,20 @@ def show_mic_tips():
 2. 音视频文件转录功能依赖于 `FFmpeg`
 3. 默认的快捷键是 {Config.shortcut}，你可以打开 `core_client.py` 进行修改
 4. MacOS 无法监测到 `caps lock` 按键，可改为 `right shift` 按键
-    ''')
+    """
     console.print(Markdown(markdown), highlight=True)
     console.rule()
-    console.print(f'\n当前基文件夹：[cyan underline]{os.getcwd()}')
-    console.print(f'\n服务端地址： [cyan underline]{Config.addr}:{Config.port}')
-    console.print(f'\n当前所用快捷键：[green4]{Config.shortcut}')
+    console.print(f"\n当前基文件夹：[cyan underline]{os.getcwd()}")
+    console.print(
+        f"\n服务端地址： [cyan underline]{Config.addr}:{Config.port}"
+    )
+    console.print(f"\n当前所用快捷键：[green4]{Config.shortcut}")
 
     console.line()
 
 
 def show_file_tips():
-    markdown = f'\n项目地址：https://github.com/HaujetZhao/CapsWriter-Offline'
+    markdown = f"\n项目地址：https://github.com/HaujetZhao/CapsWriter-Offline"
     console.print(Markdown(markdown), height=True)
-    console.print(f'当前基文件夹：[cyan underline]{os.getcwd()}')
-    console.print(f'服务端地址： [cyan underline]{Config.addr}:{Config.port}')
+    console.print(f"当前基文件夹：[cyan underline]{os.getcwd()}")
+    console.print(f"服务端地址： [cyan underline]{Config.addr}:{Config.port}")

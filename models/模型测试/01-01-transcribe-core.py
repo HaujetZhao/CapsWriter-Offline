@@ -73,16 +73,15 @@ to install sherpa-onnx and to download non-streaming pre-trained models
 used in this file.
 """
 import argparse
+import json
+import re
 import shutil
 import subprocess
 import sys
-import json
 import time
-import re
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from copy import copy
 
 import numpy as np
 import sherpa_onnx
@@ -92,7 +91,6 @@ def get_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-
 
     parser.add_argument(
         "--tokens",
@@ -316,7 +314,7 @@ class Segment:
         s = s.replace(".", ",")
         s += "\n"
         s += self.text
-        return re.sub(r'(,\d{3})\d+', r'\1', s)
+        return re.sub(r"(,\d{3})\d+", r"\1", s)
 
 
 def main():
@@ -355,10 +353,8 @@ def main():
 
     frames_per_read = int(args.sample_rate * 10)  # 100 second
 
-    
     print("Started!")
     t1 = time.time()
-
 
     streams = []
     segments_raw = []
@@ -368,15 +364,15 @@ def main():
         data = process.stdout.read(frames_per_read * 2)
         if not data:
             break
-        
+
         # 读取音频片段
         samples = np.frombuffer(data, dtype=np.int16)
         samples = samples.astype(np.float32) / 32768
-        
+
         # 划分片段时间
         segment = Segment(
-            start = samples_processed / args.sample_rate,
-            duration = frames_per_read / args.sample_rate,
+            start=samples_processed / args.sample_rate,
+            duration=frames_per_read / args.sample_rate,
         )
         segments_raw.append(segment)
         samples_processed += frames_per_read
@@ -384,37 +380,37 @@ def main():
         stream = recognizer.create_stream()
         stream.accept_waveform(args.sample_rate, samples)
         streams.append(stream)
-            
+
     # 统一识别
     recognizer.decode_streams(streams)
 
     # 汇总 tokens 和 timestamps
-    timestamps = [t + seg.start for seg, stream in zip(segments_raw, streams) 
-                                    for t in stream.result.timestamps]
-    tokens = [token for stream in streams 
-                        for token in stream.result.tokens]
-
-
+    timestamps = [
+        t + seg.start
+        for seg, stream in zip(segments_raw, streams)
+        for t in stream.result.timestamps
+    ]
+    tokens = [token for stream in streams for token in stream.result.tokens]
 
     for index, (time_s, token) in enumerate(zip(timestamps, tokens)):
 
         if index == 0:
             segments_fine = []
             pre_token_time = 0
-            sentence = ''
+            sentence = ""
             segment = Segment(start=time_s, duration=0)
-            
+
         # 如果句子为空字符串，直接加到句子里
-        if len(sentence) == 0 :
+        if len(sentence) == 0:
             sentence += token
             segment.start = time_s
             pre_token_time = time_s
-        
+
         # 如果句子有词，若间隔小于0.5秒，认为属于同一句话
         elif time_s - pre_token_time < 0.5:
             sentence += token
             pre_token_time = time_s
-        
+
         # 若间隔大于0.5秒，则认为开启第二句话
         else:
             # 将旧句子加入列表
@@ -445,10 +441,10 @@ def main():
         for i, seg in enumerate(segments_fine):
             print(seg.text, file=f)
     with open(json_filename, "w", encoding="utf-8") as f:
-        json.dump({'timestamps': timestamps, 'tokens': tokens}, f, ensure_ascii=False)
+        json.dump({"timestamps": timestamps, "tokens": tokens}, f, ensure_ascii=False)
 
     print(f"Saved to {srt_filename}")
-    print(f'Time consumed: {time.time() - t1:.2f}s')
+    print(f"Time consumed: {time.time() - t1:.2f}s")
     print("Done!")
 
 

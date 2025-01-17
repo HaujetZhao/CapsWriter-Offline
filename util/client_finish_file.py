@@ -1,6 +1,6 @@
-from typing import Union
-from subprocess import Popen
 import wave
+from subprocess import Popen
+from typing import Union
 
 
 def finish_file(file: Union[Popen, wave.Wave_write]):

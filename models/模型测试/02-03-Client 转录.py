@@ -27,13 +27,13 @@ Note: The server is implemented in C++.
 
 import argparse
 import asyncio
-import logging
-import wave
-import subprocess
-from typing import List, Tuple
-import shlex
 import json
-import time 
+import logging
+import shlex
+import subprocess
+import time
+import wave
+from typing import List, Tuple
 
 try:
     import websockets
@@ -121,7 +121,7 @@ async def run(
             subprocess.run(shlex.split(command), stderr=subprocess.PIPE)
             logging.info(f"Sending {wave_filename}")
 
-            samples, sample_rate = read_wave('temp.wav')
+            samples, sample_rate = read_wave("temp.wav")
             assert isinstance(sample_rate, int)
             assert samples.dtype == np.float32, samples.dtype
             assert samples.ndim == 1, samples.dim
@@ -144,11 +144,13 @@ async def run(
             wav_duration = len(samples) / 16000
             dec_duration = time.time() - t1
             print(decoding_results)
-            print(f'文件：{wave_filename}\n时长：{wav_duration:.1f}s\n用时：{dec_duration:.1f}s\nRTF：{dec_duration/wav_duration:.4f}')
+            print(
+                f"文件：{wave_filename}\n时长：{wav_duration:.1f}s\n用时：{dec_duration:.1f}s\nRTF：{dec_duration/wav_duration:.4f}"
+            )
 
             # 将结果写入 txt
-            with open(wave_filename[:-4]+'.txt', 'w', encoding='utf-8') as f:
-                f.write(json.loads(decoding_results)['text'])
+            with open(wave_filename[:-4] + ".txt", "w", encoding="utf-8") as f:
+                f.write(json.loads(decoding_results)["text"])
 
         # to signal that the client has sent all the data
         await websocket.send("Done")

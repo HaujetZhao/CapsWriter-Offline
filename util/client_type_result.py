@@ -1,8 +1,10 @@
-from config import ClientConfig as Config
+import asyncio
+import platform
+
 import keyboard
 import pyclip
-import platform
-import asyncio
+
+from config import ClientConfig as Config
 
 
 async def type_result(text):
@@ -12,21 +14,21 @@ async def type_result(text):
 
         # 保存剪切板
         try:
-            temp = pyclip.paste().decode('utf-8')
+            temp = pyclip.paste().decode("utf-8")
         except:
-            temp = ''
+            temp = ""
 
         # 复制结果
         pyclip.copy(text)
 
         # 粘贴结果
-        if platform.system() == 'Darwin':
+        if platform.system() == "Darwin":
             keyboard.press(55)
             keyboard.press(9)
             keyboard.release(55)
             keyboard.release(9)
         else:
-            keyboard.send('ctrl + v')
+            keyboard.send("ctrl + v")
 
         # 还原剪贴板
         if Config.restore_clip:

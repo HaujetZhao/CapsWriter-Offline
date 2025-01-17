@@ -1,8 +1,8 @@
+import wave
 from subprocess import Popen
-import wave 
-import numpy as np
-from typing import Union, Any
+from typing import Union
 
+import numpy as np
 
 
 def write_file(file: Union[Popen, wave.Wave_write], data: np.ndarray):

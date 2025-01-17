@@ -6,7 +6,6 @@
 from pathlib import Path
 from typing import Dict
 
-import numpy as np
 import onnx
 import yaml
 
@@ -33,9 +32,9 @@ def load_lfr_params(config):
     with open("config.yaml", encoding="utf-8") as f:
         for line in f:
             if "lfr_m" in line:
-                lfr_m = int(line.split()[-1])
+                int(line.split()[-1])
             elif "lfr_n" in line:
-                lfr_n = int(line.split()[-1])
+                int(line.split()[-1])
                 break
     lfr_window_size = config["frontend_conf"]["lfr_m"]
     lfr_window_shift = config["frontend_conf"]["lfr_n"]
@@ -84,7 +83,7 @@ def main():
         "vocab_size": str(vocab_size),
         "comment": "speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-onnx",
     }
-    files = ['model_quant.onnx', 'model.int8.onnx']
+    files = ["model_quant.onnx", "model.int8.onnx"]
     for file in files:
         if Path(file).exists():
             add_meta_data(file, meta_data)

@@ -1,7 +1,8 @@
-from util.hot_kwds import kwd_list
 import time
-from pathlib import Path
 from os import makedirs
+from pathlib import Path
+
+from util.hot_kwds import kwd_list
 
 # def do_updata_kwd(kwd_text: str):
 #     """
@@ -16,7 +17,7 @@ from os import makedirs
 #         kwd_list.append(kwd)
 #     return len(kwd_list)
 
-header_md = r'''```txt
+header_md = r"""```txt
 正则表达式 Tip
 
 匹配到音频文件链接：\[(.+)\]\((.{10,})\)[\s]*
@@ -27,28 +28,29 @@ header_md = r'''```txt
 ```
 
 
-'''
+"""
 
 
 def create_md(file_md):
-    with open(file_md, 'w', encoding="utf-8") as f:
+    with open(file_md, "w", encoding="utf-8") as f:
         f.write(header_md)
 
 
 def write_md(text: str, time_start: float, file_audio: Path):
 
-
-    time_year = time.strftime('%Y', time.localtime(time_start))
-    time_month = time.strftime('%m', time.localtime(time_start))
-    time_day = time.strftime('%d', time.localtime(time_start))
-    time_hms = time.strftime('%H:%M:%S', time.localtime(time_start))
+    time_year = time.strftime("%Y", time.localtime(time_start))
+    time_month = time.strftime("%m", time.localtime(time_start))
+    time_day = time.strftime("%d", time.localtime(time_start))
+    time_hms = time.strftime("%H:%M:%S", time.localtime(time_start))
     folder_path = Path() / time_year / time_month
     makedirs(folder_path, exist_ok=True)
 
     # 列表内的元素是元组，元组内包含了：关键词、md路径
-    md_list = [(kwd, folder_path / f'{kwd + "-" if kwd else ""}{time_day}.md')
-               for kwd in kwd_list
-               if text.startswith(kwd)]
+    md_list = [
+        (kwd, folder_path / f'{kwd + "-" if kwd else ""}{time_day}.md')
+        for kwd in kwd_list
+        if text.startswith(kwd)
+    ]
 
     # 为 md 文件写入识别记录
     for kwd, file_md in md_list:
@@ -58,7 +60,11 @@ def write_md(text: str, time_start: float, file_audio: Path):
             create_md(file_md)
 
         # 写入 md
-        with open(file_md, 'a', encoding="utf-8") as f:
-            path_ = file_audio.relative_to(file_md.parent).as_posix().replace(" ", "%20")
-            text_ = text[len(kwd):].lstrip("，。,.")
-            f.write(f'[{time_hms}]({path_}) {text_}\n\n')
+        with open(file_md, "a", encoding="utf-8") as f:
+            path_ = (
+                file_audio.relative_to(file_md.parent)
+                .as_posix()
+                .replace(" ", "%20")
+            )
+            text_ = text[len(kwd) :].lstrip("，。,.")
+            f.write(f"[{time_hms}]({path_}) {text_}\n\n")

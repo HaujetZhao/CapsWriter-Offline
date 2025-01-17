@@ -1,17 +1,17 @@
-import keyboard
-from util.client_cosmic import Cosmic, console
-from config import ClientConfig as Config
-
-import time
 import asyncio
-from threading import Event
+import time
 from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+
+import keyboard
+
+from config import ClientConfig as Config
+from util.client_cosmic import Cosmic
 from util.client_send_audio import send_audio
 from util.my_status import Status
 
-
 task = asyncio.Future()
-status = Status('开始录音', spinner='point')
+status = Status("开始录音", spinner="point")
 pool = ThreadPoolExecutor()
 pressed = False
 released = True
@@ -24,9 +24,10 @@ def shortcut_correct(e: keyboard.KeyboardEvent):
     # 即便设置 right ctrl 触发，在按下 left ctrl 时也会触发
     # 不过，虽然两个按键的 keycode 一样，但事件 e.name 是不一样的
     # 在这里加一个判断，如果 e.name 不是我们期待的按键，就返回
-    key_expect = keyboard.normalize_name(Config.shortcut).replace('left ', '')
-    key_actual = e.name.replace('left ', '')
-    if key_expect != key_actual: return False
+    key_expect = keyboard.normalize_name(Config.shortcut).replace("left ", "")
+    key_actual = e.name.replace("left ", "")
+    if key_expect != key_actual:
+        return False
     return True
 
 
@@ -38,8 +39,8 @@ def launch_task():
 
     # 将开始标志放入队列
     asyncio.run_coroutine_threadsafe(
-        Cosmic.queue_in.put({'type': 'begin', 'time': t1, 'data': None}),
-        Cosmic.loop
+        Cosmic.queue_in.put({"type": "begin", "time": t1, "data": None}),
+        Cosmic.loop,
     )
 
     # 通知录音线程可以向队列放数据了
@@ -74,12 +75,9 @@ def finish_task():
     # 通知结束任务
     asyncio.run_coroutine_threadsafe(
         Cosmic.queue_in.put(
-            {'type': 'finish',
-             'time': time.time(),
-             'data': None
-             },
+            {"type": "finish", "time": time.time(), "data": None},
         ),
-        Cosmic.loop
+        Cosmic.loop,
     )
 
 
@@ -124,16 +122,15 @@ def manage_task(e: Event):
 def click_mode(e: keyboard.KeyboardEvent):
     global pressed, released, event
 
-    if e.event_type == 'down' and released:
+    if e.event_type == "down" and released:
         pressed, released = True, False
         event = Event()
         pool.submit(count_down, event)
         pool.submit(manage_task, event)
 
-    elif e.event_type == 'up' and pressed:
+    elif e.event_type == "up" and pressed:
         pressed, released = False, True
         event.set()
-
 
 
 # ======================长按模式==================================
@@ -143,10 +140,10 @@ def hold_mode(e: keyboard.KeyboardEvent):
     """像对讲机一样，按下录音，松开停止"""
     global task
 
-    if e.event_type == 'down' and not Cosmic.on:
+    if e.event_type == "down" and not Cosmic.on:
         # 记录开始时间
         launch_task()
-    elif e.event_type == 'up':
+    elif e.event_type == "up":
         # 记录持续时间，并标识录音线程停止向队列放数据
         duration = time.time() - Cosmic.on
 
@@ -160,9 +157,6 @@ def hold_mode(e: keyboard.KeyboardEvent):
             if Config.restore_key:
                 time.sleep(0.01)
                 keyboard.send(Config.shortcut)
-
-
-
 
 
 # ==================== 绑定 handler ===============================
@@ -190,7 +184,9 @@ def click_handler(e: keyboard.KeyboardEvent) -> None:
 
 def bond_shortcut():
     if Config.hold_mode:
-        keyboard.hook_key(Config.shortcut, hold_handler, suppress=Config.suppress)
+        keyboard.hook_key(
+            Config.shortcut, hold_handler, suppress=Config.suppress
+        )
     else:
         # 单击模式，必须得阻塞快捷键
         # 收到长按时，再模拟发送按键
