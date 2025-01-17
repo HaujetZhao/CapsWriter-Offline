@@ -8,9 +8,10 @@ from platform import system
 
 import jieba
 import sherpa_onnx
+from funasr_onnx import CT_Transformer
+
 from config import ModelPaths, ParaformerArgs
 from config import ServerConfig as Config
-from funasr_onnx import CT_Transformer
 from util.empty_working_set import empty_current_working_set
 from util.server_cosmic import console
 from util.server_recognize import recognize

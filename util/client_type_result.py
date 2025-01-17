@@ -15,8 +15,11 @@ async def type_result(text):
         # 保存剪切板
         try:
             temp = pyclip.paste().decode("utf-8")
-        except:
+        except UnicodeDecodeError:
             temp = ""
+        except Exception as e:
+            print("!!! UNEXPECTED ERROR !!! in client_type_result.py")
+            print(e)
 
         # 复制结果
         pyclip.copy(text)

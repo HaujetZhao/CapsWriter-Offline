@@ -59,7 +59,7 @@ async def transcribe_send(file: Path):
     offset = 0
     while True:
         chunk_end = offset + 16000 * 4 * 60
-        is_final = False if chunk_end < len(data) else True
+        is_final = chunk_end >= len(data)
         message = {
             "task_id": task_id,  # 任务 ID
             "seg_duration": Config.file_seg_duration,  # 分段长度
@@ -83,6 +83,8 @@ async def transcribe_recv(file: Path):
     # 获取连接
     websocket = Cosmic.websocket
 
+    message = None
+    print(f"{websocket=}")
     # 接收结果
     async for message in websocket:
         message = json.loads(message)
@@ -90,6 +92,10 @@ async def transcribe_recv(file: Path):
         if message["is_final"]:
             break
 
+    print(f"{message=}")
+    if message is None:
+        console.print("    !!! ERROR: 无法获取结果 !!!")
+        return
     # 解析结果
     text_merge = message["text"]
     text_split = re.sub("[，。？]", "\n", text_merge)

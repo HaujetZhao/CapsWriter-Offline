@@ -1,8 +1,3 @@
-from time import time
-
-from pypinyin import pinyin as get_pinyin
-
-
 '''
 Trending words are text with one word per line. First, update the hot words dictionary, and then replace the hot words in the sentence.
 Usage example:
@@ -18,6 +13,10 @@ update_trending_words_dict(trending_words_text)
 res = replace_trending_words('我有个同学叫李佳一')
 print(res)
 '''
+
+from time import time
+
+from pypinyin import pinyin as get_pinyin
 
 
 __all__ = [
@@ -128,7 +127,7 @@ def get_pinyin_index(sentence: str):
     """
     pinyin_with_index = [
         {"pinyin": x[0], "index": None}
-        for x in pinyin(sentence, STYLE, POLYPHONIC_CHARACTERS)
+        for x in get_pinyin(sentence, STYLE, POLYPHONIC_CHARACTERS)
     ]
     pinyin_with_index_ = iter(pinyin_with_index)
     pinyin = next(pinyin_with_index_)

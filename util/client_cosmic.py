@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Union
 
 import sounddevice as sd
-import websockets
+from websockets.legacy.client import WebSocketClientProtocol
 from rich.console import Console
 from rich.theme import Theme
 
@@ -22,7 +22,7 @@ class Cosmic:
     queue_in: Queue = field(default_factory=Queue)
     queue_out: Queue = field(default_factory=Queue)
     loop: Union[None, AbstractEventLoop] = None
-    websocket: websockets.WebSocketClientProtocol = None
+    websocket: WebSocketClientProtocol = None
     audio_files: dict = field(default_factory=dict)
     stream: Union[None, sd.InputStream] = None
     kwd_list: list[str] = field(default_factory=list)

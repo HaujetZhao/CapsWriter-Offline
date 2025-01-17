@@ -81,7 +81,7 @@ def absolutify_links(file_path: str | Path, links: list[str]):  # 验证链接�
         if (file_path.parent / link).exists():
             links.append(file_path.parent / link)
             continue
-        elif Path(link).exists():
+        if Path(link).exists():
             links.append(link)
             continue
         console.print(f"[red]文件 {file_path} 中的链接 {link} 不存在")
