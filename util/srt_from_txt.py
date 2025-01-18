@@ -13,13 +13,18 @@
     生成正确的 srt 字幕
 """
 
+from collections.abc import Callable
 import json
 import re
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
+from typing import TypedDict, cast
 
-import srt
+import srt  # pyright: ignore[reportMissingTypeStubs]
+from srt import (  # pyright: ignore[reportMissingTypeStubs]
+    compose,  # pyright: ignore[reportUnknownVariableType]
+)
 import typer
 from rich import print as rich_print
 
@@ -33,9 +38,19 @@ class Scout:
     text: str = ""
 
 
-def get_scout(line, words, cursor):
+class WordWithTime(TypedDict):
+    word: str
+    start: float
+    end: float
+
+
+# type srt.compose
+typed_compose = cast(Callable[[list[srt.Subtitle]], str], compose)
+
+
+def get_scout(line: str, words: list[WordWithTime], cursor: int) -> Scout:
     words_num = len(words)
-    scout_list = []
+    scout_list = list[Scout]()
     scout_num, _ = 5, 0
     while _ <= scout_num:
 
@@ -89,7 +104,7 @@ def get_scout(line, words, cursor):
 
     # 如果因越界导致无法探察，说明出现严重错误
     if not scout_list:
-        return False
+        raise ValueError("侦察出现错误")
 
     # 找到得分最好的侦察员
     best = scout_list[0]
@@ -101,17 +116,10 @@ def get_scout(line, words, cursor):
 
 
 def lines_match_words(
-    text_lines: list[str], words: list
+    text_lines: list[str], words: list[WordWithTime]
 ) -> list[srt.Subtitle]:
-    """
-    words[0] = {
-                'start': 0.0,
-                'end' : 5.0,
-                'word' : 'good'
-                }
-    """
     # 空的字幕列表
-    subtitle_list = []
+    subtitle_list = list[srt.Subtitle]()
 
     cursor = 0  # 索引，指向最新已确认的下一个
     words_num = len(words)  # 词数，结束条件
@@ -173,18 +181,20 @@ def lines_match_words(
     return subtitle_list
 
 
-def get_words(json_file: Path) -> list:
+def get_words(json_file: Path) -> list[WordWithTime]:
     # 读取分词 json 文件
     with open(json_file, "r", encoding="utf-8") as f:
         json_info = json.load(f)
 
     # 获取带有时间戳的分词列表
-    words = [
-        {
-            "word": token.replace("@", ""),
-            "start": timestamp,
-            "end": timestamp + 0.2,
-        }
+    words: list[WordWithTime] = [
+        WordWithTime(
+            {
+                "word": token.replace("@", ""),
+                "start": timestamp,
+                "end": timestamp + 0.2,
+            }
+        )
         for (timestamp, token) in zip(
             json_info["timestamps"], json_info["tokens"]
         )
@@ -214,11 +224,11 @@ def one_task(media_file: Path):
     # 获取带有时间戳的分词列表，获取分行稿件，匹配得到 srt
     words = get_words(json_file)
     text_lines = get_lines(txt_file)
-    subtitle_list = lines_match_words(text_lines, words)
+    subtitle_list: list[srt.Subtitle] = lines_match_words(text_lines, words)
 
     # 写入 srt
     with open(srt_file, "w", encoding="utf-8") as f:
-        f.write(srt.compose(subtitle_list))
+        f.write(typed_compose(subtitle_list))
 
 
 def main(files: list[Path]):
