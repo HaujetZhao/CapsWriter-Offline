@@ -22,7 +22,7 @@ console = Console(highlight=False, soft_wrap=False, theme=my_theme)
 
 # pylint: disable=too-many-instance-attributes
 @dataclass(frozen=False)
-class ClientCosmicType:
+class ClientAppStateType:
     """
     A global storage to be accessed across modules, named Cosmic
 
@@ -45,4 +45,4 @@ class ClientCosmicType:
     kwd_list: list[str] = field(default_factory=list)
 
 
-Cosmic = ClientCosmicType()
+ClientAppState = ClientAppStateType()

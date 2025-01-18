@@ -3,13 +3,13 @@ import time
 from pathlib import Path
 
 from config import ClientConfig as Config
-from util.client_cosmic import Cosmic, console
+from util.client_cosmic import ClientAppState, console
 
 
 def rename_audio(task_id, text, time_start) -> Path | None:
 
     # 获取旧文件名
-    file_path = Path(Cosmic.audio_files.pop(task_id))
+    file_path = Path(ClientAppState.audio_files.pop(task_id))
 
     # 确保旧文件存在
     if not file_path.exists():

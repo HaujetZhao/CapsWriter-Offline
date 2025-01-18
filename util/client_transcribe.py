@@ -11,7 +11,7 @@ from websockets.legacy.client import WebSocketClientProtocol
 from config import ClientConfig as Config
 from util import srt_from_txt
 from util.client_check_websocket import check_websocket
-from util.client_cosmic import Cosmic, console
+from util.client_cosmic import ClientAppState, console
 
 
 async def transcribe_check(file: Path):
@@ -28,7 +28,7 @@ async def transcribe_check(file: Path):
 async def transcribe_send(file: Path):
 
     # 获取连接
-    websocket = Cosmic.websocket
+    websocket = ClientAppState.websocket
     # websocket depends on check_websocket() in transcribe_check()
 
     # 生成任务 id
@@ -83,7 +83,7 @@ async def transcribe_send(file: Path):
 async def transcribe_recv(file: Path):
 
     # 获取连接
-    websocket: WebSocketClientProtocol = Cosmic.websocket
+    websocket: WebSocketClientProtocol = ClientAppState.websocket
 
     message = None
     # 接收结果

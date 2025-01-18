@@ -11,14 +11,17 @@ import colorama
 import typer
 
 from util.client_adjust_srt import adjust_srt
-from util.client_cosmic import Cosmic, console
+from util.client_cosmic import ClientAppState, console
 from util.client_hot_update import observe_hot, update_hot_all
 from util.client_recv_result import recv_result
 from util.client_shortcut_handler import bond_shortcut
 from util.client_show_tips import show_file_tips, show_mic_tips
 from util.client_stream import stream_close, stream_open
-from util.client_transcribe import (transcribe_check, transcribe_recv,
-                                    transcribe_send)
+from util.client_transcribe import (
+    transcribe_check,
+    transcribe_recv,
+    transcribe_send,
+)
 from util.empty_working_set import empty_current_working_set
 
 # 确保根目录位置正确，用相对路径加载模型
@@ -41,9 +44,9 @@ if system() == "Darwin" and not sys.argv[1:]:
 
 
 async def main_mic():
-    Cosmic.loop = asyncio.get_event_loop()
-    Cosmic.queue_in = asyncio.Queue()
-    Cosmic.queue_out = asyncio.Queue()
+    ClientAppState.loop = asyncio.get_event_loop()
+    ClientAppState.queue_in = asyncio.Queue()
+    ClientAppState.queue_out = asyncio.Queue()
 
     show_mic_tips()
 
@@ -54,7 +57,7 @@ async def main_mic():
     observe_hot()
 
     # 打开音频流
-    Cosmic.stream = stream_open()
+    ClientAppState.stream = stream_open()
 
     # Ctrl-C 关闭音频流，触发自动重启
     signal.signal(signal.SIGINT, stream_close)
@@ -81,8 +84,8 @@ async def main_file(files: list[Path]):
             await transcribe_check(file)
             await asyncio.gather(transcribe_send(file), transcribe_recv(file))
 
-    if Cosmic.websocket:
-        await Cosmic.websocket.close()
+    if ClientAppState.websocket:
+        await ClientAppState.websocket.close()
     input("\n按回车退出\n")
 
 

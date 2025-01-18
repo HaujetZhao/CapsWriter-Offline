@@ -1,17 +1,17 @@
 import websockets
 
 from config import ClientConfig as Config
-from util.client_cosmic import Cosmic
+from util.client_cosmic import ClientAppState
 
 # #TODO-REF: move to ClientSocket.
 
 
 async def check_websocket() -> bool:
-    if Cosmic.websocket and not Cosmic.websocket.closed:
+    if ClientAppState.websocket and not ClientAppState.websocket.closed:
         return True
     for _ in range(3):
         try:
-            Cosmic.websocket = await websockets.connect(
+            ClientAppState.websocket = await websockets.connect(
                 f"ws://{Config.addr}:{Config.port}", max_size=None
             )
             return True

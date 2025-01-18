@@ -6,28 +6,28 @@ import time
 import numpy as np
 import sounddevice as sd
 
-from util.client_cosmic import Cosmic, console
+from util.client_cosmic import ClientAppState, console
 
 
 def record_callback(
     indata: np.ndarray, _frames: int, _time_info, _status: sd.CallbackFlags
 ) -> None:
-    if not Cosmic.on:
+    if not ClientAppState.on:
         return
     asyncio.run_coroutine_threadsafe(
-        Cosmic.queue_in.put(
+        ClientAppState.queue_in.put(
             {
                 "type": "data",
                 "time": time.time(),
                 "data": indata.copy(),
             },
         ),
-        Cosmic.loop,
+        ClientAppState.loop,
     )
 
 
 def stream_close(_signum, _frame):
-    Cosmic.stream.close()
+    ClientAppState.stream.close()
 
 
 def stream_reopen():
@@ -36,7 +36,7 @@ def stream_reopen():
     print("重启音频流")
 
     # 关闭旧流
-    Cosmic.stream.close()
+    ClientAppState.stream.close()
 
     # 重载 PortAudio，更新设备列表
     sd._terminate()
@@ -46,7 +46,7 @@ def stream_reopen():
 
     # 打开新流
     time.sleep(0.1)
-    Cosmic.stream = stream_open()
+    ClientAppState.stream = stream_open()
 
 
 def stream_open():

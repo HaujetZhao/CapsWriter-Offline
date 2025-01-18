@@ -7,7 +7,7 @@ import numpy as np
 import websockets
 
 from config import ClientConfig as Config
-from util.client_cosmic import Cosmic, console
+from util.client_cosmic import ClientAppState, console
 from util.client_create_file import create_file
 from util.client_finish_file import finish_file
 from util.client_write_file import write_file
@@ -15,13 +15,13 @@ from util.client_write_file import write_file
 
 async def send_message(message):
     # 发送数据
-    if Cosmic.websocket is None or Cosmic.websocket.closed:
+    if ClientAppState.websocket is None or ClientAppState.websocket.closed:
         if message["is_final"]:
-            Cosmic.audio_files.pop(message["task_id"])
+            ClientAppState.audio_files.pop(message["task_id"])
             console.print("    服务端未连接，无法发送\n")
     else:
         try:
-            await Cosmic.websocket.send(json.dumps(message))
+            await ClientAppState.websocket.send(json.dumps(message))
         except websockets.ConnectionClosedError:
             if message["is_final"]:
                 console.print("[red]连接中断了")
@@ -47,8 +47,8 @@ async def send_audio():
         file_path, file = "", None
 
         # 开始取数据
-        while task := await Cosmic.queue_in.get():
-            Cosmic.queue_in.task_done()
+        while task := await ClientAppState.queue_in.get():
+            ClientAppState.queue_in.task_done()
             if task["type"] == "begin":
                 time_start = task["time"]
             elif task["type"] == "data":
@@ -62,7 +62,7 @@ async def send_audio():
                     file_path, file = create_file(
                         task["data"].shape[1], time_start
                     )
-                    Cosmic.audio_files[task_id] = file_path
+                    ClientAppState.audio_files[task_id] = file_path
 
                 # 获取音频数据
                 if cache:

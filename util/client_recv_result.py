@@ -4,7 +4,7 @@ import websockets
 
 from config import ClientConfig as Config
 from util.client_check_websocket import check_websocket
-from util.client_cosmic import Cosmic, console
+from util.client_cosmic import ClientAppState, console
 from util.client_hot_sub import hot_sub
 from util.client_rename_audio import rename_audio
 from util.client_strip_punc import strip_punc
@@ -19,7 +19,7 @@ async def recv_result():
     try:
         while True:
             # 接收消息
-            message = await Cosmic.websocket.recv()
+            message = await ClientAppState.websocket.recv()
             message = json.loads(message)
             text = message["text"]
             delay = message["time_complete"] - message["time_submit"]

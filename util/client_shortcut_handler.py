@@ -6,7 +6,7 @@ from threading import Event
 import keyboard
 
 from config import ClientConfig as Config
-from util.client_cosmic import Cosmic
+from util.client_cosmic import ClientAppState
 from util.client_send_audio import send_audio
 from util.my_status import Status
 
@@ -39,12 +39,14 @@ def launch_task():
 
     # 将开始标志放入队列
     asyncio.run_coroutine_threadsafe(
-        Cosmic.queue_in.put({"type": "begin", "time": t1, "data": None}),
-        Cosmic.loop,
+        ClientAppState.queue_in.put(
+            {"type": "begin", "time": t1, "data": None}
+        ),
+        ClientAppState.loop,
     )
 
     # 通知录音线程可以向队列放数据了
-    Cosmic.on = t1
+    ClientAppState.on = t1
 
     # 打印动画：正在录音
     status.start()
@@ -52,13 +54,13 @@ def launch_task():
     # 启动识别任务
     task = asyncio.run_coroutine_threadsafe(
         send_audio(),
-        Cosmic.loop,
+        ClientAppState.loop,
     )
 
 
 def cancel_task():
     # 通知停止录音，关掉滚动条
-    Cosmic.on = False
+    ClientAppState.on = False
     status.stop()
 
     # 取消协程任务
@@ -69,15 +71,15 @@ def finish_task():
     global task  # pylint: disable=global-variable-not-assigned
 
     # 通知停止录音，关掉滚动条
-    Cosmic.on = False
+    ClientAppState.on = False
     status.stop()
 
     # 通知结束任务
     asyncio.run_coroutine_threadsafe(
-        Cosmic.queue_in.put(
+        ClientAppState.queue_in.put(
             {"type": "finish", "time": time.time(), "data": None},
         ),
-        Cosmic.loop,
+        ClientAppState.loop,
     )
 
 
@@ -97,7 +99,7 @@ def manage_task(e: Event):
     """
 
     # 记录是否有任务
-    on = Cosmic.on
+    on = ClientAppState.on
 
     # 先运行任务
     if not on:
@@ -106,7 +108,7 @@ def manage_task(e: Event):
     # 及时松开按键了，是单击
     if e.wait(timeout=Config.threshold * 0.8):
         # 如果有任务在运行，就结束任务
-        if Cosmic.on and on:
+        if ClientAppState.on and on:
             finish_task()
 
     # 没有及时松开按键，是长按
@@ -140,12 +142,12 @@ def hold_mode(e: keyboard.KeyboardEvent):
     """像对讲机一样，按下录音，松开停止"""
     global task  # pylint: disable=global-variable-not-assigned
 
-    if e.event_type == "down" and not Cosmic.on:
+    if e.event_type == "down" and not ClientAppState.on:
         # 记录开始时间
         launch_task()
     elif e.event_type == "up":
         # 记录持续时间，并标识录音线程停止向队列放数据
-        duration = time.time() - Cosmic.on
+        duration = time.time() - ClientAppState.on
 
         # 取消或停止任务
         if duration < Config.threshold:
