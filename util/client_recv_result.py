@@ -1,32 +1,32 @@
-import asyncio
 import json
 
-import keyboard
 import websockets
+
 from config import ClientConfig as Config
-from util.client_cosmic import Cosmic, console
 from util.client_check_websocket import check_websocket
+from util.client_cosmic import ClientAppState, console
 from util.client_hot_sub import hot_sub
 from util.client_rename_audio import rename_audio
 from util.client_strip_punc import strip_punc
-from util.client_write_md import write_md
 from util.client_type_result import type_result
+from util.client_write_md import write_md
 
 
 async def recv_result():
     if not await check_websocket():
         return
-    console.print('[green]连接成功\n')
+    console.print("[green]连接成功\n")
+    assert ClientAppState.websocket is not None  # asserted by check_websocket
     try:
         while True:
             # 接收消息
-            message = await Cosmic.websocket.recv()
+            message = await ClientAppState.websocket.recv()
             message = json.loads(message)
-            text = message['text']
-            delay = message['time_complete'] - message['time_submit']
+            text = message["text"]
+            delay = message["time_complete"] - message["time_submit"]
 
             # 如果非最终结果，继续等待
-            if not message['is_final']:
+            if not message["is_final"]:
                 continue
 
             # 消除末尾标点
@@ -40,21 +40,28 @@ async def recv_result():
 
             if Config.save_audio:
                 # 重命名录音文件
-                file_audio = rename_audio(message['task_id'], text, message['time_start'])
+                file_audio = rename_audio(
+                    message["task_id"], text, message["time_start"]
+                )
 
                 # 记录写入 md 文件
-                write_md(text, message['time_start'], file_audio)
+                write_md(text, message["time_start"], file_audio)
 
             # 控制台输出
-            console.print(f'    转录时延：{delay:.2f}s')
-            console.print(f'    识别结果：[green]{text}')
+            console.print(f"    转录时延：{delay:.2f}s")
+            console.print(f"    识别结果：[green]{text}")
             console.line()
 
+    # #TODO: consider if these exceptions are expected? mb use green font.
     except websockets.ConnectionClosedError:
-        console.print('[red]连接断开\n')
+        console.print("[red]连接断开\n")
     except websockets.ConnectionClosedOK:
-        console.print('[red]连接断开\n')
-    except Exception as e:
+        console.print("[red]连接断开\n")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        console.print("[red] !!! 未知错误\n")
+        print(type(e))
         print(e)
-    finally:
-        return
+    # finally:
+    #     return
+    # this return might wants to swallow exception. It's not a good pattern
+    # W0150: return statement in finally block may swallow exception (lost-exception)

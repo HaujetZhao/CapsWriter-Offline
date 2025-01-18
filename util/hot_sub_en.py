@@ -1,79 +1,78 @@
-import re
-
-
-
-'''
-热词是每行一个的文本，先更新热词词典，然后再替换句子中的热词。
-使用方法示例：
-
-
-热词文本 = """
-    ChatGPT
-    Microsoft
+"""
+Trending words are one per line text, first update the trending words
+dictionary, and then replace the trending words in the sentence.
+Usage example: See the __main__ part
 """
 
-更新热词词典(热词文本)
+import re
 
-res = 热词替换('the chat gpt is now fully supported by microsoft')
+__all__ = ["update_trending_words_dict", "replace_trending_words"]
 
-print(res)
-
-'''
+trending_words_dict: dict[str, str] = {}
 
 
-
-__all__ = ['更新热词词典', '热词替换']
-
-热词词典 = {}       
-
-
-def 更新热词词典(热词文本: str):
-    '''
-    把热词文本中的每一行去除多余空格后添加到热词词典，
-    key 是热词，
-    value 是热词的小写
-    '''
-    global 热词词典; 热词词典.clear()
-    for 热词 in 热词文本.splitlines():
-        热词 = 热词.strip()
-        if not 热词 or 热词.startswith('#'): continue
-        热词词典[热词] = re.sub('[^\w]', '', 热词.lower())
-    return len(热词词典)
+def update_trending_words_dict(trending_words_text: str) -> int:
+    """
+    Remove extra spaces from each line in the trending words text and add it to
+    the trending words dictionary, key is the trending word, value is the
+    lowercase of the trending word
+    """
+    global trending_words_dict  # pylint: disable=global-variable-not-assigned
+    trending_words_dict.clear()
+    for word in trending_words_text.splitlines():
+        word = word.strip()
+        if not word or word.startswith("#"):
+            continue
+        trending_words_dict[word] = re.sub(r"[^\w]", "", word.lower())
+    return len(trending_words_dict)
 
 
-def 匹配热词(句子:str):
-    '''
-    将全局「热词词典」中的热词按照小写依次与句子匹配，将所有匹配到的热词放到列表
-    '''
-    global 热词词典
+def match_trending_words(sentence: str) -> list[str]:
+    """
+    Match the trending words in the global "trending_words_dict" with the
+    sentence in lowercase, and put all matched trending words into a list
+    """
+    global trending_words_dict  # pylint: disable=global-variable-not-assigned
 
-    所有匹配 = []
-    小写无空格句子 = 句子.lower().replace(' ', '')
-    for 词 in 热词词典:
-        if 热词词典[词] in 小写无空格句子:
-            所有匹配.append(词)
-    
-    return 所有匹配
+    all_matches: list[str] = []
+    lowercase_no_space_sentence = sentence.lower().replace(" ", "")
+    for (
+        word,
+        word_value,
+    ) in trending_words_dict.items():  # #TODO: ren `word_value`
+        if word_value in lowercase_no_space_sentence:
+            all_matches.append(word)
 
-def 热词替换(句子):
-    '''
-    从热词词典中查找匹配的热词，替换句子
+    return all_matches
 
-    句子：       被查找和替换的句子
-    '''
-    所有匹配 = 匹配热词(句子)
-    for 匹配项 in 所有匹配:
-        正则模式 = re.sub('[^\w]', '', 匹配项)
-        正则模式1 = r'(?<=[^a-zA-z])' + re.sub('(.)', r'\1 *?', 正则模式) + r'(?=[^a-zA-z]|\b)'
-        正则模式2 = r'(?<=\b)' + re.sub('(.)', r'\1 *?', 正则模式) + r'(?=[^a-zA-z]|\b)'
-        句子 = re.sub(正则模式1, 匹配项, 句子, flags=re.I)
-        句子 = re.sub(正则模式2, 匹配项, 句子, flags=re.I)
-    return 句子
 
-if __name__ == '__main__':
-    print(f'\x9b42m-------------开始---------------\x9b0m')
+def replace_trending_words(sentence: str) -> str:
+    """
+    Find and replace trending words from the trending words dictionary in the sentence
 
-    热词文本 = '''
+    sentence:       The sentence to be searched and replaced
+    """
+    all_matches = match_trending_words(sentence)
+    for match_item in all_matches:
+        regex_pattern = re.sub(r"[^\w]", "", match_item)
+        regex_pattern1 = (
+            r"(?<=[^a-zA-z])"
+            + re.sub("(.)", r"\1 *?", regex_pattern)
+            + r"(?=[^a-zA-z]|\b)"
+        )
+        regex_pattern2 = (
+            r"(?<=\b)"
+            + re.sub("(.)", r"\1 *?", regex_pattern)
+            + r"(?=[^a-zA-z]|\b)"
+        )
+        sentence = re.sub(regex_pattern1, match_item, sentence, flags=re.I)
+        sentence = re.sub(regex_pattern2, match_item, sentence, flags=re.I)
+    return sentence
+
+
+if __name__ == "__main__":
+    print("\x9b42m-------------开始---------------\x9b0m")
+    TRENDING_WORDS_TEXT = """
         ChatGPT
         Microsoft
         CD-ROM
@@ -83,12 +82,13 @@ if __name__ == '__main__':
         CapsWriter
         GB
         IP
-    '''
+    """
+    update_trending_words_dict(TRENDING_WORDS_TEXT)
 
-    更新热词词典(热词文本)
+    res = replace_trending_words("7 zip测试")
+    print(f"{res}")
 
-    res = 热词替换('7 zip测试')
-
-
-    print(f'{res}')
-
+    res = replace_trending_words(
+        "the chat gpt is now fully supported by microsoft"
+    )
+    print(f"{res}")

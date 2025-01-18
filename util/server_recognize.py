@@ -1,53 +1,59 @@
 import re
 import time
+from typing import Any
 
-import numpy as np 
+import numpy as np
 
-from util.server_cosmic import console
 from config import ServerConfig as Config
-from util.server_classes import Task, Result
 from util.chinese_itn import chinese_to_num
 from util.format_tools import adjust_space
-from rich import inspect
+from util.server_classes import Result, Task
+
+results: dict[str, Result] = {}
 
 
-results = {}
-
-
-def format_text(text, punc_model):
+def format_text(text: str, punc_model: Any) -> str:
     if Config.format_spell:
-        text = adjust_space(text)       # 调空格
+        text = adjust_space(text)  # 调空格
     if Config.format_punc and punc_model and text:
         text = punc_model(text)[0]  # 加标点
     if Config.format_num:
-        text = chinese_to_num(text)     # 转数字
+        text = chinese_to_num(text)  # 转数字
     if Config.format_spell:
-        text = adjust_space(text)       # 调空格
+        text = adjust_space(text)  # 调空格
     return text
 
 
-def recognize(recognizer, punc_model, task: Task):
+def recognize(recognizer: Any, punc_model: Any, task: Task) -> Result:
 
-    # inspect({key:value for key, value in task.__dict__.items() if not key.startswith('_') and key != 'data'})
-    # todo 清空遗存的任务结果
+    # inspect(
+    #     {
+    #         key: value
+    #         for key, value in task.__dict__.items()
+    #         if not key.startswith("_") and key != "data"
+    #     }
+    # )
+    # #TODO-OLD:todo 清空遗存的任务结果
 
     # 确保结果容器存在
     if task.task_id not in results:
-        results[task.task_id] = Result(task.task_id, task.socket_id, task.source)
+        results[task.task_id] = Result(
+            task.task_id, task.socket_id, task.source
+        )
 
     # 取出结果容器
     result = results[task.task_id]
 
     # 片段预处理
     samples = np.frombuffer(task.data, dtype=np.float32)
-    duration = len(samples) / task.samplerate
+    duration = len(samples) / task.sample_rate
     result.duration += duration - task.overlap
     if task.is_final:
         result.duration += task.overlap
 
     # 识别片段
     stream = recognizer.create_stream()
-    stream.accept_waveform(task.samplerate, samples)
+    stream.accept_waveform(task.sample_rate, samples)
     recognizer.decode_stream(stream)
 
     # 记录识别时间
@@ -58,7 +64,7 @@ def recognize(recognizer, punc_model, task: Task):
     # 先粗去重，依据：字级时间戳
     m = n = len(stream.result.timestamps)
     for i, timestamp in enumerate(stream.result.timestamps, start=0):
-        if timestamp > task.overlap / 2: 
+        if timestamp > task.overlap / 2:
             m = i
             break
     for i, timestamp in enumerate(stream.result.timestamps, start=1):
@@ -77,12 +83,14 @@ def recognize(recognizer, punc_model, task: Task):
         m += 1
 
     # 最后与先前的结果合并
-    result.timestamps += [t + task.offset for t in stream.result.timestamps[m:n]]
-    result.tokens += [token for token in stream.result.tokens[m:n]]
+    result.timestamps += [
+        t + task.offset for t in stream.result.timestamps[m:n]
+    ]
+    result.tokens += stream.result.tokens[m:n]
 
     # token 合并为文本
-    text = ' '.join(result.tokens).replace('@@ ', '')
-    text = re.sub('([^a-zA-Z0-9]) (?![a-zA-Z0-9])', r'\1', text)
+    text = " ".join(result.tokens).replace("@@ ", "")
+    text = re.sub("([^a-zA-Z0-9]) (?![a-zA-Z0-9])", r"\1", text)
 
     result.text = text
 

@@ -6,7 +6,9 @@
 """
 
 import sys
+
 import typer
+
 from core_client import init_file, init_mic
 
 if __name__ == "__main__":
