@@ -1,6 +1,7 @@
+# #TODO: Queue of `Task` (task is not defined)
+
 from asyncio import AbstractEventLoop, Queue
 from dataclasses import dataclass, field
-from typing import Union
 
 import sounddevice as sd
 from rich.console import Console
@@ -13,7 +14,7 @@ console = Console(highlight=False, soft_wrap=False, theme=my_theme)
 
 # pylint: disable=too-many-instance-attributes
 @dataclass(frozen=False)
-class Cosmic:
+class ClientCosmicType:
     """
     A global storage to be accessed across modules, named Cosmic
 
@@ -24,7 +25,7 @@ class Cosmic:
     on: bool = False
     queue_in: Queue = field(default_factory=Queue)
     queue_out: Queue = field(default_factory=Queue)
-    loop: Union[None, AbstractEventLoop] = None
+    loop: None | AbstractEventLoop = None
     websocket: WebSocketClientProtocol = None
     # next line can avoid async iter problem but it breaks the functionality.
     # websocket: WebSocketClientProtocol = field(
@@ -32,5 +33,8 @@ class Cosmic:
     # )
     # #TODO: fix client cosmic initiation.
     audio_files: dict = field(default_factory=dict)
-    stream: Union[None, sd.InputStream] = None
+    stream: None | sd.InputStream = None
     kwd_list: list[str] = field(default_factory=list)
+
+
+Cosmic = ClientCosmicType()

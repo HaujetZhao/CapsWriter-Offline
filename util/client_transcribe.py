@@ -29,6 +29,7 @@ async def transcribe_send(file: Path):
 
     # 获取连接
     websocket = Cosmic.websocket
+    # websocket depends on check_websocket() in transcribe_check()
 
     # 生成任务 id
     task_id = str(uuid.uuid1())

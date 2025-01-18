@@ -2,7 +2,7 @@ import wave
 from subprocess import Popen
 
 
-def finish_file(file: Popen | wave.Wave_write):
+def finish_file(file: Popen[bytes] | wave.Wave_write):
     if isinstance(file, Popen):
         file.stdin.close()  # 停止输入，ffmpeg 会自动关闭
 

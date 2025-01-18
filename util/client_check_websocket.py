@@ -3,37 +3,30 @@ import websockets
 from config import ClientConfig as Config
 from util.client_cosmic import Cosmic
 
-
-# #TODO: look deeper into this
-class Handler:
-    def __enter__(self):
-        """
-        No resource is allocated here, so nothing to return.
-        """
-        pass
-
-    def __exit__(self, exc_type, e, exc_tb):
-        if e is None or isinstance(
-            e,
-            (
-                ConnectionRefusedError,
-                Exception,
-                TimeoutError,
-                websockets.exceptions.ConnectionClosedError,
-            ),
-        ):
-            return True
-        print(e)
-        return False
+# #TODO-REF: move to ClientSocket.
 
 
 async def check_websocket() -> bool:
     if Cosmic.websocket and not Cosmic.websocket.closed:
         return True
     for _ in range(3):
-        with Handler():
+        try:
             Cosmic.websocket = await websockets.connect(
                 f"ws://{Config.addr}:{Config.port}", max_size=None
             )
             return True
+        except (
+            ConnectionRefusedError,
+            TimeoutError,
+            websockets.exceptions.ConnectionClosedError,
+        ) as e:
+            print("Can't connect to server")
+            print(type(e))
+            print(e)
+            continue
+        except Exception as e:
+            print("!!!Unexpected error!!! in client_check_websocket.py")
+            print(type(e))
+            print(e)
+            continue
     return False

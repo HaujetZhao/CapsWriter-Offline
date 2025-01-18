@@ -1,16 +1,17 @@
 # coding: utf-8
 """
-用于把语音识别出的中文数字转为阿拉伯数字形式，
-使用正则表达式进行匹配和替换，
-可能不是那么精准，但足够应付大部分情景了。
+This module is used to convert Chinese numbers recognized by speech recognition
+into Arabic numerals, using regular expressions for matching and replacement.
+It may not be so accurate, but it is enough to deal with most situations.
 
-用法示例：
+The module provides a function `chinese_to_num`, which takes a string of 
+Chinese numbers as input and returns a string of Arabic numerals.
 
+Example:
 from chinese_itn import chinese_to_num
 
 res = chinese_to_num('幺九二点幺六八点幺点幺')
 print(res)  # 192.168.1.1
-
 """
 
 __all__ = ["chinese_to_num"]
@@ -22,7 +23,7 @@ from string import ascii_letters
 COMMON_UNITS = r"个只分万亿秒"
 
 # 以空格分隔开的常用语，如成语、日常短语，用于避免误转
-IDIOMS = """
+RAW_IDIOMS = """
 正经八百  五零二落 五零四散
 五十步笑百步 乌七八糟 污七八糟 四百四病 思绪万千
 十有八九 十之八九 三十而立 三十六策 三十六计 三十六行
@@ -32,7 +33,7 @@ IDIOMS = """
 百分之百 年三十 烂七八糟 一点一滴 路易十六 九三学社 五四运动 入木三分 三十六计
 """
 
-IDIOMS = [x.strip() for x in IDIOMS.split()]
+IDIOMS = [x.strip() for x in RAW_IDIOMS.split()]
 
 # 总模式，筛选出可能需要替换的内容
 # 测试链接  https://regex101.com/r/tFqg9S/3
@@ -138,7 +139,7 @@ value_mapper = {
 }
 
 
-def strip_unit(original):
+def strip_unit(original: str) -> tuple[str, str]:
     """把数字后面跟着的单位剥离开"""
     unit = ""
     stripped = original.strip(COMMON_UNITS + ascii_letters).strip()
@@ -147,19 +148,19 @@ def strip_unit(original):
     return stripped, unit
 
 
-def convert_pure_num(original, strict=False):
+def convert_pure_num(original: str, strict: bool = False) -> str:
     """把中文数字转为对应的阿拉伯数字"""
     stripped, unit = strip_unit(original)
     if stripped in ["一"] and not strict:
         return original
-    converted = []
+    converted = list[str]()
     for c in stripped:
         converted.append(num_mapper[c])
     final = "".join(converted) + unit
     return final
 
 
-def convert_value_num(original):
+def convert_value_num(original: str) -> str:
     """把中文数值转为阿拉伯数字"""
     stripped, unit = strip_unit(original)  # 剥除单位
     if "点" not in stripped:
@@ -199,24 +200,24 @@ def convert_value_num(original):
     return final
 
 
-def convert_fraction_value(original):
+def convert_fraction_value(original: str) -> str:
     denominator, numerator = original.split("分之")
     final = convert_value_num(numerator) + "/" + convert_value_num(denominator)
     return final
 
 
-def convert_percent_value(original):
+def convert_percent_value(original: str) -> str:
     final = convert_value_num(original[3:]) + "%"
     return final
 
 
-def convert_ratio_value(original):
+def convert_ratio_value(original: str) -> str:
     num1, num2 = original.split("比")
     final = convert_value_num(num1) + ":" + convert_value_num(num2)
     return final
 
 
-def convert_time_value(original):
+def convert_time_value(original: str) -> str:
     res = [x for x in re.split("[点分秒]", original) if x]
     final = ""
     final += convert_value_num(res[0])
@@ -228,7 +229,7 @@ def convert_time_value(original):
     return final
 
 
-def convert_date_value(original):
+def convert_date_value(original: str) -> str:
     final = ""
     if "年" in original:
         year, original = original.split("年")
@@ -245,12 +246,12 @@ def convert_date_value(original):
     return final
 
 
-def replace(original):
-    string = original.string
-    l_pos, r_pos = original.regs[2]
+def replace(matched: re.Match[str]) -> str:
+    string = matched.string
+    l_pos, r_pos = matched.regs[2]
     l_pos = max(l_pos - 2, 0)
-    head = original.group(1)
-    original = original.group(2)
+    head = matched.group(1)
+    original = matched.group(2)
     try:
         if IDIOMS and any(
             string.find(idiom) in range(l_pos, r_pos) for idiom in IDIOMS
@@ -272,7 +273,6 @@ def replace(original):
             final = convert_date_value(original)
         else:
             final = original
-
         if head:
             final = head + final
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -284,7 +284,7 @@ def replace(original):
     return final
 
 
-def chinese_to_num(original):
+def chinese_to_num(original: str) -> str:
     return pattern.sub(replace, original)
 
 
