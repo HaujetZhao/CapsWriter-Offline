@@ -10,10 +10,10 @@ import re
 
 __all__ = ["update_trending_words_dict", "replace_trending_words"]
 
-pattern_dict = {}
+pattern_dict = dict[str, str]()
 
 
-def update_trending_words_dict(trending_words_text: str):
+def update_trending_words_dict(trending_words_text: str) -> int:
     """
     把热词规则文本中的每一行用 = 分开，去除多余空格后添加到热词词典，
     key     是被替换的词，
@@ -32,13 +32,13 @@ def update_trending_words_dict(trending_words_text: str):
     return len(pattern_dict)
 
 
-def match_trending_words(sentence: str):
+def match_trending_words(sentence: str) -> list[str]:
     """
     将全局「热词词典」中的热词按照 key 依次与句子匹配，将所有匹配到的热词放到列表
     """
     global pattern_dict  # pylint: disable=global-variable-not-assigned
 
-    all_matches = []
+    all_matches: list[str] = []
     for pattern in pattern_dict:
         if re.findall(pattern, sentence):
             all_matches.append(pattern)
@@ -46,7 +46,7 @@ def match_trending_words(sentence: str):
     return all_matches
 
 
-def replace_trending_words(sentence: str):
+def replace_trending_words(sentence: str) -> str:
     """
     从热词词典中查找匹配的热词，替换句子
 
