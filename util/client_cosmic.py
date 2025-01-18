@@ -58,7 +58,7 @@ class ClientAppStateType:
         done in util/client_check_websocket.py
     """
 
-    on: bool = False
+    on: float | bool = False
     queue_in: Queue[ClientTask] = field(default_factory=Queue)
     # Seems like queue_out is never used in the code.
     # queue_out: Queue = field(default_factory=Queue)

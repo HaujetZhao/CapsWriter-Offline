@@ -6,15 +6,15 @@ from threading import Event
 import keyboard
 
 from config import ClientConfig as Config
-from util.client_cosmic import ClientAppState, ClientTask, NonDataClientTask
+from util.client_cosmic import ClientAppState, NonDataClientTask
 from util.client_send_audio import send_audio
 from util.my_status import Status
 
-task = asyncio.Future()
+task = asyncio.Future[None]()
 status = Status("开始录音", spinner="point")
 pool = ThreadPoolExecutor()
-PRESSED = False
-RELEASED = True
+pressed = False
+released = True
 event = Event()
 
 
@@ -24,8 +24,12 @@ def shortcut_correct(e: keyboard.KeyboardEvent):
     # 即便设置 right ctrl 触发，在按下 left ctrl 时也会触发
     # 不过，虽然两个按键的 keycode 一样，但事件 e.name 是不一样的
     # 在这里加一个判断，如果 e.name 不是我们期待的按键，就返回
-    key_expect = keyboard.normalize_name(Config.shortcut).replace("left ", "")
-    key_actual = e.name.replace("left ", "")
+    normalize_key_name = str(keyboard.normalize_name(Config.shortcut))
+    key_expect = normalize_key_name.replace("left ", "")
+
+    event_key = e.name
+    assert event_key is not None, "unknown keyboard event"
+    key_actual = event_key.replace("left ", "")
     if key_expect != key_actual:
         return False
     return True
@@ -77,7 +81,7 @@ def finish_task():
     # 通知结束任务
     asyncio.run_coroutine_threadsafe(
         ClientAppState.queue_in.put(
-            ClientTask(
+            NonDataClientTask(
                 {"type": "finish", "time": time.time(), "data": None},
             )
         ),
@@ -124,16 +128,16 @@ def manage_task(e: Event):
 
 
 def click_mode(e: keyboard.KeyboardEvent):
-    global PRESSED, RELEASED, event
+    global pressed, released, event
 
-    if e.event_type == "down" and RELEASED:
-        PRESSED, RELEASED = True, False
+    if e.event_type == "down" and released:
+        pressed, released = True, False
         event = Event()
         pool.submit(count_down, event)
         pool.submit(manage_task, event)
 
-    elif e.event_type == "up" and PRESSED:
-        PRESSED, RELEASED = False, True
+    elif e.event_type == "up" and pressed:
+        pressed, released = False, True
         event.set()
 
 

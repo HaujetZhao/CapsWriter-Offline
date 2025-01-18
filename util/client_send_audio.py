@@ -34,7 +34,7 @@ async def send_message(message: ClientMessage):
             print(e)
 
 
-async def send_audio():
+async def send_audio() -> None:
     try:  # #TODO-REF: move this try-except block to where send_audio is called
         # 生成唯一任务 ID
         task_id = str(uuid.uuid1())
