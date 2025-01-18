@@ -25,9 +25,12 @@ class Cosmic:
     queue_in: Queue = field(default_factory=Queue)
     queue_out: Queue = field(default_factory=Queue)
     loop: Union[None, AbstractEventLoop] = None
-    websocket: WebSocketClientProtocol = field(
-        default_factory=WebSocketClientProtocol
-    )
+    websocket: WebSocketClientProtocol = None
+    # next line can avoid async iter problem but it breaks the functionality.
+    # websocket: WebSocketClientProtocol = field(
+    #     default_factory=WebSocketClientProtocol
+    # )
+    # #TODO: fix client cosmic initiation.
     audio_files: dict = field(default_factory=dict)
     stream: Union[None, sd.InputStream] = None
     kwd_list: list[str] = field(default_factory=list)
