@@ -31,7 +31,7 @@ HEADER_MD = r"""```txt
 """
 
 
-def create_md(file_md):
+def create_md(file_md: Path) -> None:
     with open(file_md, "w", encoding="utf-8") as f:
         f.write(HEADER_MD)
 
@@ -45,8 +45,7 @@ def write_md(text: str, time_start: float, file_audio: Path):
     folder_path = Path() / time_year / time_month
     makedirs(folder_path, exist_ok=True)
 
-    # 列表内的元素是元组，元组内包含了：关键词、md路径
-    md_list = [
+    md_list: list[tuple[str, Path]] = [
         (kwd, folder_path / f'{kwd + "-" if kwd else ""}{time_day}.md')
         for kwd in kwd_list
         if text.startswith(kwd)

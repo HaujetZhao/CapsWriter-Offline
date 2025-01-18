@@ -1,6 +1,6 @@
 from config import ClientConfig as Config
 
-kwd_list = []
+kwd_list = list[str]()
 
 
 def do_updata_kwd(kwd_text: str):

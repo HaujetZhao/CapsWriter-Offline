@@ -8,10 +8,10 @@ import re
 
 __all__ = ["update_trending_words_dict", "replace_trending_words"]
 
-trending_words_dict = {}
+trending_words_dict: dict[str, str] = {}
 
 
-def update_trending_words_dict(trending_words_text: str):
+def update_trending_words_dict(trending_words_text: str) -> int:
     """
     Remove extra spaces from each line in the trending words text and add it to
     the trending words dictionary, key is the trending word, value is the
@@ -27,14 +27,14 @@ def update_trending_words_dict(trending_words_text: str):
     return len(trending_words_dict)
 
 
-def match_trending_words(sentence: str):
+def match_trending_words(sentence: str) -> list[str]:
     """
     Match the trending words in the global "trending_words_dict" with the
     sentence in lowercase, and put all matched trending words into a list
     """
     global trending_words_dict  # pylint: disable=global-variable-not-assigned
 
-    all_matches = []
+    all_matches: list[str] = []
     lowercase_no_space_sentence = sentence.lower().replace(" ", "")
     for (
         word,
@@ -46,7 +46,7 @@ def match_trending_words(sentence: str):
     return all_matches
 
 
-def replace_trending_words(sentence):
+def replace_trending_words(sentence: str) -> str:
     """
     Find and replace trending words from the trending words dictionary in the sentence
 
