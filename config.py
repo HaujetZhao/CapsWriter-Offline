@@ -6,7 +6,7 @@ from pathlib import Path
 @dataclass(frozen=True)
 class ServerConfig:
     addr = "0.0.0.0"
-    port = "6016"
+    port = 6016
     format_num = True  # 输出时是否将中文数字转为阿拉伯数字
     format_punc = True  # 输出时是否启用标点符号引擎
     format_spell = True  # 输出时是否调整中英之间的空格
@@ -16,7 +16,7 @@ class ServerConfig:
 @dataclass(frozen=True)
 class ClientConfig:
     addr = "127.0.0.1"  # Server 地址
-    port = "6016"  # Server 端口
+    port = 6016  # Server 端口
 
     shortcut = "caps lock"  # 控制录音的快捷键，默认是 CapsLock
     hold_mode = True  # 长按模式，按下录音，松开停止，像对讲机一样用。

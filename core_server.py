@@ -4,7 +4,8 @@ import sys
 from multiprocessing import Manager, Process
 from platform import system
 
-import websockets
+from websockets.legacy.server import serve
+from websockets.typing import Subprotocol
 
 from config import ServerConfig as Config
 from util.empty_working_set import empty_current_working_set
@@ -56,11 +57,11 @@ async def main():
         empty_current_working_set()
 
     # 负责接收客户端数据的 coroutine
-    recv = websockets.serve(
+    recv = serve(
         ws_recv,
         Config.addr,
         Config.port,
-        subprotocols=["binary"],
+        subprotocols=[Subprotocol("binary")],
         max_size=None,
     )
 
