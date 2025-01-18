@@ -28,7 +28,7 @@ def record_callback(
     )
 
 
-def stream_close(_signum, _frame):
+def stream_close(_signum: int, _frame: None) -> None:
     ClientAppState.stream.close()
 
 

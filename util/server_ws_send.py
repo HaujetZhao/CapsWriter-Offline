@@ -4,7 +4,7 @@ from typing import Any
 from util.asyncio_to_thread import (
     to_thread,  # pyright: ignore[reportUnknownVariableType]
 )
-from util.server_cosmic import Message
+from util.server_cosmic import ServerMessage
 from util.server_classes import Result
 from util.server_cosmic import ServerAppState, console
 
@@ -28,7 +28,7 @@ async def ws_send() -> None:
                 continue
 
             # 构建消息
-            message = Message(
+            message = ServerMessage(
                 {
                     "task_id": result.task_id,
                     "duration": result.duration,

@@ -46,7 +46,7 @@ if system() == "Darwin" and not sys.argv[1:]:
 async def main_mic():
     ClientAppState.loop = asyncio.get_event_loop()
     ClientAppState.queue_in = asyncio.Queue()
-    ClientAppState.queue_out = asyncio.Queue()
+    # ClientAppState.queue_out = asyncio.Queue()
 
     show_mic_tips()
 

@@ -11,9 +11,8 @@ from util.server_classes import Result, Task
 console = Console(highlight=False)
 
 
-class Message(TypedDict):
+class ServerMessage(TypedDict):
     # #TODO: check message and Result, are they the same?
-    # #TODO: rename to ServerMessage
     task_id: str
     duration: float
     time_start: float
