@@ -10,13 +10,18 @@ en_in_zh = re.compile(
 )
 
 
-def replacer(original: re.Match):
+def replacer(original: re.Match[str]) -> str:
     left: str = original.group(1)
     center: str = original.group(2)
     right: str = original.group(3)
+
+    final_list = list[str]()
     # 如果拼写字母中间有空格，就把空格都去掉
     if center:
-        final = re.sub(r"((\d) )?(\b\w) ?(?!\w{2})", r"\2\3", center).strip()
+        # final = re.sub(r"((\d) )?(\b\w) ?(?!\w{2})", r"\2\3", center).strip()
+        final_list.append(
+            re.sub(r"((\d) )?(\b\w) ?(?!\w{2})", r"\2\3", center).strip()
+        )
         # 测试地址 https://regex101.com/r/1Vtu7V/1
         # final = re.sub(r'(\b\w) (?!\w{2})', r'\1', original.group(2)).strip()
 
@@ -25,24 +30,29 @@ def replacer(original: re.Match):
         if (
             left.strip(digits) == left and center.lstrip(digits) == center
         ):  # 左侧结尾不是数字，中间开头不是数字
-            final = " " + final
-        final = left.rstrip() + final
+            # final = " " + final
+            final_list.insert(0, " ")
+        # final = left.rstrip() + final
+        final_list.insert(0, left.rstrip())
 
     # 如果英文左边的汉字被前一个组消费了，就要手动去看一下前一个字是不是中文
     elif re.match(r"[\u4e00-\u9fa5]", original.string[original.start(2) - 1]):
         if center.lstrip(digits) == center:  # 确保中间开头不是数字
-            final = " " + final
+            # final = " " + final
+            final_list.insert(0, " ")
 
     # 如果英文的右边有汉字，给中英之间加上空格
     if right:
         if center.rstrip(digits) == center:  # 确保中间结尾不是数字
-            final += " "
-        final += right.lstrip()
+            # final += " "
+            final_list.append(" ")
+        # final += right.lstrip()
+        final_list.append(right.lstrip())
 
-    return final
+    return "".join(final_list)
 
 
-def adjust_space(txt):
+def adjust_space(txt: str) -> str:
     return en_in_zh.sub(replacer, txt)
 
 

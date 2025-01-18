@@ -1,5 +1,6 @@
 import re
 import time
+from typing import Any
 
 import numpy as np
 
@@ -8,10 +9,10 @@ from util.chinese_itn import chinese_to_num
 from util.format_tools import adjust_space
 from util.server_classes import Result, Task
 
-results = {}
+results: dict[str, Result] = {}
 
 
-def format_text(text, punc_model):
+def format_text(text: str, punc_model: Any) -> str:
     if Config.format_spell:
         text = adjust_space(text)  # 调空格
     if Config.format_punc and punc_model and text:
@@ -23,7 +24,7 @@ def format_text(text, punc_model):
     return text
 
 
-def recognize(recognizer, punc_model, task: Task):
+def recognize(recognizer: Any, punc_model: Any, task: Task) -> Result:
 
     # inspect(
     #     {

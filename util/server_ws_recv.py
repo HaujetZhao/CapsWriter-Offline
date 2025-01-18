@@ -2,8 +2,10 @@ import json
 import time
 from base64 import b64decode
 from dataclasses import dataclass
+from typing import Any
 
 import websockets
+from websockets.legacy.server import WebSocketServerProtocol
 
 from util.my_status import Status
 from util.server_classes import Task
@@ -21,7 +23,9 @@ class Cache:
     frame_num: int = 0
 
 
-async def message_handler(websocket, message, cache: Cache):
+async def message_handler(
+    websocket: WebSocketServerProtocol, message: dict[str, Any], cache: Cache
+) -> None:
     """处理得到的音频流数据"""
 
     queue_in = Cosmic.queue_in
@@ -98,7 +102,7 @@ async def message_handler(websocket, message, cache: Cache):
         cache.frame_num = 0
 
 
-async def ws_recv(websocket):
+async def ws_recv(websocket: WebSocketServerProtocol) -> None:
     global status_mic  # pylint: disable=global-variable-not-assigned
 
     # 登记 socket 到字典，以 socket id 字符串为索引

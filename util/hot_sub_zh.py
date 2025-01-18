@@ -16,8 +16,9 @@ print(res)
 '''
 
 from time import time
+from typing import TypedDict
 
-from pypinyin import pinyin as get_pinyin
+from pypinyin import pinyin as get_pinyin, STYLE_TONE, STYLE_NORMAL
 
 __all__ = [
     "update_trending_words_dict",
@@ -30,7 +31,7 @@ __all__ = [
 # ================全局配置=======================
 
 
-trending_words_dict = {}
+trending_words_dict = dict[str, list[list[str]]]()  # 热词词典
 POLYPHONIC_CHARACTERS = True
 TONES = False  # 是否要求匹配声调 #TODO: ren to MATCH_TONES
 
@@ -38,10 +39,10 @@ TONES = False  # 是否要求匹配声调 #TODO: ren to MATCH_TONES
 # ===========================================
 
 
-STYLE = 1 if TONES else 0  # 依据是否需要声调，设置拼音风格
+STYLE = STYLE_TONE if TONES else STYLE_NORMAL  # 依据是否需要声调，设置拼音风格
 
 
-def update_trending_words_dict(trending_words_text: str):
+def update_trending_words_dict(trending_words_text: str) -> int:
     """
     将一行一个热词的文本转换为拼音词典
     以 # 开头会被省略
@@ -71,7 +72,7 @@ def update_trending_words_dict(trending_words_text: str):
         word = word.strip()  # 给热词去掉多余的空格
         if not word or word.startswith("#"):
             continue  # 过滤掉注释
-        word_pinyin = get_pinyin(
+        word_pinyin: list[list[str]] = get_pinyin(
             word, STYLE, POLYPHONIC_CHARACTERS
         )  # 得到拼音
 
@@ -81,9 +82,7 @@ def update_trending_words_dict(trending_words_text: str):
             )
             continue
 
-        pinyin_list = [
-            [],
-        ]
+        pinyin_list: list[list[str]] = [[]]
         for polyphonic in word_pinyin:
             num_sounds = len(polyphonic)
             if num_sounds > 1:
@@ -100,14 +99,14 @@ def update_trending_words_dict(trending_words_text: str):
     return len(trending_words_dict)
 
 
-def match_trending_words(sentence: str):
+def match_trending_words(sentence: str) -> list[tuple[str, list[str]]]:
     """
     将全局「热词词典」中的热词按照拼音依次与句子匹配，将所有匹配到的「热词、拼音」以元组放到列表
     将列表返回
     """
     global trending_words_dict  # pylint: disable=global-variable-not-assigned
 
-    all_matches = []
+    all_matches = list[tuple[str, list[str]]]()
     sentence_pinyin = "".join(
         [x[0] for x in get_pinyin(sentence, STYLE, POLYPHONIC_CHARACTERS)]
     )  # 字符串形式的句子拼音
@@ -120,7 +119,12 @@ def match_trending_words(sentence: str):
     return all_matches
 
 
-def get_pinyin_index(sentence: str):
+class PinyinWithIndex(TypedDict):
+    pinyin: str
+    index: int | None
+
+
+def get_pinyin_index(sentence: str) -> list[PinyinWithIndex]:
     """
     输入句子字符串，获取一个列表，列表内是字典，字典包含了拼音和索引
 
@@ -132,13 +136,13 @@ def get_pinyin_index(sentence: str):
     ]
     """
     pinyin_with_index = [
-        {"pinyin": x[0], "index": None}
+        PinyinWithIndex({"pinyin": x[0], "index": None})
         for x in get_pinyin(sentence, STYLE, POLYPHONIC_CHARACTERS)
     ]
     pinyin_with_index_ = iter(pinyin_with_index)
     pinyin = next(pinyin_with_index_)
     for i, char in enumerate(sentence):
-        if pinyin["pinyin"] in pinyin(char, STYLE, POLYPHONIC_CHARACTERS)[
+        if pinyin["pinyin"] in get_pinyin(char, STYLE, POLYPHONIC_CHARACTERS)[
             0
         ] or pinyin["pinyin"].startswith(char):
             pinyin["index"] = i
@@ -149,7 +153,7 @@ def get_pinyin_index(sentence: str):
     return pinyin_with_index
 
 
-def replace_trending_words(sentence):
+def replace_trending_words(sentence: str) -> str:
     """
     从热词词典中查找匹配的热词，替换句子
 
@@ -162,20 +166,21 @@ def replace_trending_words(sentence):
         )
 
         sentence_index_list = get_pinyin_index(sentence)
-        replace_range = []
+        replace_range = list[tuple[int, int]]()
         for i, item in enumerate(sentence_index_list):
+            j = -1
             for j, sound in enumerate(pinyin_sequence):
                 if i + j >= len(sentence_index_list):
                     break
                 if sound != sentence_index_list[i + j]["pinyin"]:
                     break
             else:
-                replace_range.append(
-                    [
-                        item["index"],
-                        sentence_index_list[i + j]["index"],
-                    ]
-                )
+                assert j != -1, "pinyin_sequence in replace_trending_words"
+                start, end = item["index"], sentence_index_list[i + j]["index"]
+                assert (
+                    start is not None and end is not None
+                ), "index is None in replace_trending_words"
+                replace_range.append((start, end))
 
         for range_ in replace_range:
             sentence = sentence[: range_[0]] + word + sentence[range_[1] + 1 :]
