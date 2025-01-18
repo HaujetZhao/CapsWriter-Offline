@@ -5,13 +5,12 @@ import subprocess
 import sys
 import time
 import uuid
-from collections.abc import AsyncIterable, Iterable
 from pathlib import Path
 from websockets.legacy.client import WebSocketClientProtocol
 from config import ClientConfig as Config
 from util import srt_from_txt
 from util.client_check_websocket import check_websocket
-from util.client_cosmic import ClientAppState, console
+from util.client_cosmic import ClientAppState, ClientMessage, console
 
 
 async def transcribe_check(file: Path):
@@ -53,7 +52,9 @@ async def transcribe_send(file: Path):
         ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
     )
     console.print("    正在提取音频", end="\r")
-    data = process.stdout.read()
+    stdout = process.stdout
+    assert stdout is not None  # #TODO-APP_CLS: remove this
+    data = stdout.read()
     audio_duration = len(data) / 4 / 16000
     console.print(f"    音频长度：{audio_duration:.2f}s")
 
@@ -62,18 +63,23 @@ async def transcribe_send(file: Path):
     while True:
         chunk_end = offset + 16000 * 4 * 60
         is_final = chunk_end >= len(data)
-        message = {
-            "task_id": task_id,  # 任务 ID
-            "seg_duration": Config.file_seg_duration,  # 分段长度
-            "seg_overlap": Config.file_seg_overlap,  # 分段重叠
-            "is_final": is_final,  # 是否结束
-            "time_start": time.time(),  # 录音起始时间
-            "time_frame": time.time(),  # 该帧时间
-            "source": "file",  # 数据来源：从文件读的数据
-            "data": base64.b64encode(data[offset:chunk_end]).decode("utf-8"),
-        }
+        message = ClientMessage(
+            {
+                "task_id": task_id,  # 任务 ID
+                "seg_duration": Config.file_seg_duration,  # 分段长度
+                "seg_overlap": Config.file_seg_overlap,  # 分段重叠
+                "is_final": is_final,  # 是否结束
+                "time_start": time.time(),  # 录音起始时间
+                "time_frame": time.time(),  # 该帧时间
+                "source": "file",  # 数据来源：从文件读的数据
+                "data": base64.b64encode(data[offset:chunk_end]).decode(
+                    "utf-8"
+                ),
+            }
+        )
         offset = chunk_end
         progress = min(offset / 4 / 16000, audio_duration)
+        assert websocket is not None  # #TODO-APP_CLS: remove this
         await websocket.send(json.dumps(message))
         console.print(f"    发送进度：{progress:.2f}s", end="\r")
         if is_final:
@@ -83,7 +89,9 @@ async def transcribe_send(file: Path):
 async def transcribe_recv(file: Path):
 
     # 获取连接
-    websocket: WebSocketClientProtocol = ClientAppState.websocket
+    ws = ClientAppState.websocket
+    assert ws is not None  # #TODO-APP_CLS: remove this
+    websocket: WebSocketClientProtocol = ws
 
     message = None
     # 接收结果

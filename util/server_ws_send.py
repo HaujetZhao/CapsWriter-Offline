@@ -1,24 +1,12 @@
 import json
-from typing import Any, TypedDict
+from typing import Any
 
 from util.asyncio_to_thread import (
     to_thread,  # pyright: ignore[reportUnknownVariableType]
 )
+from util.server_cosmic import Message
 from util.server_classes import Result
 from util.server_cosmic import ServerAppState, console
-
-
-class Message(TypedDict):
-    # #TODO: check message and Result, are they the same?
-    task_id: str
-    duration: float
-    time_start: float
-    time_submit: float
-    time_complete: float
-    tokens: list[str]
-    timestamps: list[float]
-    text: str
-    is_final: bool
 
 
 async def ws_send() -> None:
@@ -40,7 +28,7 @@ async def ws_send() -> None:
                 continue
 
             # 构建消息
-            message: Message = Message(
+            message = Message(
                 {
                     "task_id": result.task_id,
                     "duration": result.duration,

@@ -3,24 +3,26 @@ import sys
 import threading
 import time
 
-import numpy as np
 import sounddevice as sd
 
-from util.client_cosmic import ClientAppState, console
+from util.client_cosmic import ClientAppState, DataClientTask, console
+from util.types import RecordingData
 
 
 def record_callback(
-    indata: np.ndarray, _frames: int, _time_info, _status: sd.CallbackFlags
+    indata: RecordingData, _frames: int, _time_info, _status: sd.CallbackFlags
 ) -> None:
     if not ClientAppState.on:
         return
     asyncio.run_coroutine_threadsafe(
         ClientAppState.queue_in.put(
-            {
-                "type": "data",
-                "time": time.time(),
-                "data": indata.copy(),
-            },
+            DataClientTask(
+                {
+                    "type": "data",
+                    "time": time.time(),
+                    "data": indata.copy(),
+                }
+            ),
         ),
         ClientAppState.loop,
     )
@@ -49,7 +51,7 @@ def stream_reopen():
     ClientAppState.stream = stream_open()
 
 
-def stream_open():
+def stream_open() -> sd.InputStream:
     # 显示录音所用的音频设备
     channels = 1
     try:

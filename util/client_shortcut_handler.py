@@ -6,7 +6,7 @@ from threading import Event
 import keyboard
 
 from config import ClientConfig as Config
-from util.client_cosmic import ClientAppState
+from util.client_cosmic import ClientAppState, ClientTask, NonDataClientTask
 from util.client_send_audio import send_audio
 from util.my_status import Status
 
@@ -40,7 +40,7 @@ def launch_task():
     # 将开始标志放入队列
     asyncio.run_coroutine_threadsafe(
         ClientAppState.queue_in.put(
-            {"type": "begin", "time": t1, "data": None}
+            NonDataClientTask({"type": "begin", "time": t1, "data": None})
         ),
         ClientAppState.loop,
     )
@@ -77,7 +77,9 @@ def finish_task():
     # 通知结束任务
     asyncio.run_coroutine_threadsafe(
         ClientAppState.queue_in.put(
-            {"type": "finish", "time": time.time(), "data": None},
+            ClientTask(
+                {"type": "finish", "time": time.time(), "data": None},
+            )
         ),
         ClientAppState.loop,
     )
