@@ -16,6 +16,7 @@ async def recv_result():
     if not await check_websocket():
         return
     console.print("[green]连接成功\n")
+    assert ClientAppState.websocket is not None  # asserted by check_websocket
     try:
         while True:
             # 接收消息

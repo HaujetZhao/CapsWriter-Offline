@@ -9,7 +9,7 @@ UuidStr = str
 # #TODO-STY-UUID_STR: consider using a NewType for UuidStr
 
 
-def rename_audio(task_id: UuidStr, text: str, start_sec: float) -> Path | None:
+def rename_audio(task_id: UuidStr, text: str, start_sec: float) -> Path:
 
     # 获取旧文件名
     file_path = Path(ClientAppState.audio_files.pop(task_id))
@@ -17,7 +17,7 @@ def rename_audio(task_id: UuidStr, text: str, start_sec: float) -> Path | None:
     # 确保旧文件存在
     if not file_path.exists():
         console.print(f"    文件不存在：{file_path}")
-        return None
+        raise FileNotFoundError(file_path)
 
     # 构建新文件名
     time.strftime("%Y", time.localtime(start_sec))
