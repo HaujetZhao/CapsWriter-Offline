@@ -47,7 +47,6 @@ async def send_audio():
         file_path, file = "", None
 
         # 开始取数据
-        # task: {'type', 'time', 'data'}
         while task := await Cosmic.queue_in.get():
             Cosmic.queue_in.task_done()
             if task["type"] == "begin":

@@ -4,7 +4,7 @@ from subprocess import Popen
 import numpy as np
 
 
-def write_file(file: Popen | wave.Wave_write, data: np.ndarray):
+def write_file(file: Popen[str] | wave.Wave_write, data: np.ndarray):
     if isinstance(file, Popen):
         file.stdin.write(data.tobytes())
         file.stdin.flush()

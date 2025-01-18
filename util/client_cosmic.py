@@ -1,12 +1,20 @@
 # #TODO: Queue of `Task` (task is not defined)
-
+from __future__ import annotations  # Queue[Task], ListProxy[str] needs this
 from asyncio import AbstractEventLoop, Queue
 from dataclasses import dataclass, field
+from typing import TypedDict
 
 import sounddevice as sd
 from rich.console import Console
 from rich.theme import Theme
 from websockets.legacy.client import WebSocketClientProtocol
+
+
+class ClientTask(TypedDict):
+    type: str
+    time: float
+    data: np.ndarray
+
 
 my_theme = Theme({"markdown.code": "cyan", "markdown.item.number": "yellow"})
 console = Console(highlight=False, soft_wrap=False, theme=my_theme)
@@ -23,7 +31,7 @@ class ClientCosmicType:
     """
 
     on: bool = False
-    queue_in: Queue = field(default_factory=Queue)
+    queue_in: Queue[ClientTask] = field(default_factory=Queue)
     queue_out: Queue = field(default_factory=Queue)
     loop: None | AbstractEventLoop = None
     websocket: WebSocketClientProtocol = None
