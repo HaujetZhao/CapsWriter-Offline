@@ -5,7 +5,7 @@ from util.asyncio_to_thread import (
     to_thread,  # pyright: ignore[reportUnknownVariableType]
 )
 from util.server_classes import Result
-from util.server_cosmic import Cosmic, console
+from util.server_cosmic import ServerAppState, console
 
 
 class Message(TypedDict):
@@ -23,8 +23,8 @@ class Message(TypedDict):
 
 async def ws_send() -> None:
 
-    queue_out = Cosmic.queue_out
-    sockets = Cosmic.sockets
+    queue_out = ServerAppState.queue_out
+    sockets = ServerAppState.sockets
 
     while True:
         try:

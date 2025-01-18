@@ -10,7 +10,7 @@ from websockets.typing import Subprotocol
 from config import ServerConfig as Config
 from util.empty_working_set import empty_current_working_set
 from util.server_check_model import check_model
-from util.server_cosmic import Cosmic, console
+from util.server_cosmic import ServerAppState, console
 from util.server_init_recognizer import init_recognizer
 from util.server_ws_recv import ws_recv
 from util.server_ws_send import ws_send
@@ -39,16 +39,20 @@ async def main():
     )
 
     # 跨进程列表，用于保存 socket 的 id，用于让识别进程查看连接是否中断
-    Cosmic.sockets_id = Manager().list()
+    ServerAppState.sockets_id = Manager().list()
 
     # 负责识别的子进程
     recognize_process = Process(
         target=init_recognizer,
-        args=(Cosmic.queue_in, Cosmic.queue_out, Cosmic.sockets_id),
+        args=(
+            ServerAppState.queue_in,
+            ServerAppState.queue_out,
+            ServerAppState.sockets_id,
+        ),
         daemon=True,
     )
     recognize_process.start()
-    Cosmic.queue_out.get()
+    ServerAppState.queue_out.get()
     console.rule("[green3]开始服务")
     console.line()
 
@@ -82,7 +86,7 @@ def init():
         print("!!! Unexpected Exception !!! in core_server.py")
         print(e)
     finally:
-        Cosmic.queue_out.put(None)
+        ServerAppState.queue_out.put(None)
         sys.exit(0)
         # os._exit(0)
 

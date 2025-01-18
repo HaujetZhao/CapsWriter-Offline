@@ -9,7 +9,7 @@ from websockets.legacy.server import WebSocketServerProtocol
 
 from util.my_status import Status
 from util.server_classes import Task
-from util.server_cosmic import Cosmic, console
+from util.server_cosmic import ServerAppState, console
 
 status_mic = Status("正在接收音频", spinner="point")
 
@@ -28,7 +28,7 @@ async def message_handler(
 ) -> None:
     """处理得到的音频流数据"""
 
-    queue_in = Cosmic.queue_in
+    queue_in = ServerAppState.queue_in
 
     global status_mic  # pylint: disable=global-variable-not-assigned
     source = message["source"]
@@ -106,8 +106,8 @@ async def ws_recv(websocket: WebSocketServerProtocol) -> None:
     global status_mic  # pylint: disable=global-variable-not-assigned
 
     # 登记 socket 到字典，以 socket id 字符串为索引
-    sockets = Cosmic.sockets
-    sockets_id = Cosmic.sockets_id
+    sockets = ServerAppState.sockets
+    sockets_id = ServerAppState.sockets_id
     sockets[str(websocket.id)] = websocket
     sockets_id.append(str(websocket.id))
     console.print(f"接客了：{websocket}\n", style="yellow")

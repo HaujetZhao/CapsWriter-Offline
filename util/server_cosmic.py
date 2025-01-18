@@ -11,11 +11,11 @@ console = Console(highlight=False)
 
 
 @dataclass(frozen=False)
-class CosmicType:
+class ServerAppStateType:
     sockets: dict[str, WebSocketServerProtocol] = field(default_factory=dict)
     sockets_id: ListProxy[str] = field(default_factory=list[str])
     queue_in: Queue[Task] = field(default_factory=Queue)
     queue_out: Queue[bool | Result | None] = field(default_factory=Queue)
 
 
-Cosmic = CosmicType()
+ServerAppState = ServerAppStateType()
