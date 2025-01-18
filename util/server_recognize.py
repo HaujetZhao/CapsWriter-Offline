@@ -46,14 +46,14 @@ def recognize(recognizer: Any, punc_model: Any, task: Task) -> Result:
 
     # 片段预处理
     samples = np.frombuffer(task.data, dtype=np.float32)
-    duration = len(samples) / task.samplerate
+    duration = len(samples) / task.sample_rate
     result.duration += duration - task.overlap
     if task.is_final:
         result.duration += task.overlap
 
     # 识别片段
     stream = recognizer.create_stream()
-    stream.accept_waveform(task.samplerate, samples)
+    stream.accept_waveform(task.sample_rate, samples)
     recognizer.decode_stream(stream)
 
     # 记录识别时间

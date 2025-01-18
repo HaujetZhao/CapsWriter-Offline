@@ -14,7 +14,7 @@ class Task:
     is_final: bool
     time_start: float
     time_submit: float
-    samplerate: int = 16000
+    sample_rate: int = 16000
 
 
 @dataclass(frozen=False)  # need to assign "duration"

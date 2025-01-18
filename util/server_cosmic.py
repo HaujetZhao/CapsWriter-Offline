@@ -1,3 +1,4 @@
+from __future__ import annotations  # Queue[Task], ListProxy[str] needs this
 from dataclasses import dataclass, field
 from multiprocessing import Queue
 from multiprocessing.managers import ListProxy
@@ -5,13 +6,9 @@ from multiprocessing.managers import ListProxy
 import websockets
 from rich.console import Console
 
-console = Console(highlight=False)
+from util.server_classes import Task
 
-# class Cosmic:
-#     sockets: Dict[str, websockets.WebSocketClientProtocol] = {}
-#     sockets_id: List
-#     queue_in = Queue()
-#     queue_out = Queue()
+console = Console(highlight=False)
 
 
 @dataclass(frozen=False)
@@ -19,9 +16,9 @@ class CosmicType:
     sockets: dict[str, websockets.WebSocketClientProtocol] = field(
         default_factory=dict
     )
-    sockets_id: ListProxy = field(default_factory=list)
-    queue_in: Queue = field(default_factory=Queue)
-    queue_out: Queue = field(default_factory=Queue)
+    sockets_id: ListProxy[str] = field(default_factory=list[str])
+    queue_in: Queue[Task] = field(default_factory=Queue)
+    queue_out: Queue[Task] = field(default_factory=Queue)
 
 
 Cosmic = CosmicType()
