@@ -1,4 +1,5 @@
 import json
+from typing import Any, TypedDict
 
 from util.asyncio_to_thread import (
     to_thread,  # pyright: ignore[reportUnknownVariableType]
@@ -7,7 +8,20 @@ from util.server_classes import Result
 from util.server_cosmic import Cosmic, console
 
 
-async def ws_send():
+class Message(TypedDict):
+    # #TODO: check message and Result, are they the same?
+    task_id: str
+    duration: float
+    time_start: float
+    time_submit: float
+    time_complete: float
+    tokens: list[str]
+    timestamps: list[float]
+    text: str
+    is_final: bool
+
+
+async def ws_send() -> None:
 
     queue_out = Cosmic.queue_out
     sockets = Cosmic.sockets
@@ -26,20 +40,22 @@ async def ws_send():
                 continue
 
             # 构建消息
-            message = {
-                "task_id": result.task_id,
-                "duration": result.duration,
-                "time_start": result.time_start,
-                "time_submit": result.time_submit,
-                "time_complete": result.time_complete,
-                "tokens": result.tokens,
-                "timestamps": result.timestamps,
-                "text": result.text,
-                "is_final": result.is_final,
-            }
+            message: Message = Message(
+                {
+                    "task_id": result.task_id,
+                    "duration": result.duration,
+                    "time_start": result.time_start,
+                    "time_submit": result.time_submit,
+                    "time_complete": result.time_complete,
+                    "tokens": result.tokens,
+                    "timestamps": result.timestamps,
+                    "text": result.text,
+                    "is_final": result.is_final,
+                }
+            )
 
             # 获得 socket
-            websocket = next(
+            websocket: Any = next(
                 (
                     ws
                     for ws in sockets.values()
