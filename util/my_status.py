@@ -8,6 +8,9 @@ class Status(RichStatus):
     重写 rich 的 Status，让它知道自己是否正在播放
     """
 
+    started: bool
+    on: bool  # #TODO-ref: this is never assigned to True
+
     def __init__(
         self,
         status: RenderableType,

@@ -1,6 +1,8 @@
 import json
 
-from util.asyncio_to_thread import to_thread
+from util.asyncio_to_thread import (
+    to_thread,  # pyright: ignore[reportUnknownVariableType]
+)
 from util.server_classes import Result
 from util.server_cosmic import Cosmic, console
 
@@ -13,11 +15,15 @@ async def ws_send():
     while True:
         try:
             # 获取识别结果（从多进程队列）
-            result: Result = await to_thread(queue_out.get)
+            result: bool | Result | None = await to_thread(queue_out.get)
 
             # 得到退出的通知
             if result is None:
                 return
+
+            if result in (True, False):
+                print("!!! Unexpected Exception !!! in server_ws_send.py")
+                continue
 
             # 构建消息
             message = {
