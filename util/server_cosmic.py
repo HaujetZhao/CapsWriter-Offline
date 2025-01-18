@@ -6,7 +6,7 @@ from multiprocessing.managers import ListProxy
 import websockets
 from rich.console import Console
 
-from util.server_classes import Task
+from util.server_classes import Result, Task
 
 console = Console(highlight=False)
 
@@ -18,7 +18,7 @@ class CosmicType:
     )
     sockets_id: ListProxy[str] = field(default_factory=list[str])
     queue_in: Queue[Task] = field(default_factory=Queue)
-    queue_out: Queue[Task] = field(default_factory=Queue)
+    queue_out: Queue[bool | Result] = field(default_factory=Queue)
 
 
 Cosmic = CosmicType()

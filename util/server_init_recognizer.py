@@ -1,4 +1,6 @@
+from __future__ import annotations  # Queue[Task], ListProxy[str] needs this
 import logging
+from multiprocessing.managers import ListProxy
 import queue
 import signal
 import sys
@@ -6,24 +8,31 @@ import time
 from multiprocessing import Queue
 from platform import system
 
-import jieba
-import sherpa_onnx
-from funasr_onnx import CT_Transformer
+
+import jieba  # pyright: ignore[reportMissingTypeStubs]
+import sherpa_onnx  # pyright: ignore[reportMissingTypeStubs]
+from funasr_onnx import (  # pyright: ignore[reportMissingTypeStubs]
+    CT_Transformer,
+)
 
 from config import ModelPaths, ParaformerArgs
 from config import ServerConfig as Config
 from util.empty_working_set import empty_current_working_set
+from util.server_classes import Result, Task
 from util.server_cosmic import console
 from util.server_recognize import recognize
 
 
 def disable_jieba_debug():
     # 关闭 jieba 的 debug
+    jieba.setLogLevel(logging.INFO)  # pyright: ignore[reportUnknownMemberType]
 
-    jieba.setLogLevel(logging.INFO)
 
-
-def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
+def init_recognizer(
+    queue_in: Queue[Task],
+    queue_out: Queue[bool | Result],
+    sockets_id: ListProxy[str],
+):
 
     # Ctrl-C 退出
     signal.signal(signal.SIGINT, lambda _signum, _frame: sys.exit())
