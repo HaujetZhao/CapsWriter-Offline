@@ -6,13 +6,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, TypedDict
 
-import numpy as np
-import sounddevice as sd
+import sounddevice as sd  # pyright: ignore[reportMissingTypeStubs]
 from rich.console import Console
 from rich.theme import Theme
-from websockets.legacy.client import WebSocketClientProtocol
-
 from util.types import RecordingData
+from websockets.legacy.client import WebSocketClientProtocol
 
 
 class NonDataClientTask(TypedDict):
@@ -62,7 +60,8 @@ class ClientAppStateType:
 
     on: bool = False
     queue_in: Queue[ClientTask] = field(default_factory=Queue)
-    queue_out: Queue = field(default_factory=Queue)
+    # Seems like queue_out is never used in the code.
+    # queue_out: Queue = field(default_factory=Queue)
     loop: None | AbstractEventLoop = None
     websocket: WebSocketClientProtocol | None = None
     # next line can avoid async iter problem but it breaks the functionality.
@@ -73,6 +72,7 @@ class ClientAppStateType:
     audio_files: dict[str, Path] = field(default_factory=dict)
     # #TODO: use NewType UuidStr for audio_files keys.
     stream: None | sd.InputStream = None
+    # #TODO-REF-APP: remove None from stream
     kwd_list: list[str] = field(default_factory=list)
 
 

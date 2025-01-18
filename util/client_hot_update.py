@@ -1,7 +1,7 @@
 import time
 from pathlib import Path
 
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from watchdog.observers import Observer
 
 from util import hot_kwds, hot_sub_en, hot_sub_rule, hot_sub_zh
@@ -101,13 +101,15 @@ class HotHandler(FileSystemEventHandler):
         path_kwds: update_hot_kwds,
     }
 
-    def on_modified(self, event):
+    def on_modified(self, event: FileSystemEvent) -> None:
         # 事件间隔小于2秒就取消
         if time.time() - self.last_time < 2:
             return
 
         # 路径不对就取消
-        event_path = Path(event.src_path)
+        p = event.src_path
+        assert isinstance(p, str), type(p)  # #TODO: resolve
+        event_path = Path(p)
         if event_path not in self.updates:
             return
 
