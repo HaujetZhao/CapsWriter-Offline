@@ -3,11 +3,16 @@ from subprocess import Popen
 
 import numpy as np
 
+from util.types import RecordingData
 
-def write_file(file: Popen[str] | wave.Wave_write, data: np.ndarray):
+
+def write_file(file: Popen[bytes] | wave.Wave_write, data: RecordingData):
     if isinstance(file, Popen):
-        file.stdin.write(data.tobytes())
-        file.stdin.flush()
-    elif isinstance(file, wave.Wave_write):
-        data = (data * (2**15 - 1)).astype(np.int16).tobytes()
-        file.writeframes(data)
+        stdin = file.stdin
+        assert stdin is not None
+        stdin.write(data.tobytes())
+        stdin.flush()
+    else:
+        # elif isinstance(file, wave.Wave_write):
+        frame = (data * (2**15 - 1)).astype(np.int16).tobytes()
+        file.writeframes(frame)
