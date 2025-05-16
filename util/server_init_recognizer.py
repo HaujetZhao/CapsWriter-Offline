@@ -10,7 +10,6 @@ from util.server_recognize import recognize
 from util.empty_working_set import empty_current_working_set
 
 
-
 def disable_jieba_debug():
     # 关闭 jieba 的 debug
     import jieba

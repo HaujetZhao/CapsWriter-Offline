@@ -10,16 +10,12 @@ from util.server_cosmic import Cosmic, console
 from util.server_check_model import check_model
 from util.server_ws_recv import ws_recv
 from util.server_ws_send import ws_send
-from util.server_init_recognizer import init_recognizer
 from util.empty_working_set import empty_current_working_set
 
 BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)    # 确保 os.getcwd() 位置正确，用相对路径加载模型
 
+
 async def main():
-
-    # 检查模型文件
-    check_model()
-
     console.line(2)
     console.rule('[bold #d55252]CapsWriter Offline Server'); console.line()
     console.print(f'项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
@@ -30,6 +26,15 @@ async def main():
     Cosmic.sockets_id = Manager().list()
 
     # 负责识别的子进程
+    if Config.recognizer == 'whisper':
+        from util.model.whisper import init_recognizer_with_whisper as init_recognizer
+    elif Config.recognizer == 'paddlespeech':
+        from util.model.paddleSpeech import init_recognizer_with_paddlespeech as init_recognizer
+    else:
+        from util.server_init_recognizer import init_recognizer
+        # 检查模型文件
+        check_model()
+        
     recognize_process = Process(target=init_recognizer,
                                 args=(Cosmic.queue_in,
                                       Cosmic.queue_out,
@@ -48,7 +53,7 @@ async def main():
     recv = websockets.serve(ws_recv,
                             Config.addr,
                             Config.port,
-                            subprotocols=["binary"],
+                            subprotocols=[],
                             max_size=None)
 
     # 负责发送结果的 coroutine

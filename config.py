@@ -4,6 +4,7 @@ from pathlib import Path
 
 # 服务端配置
 class ServerConfig:
+    recognizer = 'whisper'
     addr = '0.0.0.0'
     port = '6016'
 
@@ -52,12 +53,12 @@ class ModelPaths:
     model_dir = Path() / 'models'
     paraformer_path = Path() / 'models' / 'paraformer-offline-zh' / 'model.int8.onnx'
     tokens_path = Path() / 'models' / 'paraformer-offline-zh' / 'tokens.txt'
-    punc_model_dir = Path() / 'models' / 'punc_ct-transformer_cn-en'
+    punc_model_dir = r"D:\Capswriter\CapsWriter-Offline-Windows-64bit\models\punc_ct-transformer_cn-en"
 
 
 class ParaformerArgs:
-    paraformer = f'{ModelPaths.paraformer_path}'
-    tokens = f'{ModelPaths.tokens_path}'
+    paraformer = r"D:\Capswriter\CapsWriter-Offline-Windows-64bit\models\paraformer-offline-zh\model.int8.onnx"
+    tokens = r"D:\Capswriter\CapsWriter-Offline-Windows-64bit\models\paraformer-offline-zh\tokens.txt"
     num_threads = 6
     sample_rate = 16000
     feature_dim = 80
