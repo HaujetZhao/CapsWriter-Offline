@@ -172,7 +172,7 @@ pip install -r requirements-server.txt
 pip install -r requirements-client.txt
 ```
 
-有些依赖在 `Python 3.11` 还暂时不无法安装，建议使用 `Python 3.8 - Python3.10`  
+有些依赖在 `Python 3.11` 还暂时无法安装，建议使用 `Python 3.8 - Python3.10`  
 
 ### Mac 端
 
@@ -208,5 +208,6 @@ Windows/MacOS/Linux均使用如下命令完成打包:
 ## 打赏
 
 如果你愿意，可以以打赏的方式支持我一下：
+
 
 ![sponsor](assets/sponsor.jpg)
