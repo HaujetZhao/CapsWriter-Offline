@@ -482,7 +482,7 @@ def replace(original):
             num_type = '未匹配'
             final = original
 
-        print(f'{num_type}：{original}')
+        # print(f'{num_type}：{original}')
 
         if head:
             final = head + final
@@ -506,7 +506,7 @@ def replace(original):
 
 def chinese_to_num(original):
     """主函数：将中文数字转换为阿拉伯数字"""
-    print(f'\n\n原始文本：{original}')
+    # print(f'\n\n原始文本：{original}')
     result = pattern.sub(replace, original)
     return result
 
