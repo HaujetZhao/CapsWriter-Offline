@@ -1,12 +1,13 @@
 import os
 
 from util.client_cosmic import console
-from config import ClientConfig as Config
+from config import ClientConfig as Config, __version__
 from rich.markdown import Markdown
 
 
 def show_mic_tips():
     console.rule('[bold #d55252]CapsWriter Offline Client')
+    console.print(f'\n版本：[bold green]{__version__}')
     # console.print(f'\n项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
     markdown = (f'''
 
@@ -50,6 +51,7 @@ def show_mic_tips():
 
 
 def show_file_tips():
+    console.print(f'\n版本：[bold green]{__version__}')
     markdown = f'\n项目地址：https://github.com/HaujetZhao/CapsWriter-Offline'
     console.print(Markdown(markdown), height=True)
     console.print(f'当前基文件夹：[cyan underline]{os.getcwd()}')

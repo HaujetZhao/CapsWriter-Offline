@@ -5,6 +5,7 @@ import signal
 from platform import system
 from config import ServerConfig as Config
 from config import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoArgs
+from util.server_check_model import check_model
 from util.server_cosmic import console
 from util.server_recognize import recognize
 from util.empty_working_set import empty_current_working_set
@@ -25,6 +26,9 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
 
     # 载入语音模型
     console.print('[yellow]语音模型载入中', end='\r'); t1 = time.time()
+
+     # 检查模型文件
+    check_model()
 
     # 根据配置选择模型类型
     model_type = Config.model_type.lower()
@@ -69,13 +73,18 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
         # 从队列中获取任务消息
         # 阻塞最多1秒，便于中断退出
         try:
-            task = queue_in.get(timeout=1)       
+            task = queue_in.get(timeout=1)
         except:
             continue
+
+        # 检查退出信号
+        if task is None:
+            break
 
         if task.socket_id not in sockets_id:    # 检查任务所属的连接是否存活
             continue
 
         result = recognize(recognizer, punc_model, task)   # 执行识别
         queue_out.put(result)      # 返回结果
+
 
