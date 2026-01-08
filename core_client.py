@@ -59,7 +59,7 @@ async def main_mic():
     Cosmic.stream = stream_open()
 
     # Ctrl-C 关闭音频流，触发自动重启
-    signal.signal(signal.SIGINT, stream_close)
+    # signal.signal(signal.SIGINT, stream_close)
 
     # 绑定按键
     bond_shortcut()

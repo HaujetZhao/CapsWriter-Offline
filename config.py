@@ -8,7 +8,7 @@ class ServerConfig:
     port = '6016'
 
     format_num = True  # 输出时是否将中文数字转为阿拉伯数字
-    format_punc = True  # 输出时是否启用标点符号引擎
+    format_punc = False  # 输出时是否启用标点符号引擎
     format_spell = True  # 输出时是否调整中英之间的空格
 
 
@@ -65,3 +65,40 @@ class ParaformerArgs:
     debug = False
 
 
+model_dir = Path("./models/SenseVoice-Small/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17")
+model = model_dir / "model.onnx"
+tokens = model_dir / "tokens.txt"
+class SenseVoiceArgs:
+    model = model.as_posix()
+    tokens = tokens.as_posix()
+    use_itn=True
+    debug=False
+    language="zh"
+    num_threads=4
+    provider='gpu'
+
+
+
+
+
+model_dir = Path("./models/FunASR-nano/sherpa-onnx-funasr-nano-int8-2025-12-30")
+tokenizer=model_dir / "Qwen3-0.6B"
+encoder_adaptor=model_dir / "encoder_adaptor.int8.onnx"
+embedding=model_dir / "embedding.int8.onnx"
+llm_prefill=model_dir / "llm_prefill.int8.onnx"
+llm_decode=model_dir / "llm_decode.int8.onnx"
+class FunASRNanoArgs:
+    encoder_adaptor=encoder_adaptor.as_posix()
+    llm_prefill=llm_prefill.as_posix()
+    llm_decode=llm_decode.as_posix()
+    embedding=embedding.as_posix()
+    tokenizer=tokenizer.as_posix()
+    num_threads=4
+    provider='cpu'
+    debug=False
+    system_prompt="You are a helpful assistant."
+    user_prompt="Transcription:"
+    max_new_tokens=512
+    temperature=0.3 
+    top_p=0.8
+    seed=42

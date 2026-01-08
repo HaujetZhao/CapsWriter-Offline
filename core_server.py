@@ -19,6 +19,7 @@ async def main():
 
     # 检查模型文件
     check_model()
+    import tray
 
     console.line(2)
     console.rule('[bold #d55252]CapsWriter Offline Server'); console.line()

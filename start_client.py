@@ -8,6 +8,7 @@
 import sys
 import typer
 from core_client import init_file, init_mic
+import tray
 
 if __name__ == "__main__":
     # 如果参数传入文件，那就转录文件
