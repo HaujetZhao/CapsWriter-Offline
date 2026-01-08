@@ -1,0 +1,160 @@
+# 字节码文件 / 预编译 / DLL 文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C 扩展
+*.so
+
+# 发布 / 打包
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller 打包配置
+# 通常这些文件由脚本生成，可能包含本地路径
+*.manifest
+*.spec
+
+# 安装日志
+pip-log.txt
+pip-delete-this-directory.txt
+
+# 单元测试 / 覆盖率报告
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.node_repl_history
+.pytest_cache/
+pytestdebug.log
+
+# 翻译文件
+*.mo
+*.pot
+
+# Django 框架相关
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask 框架相关
+instance/
+.webassets-cache
+
+# Scrapy 爬虫相关
+.scrapy
+
+# Sphinx 文档
+docs/_build/
+
+# PyBuilder 相关
+.pybuilder/
+target/
+
+# Jupyter Notebook 相关
+.ipynb_checkpoints
+
+# IPython 相关
+profile_default/
+ipython_config.py
+
+# pyenv 配置
+# .python-version
+
+# pipenv 配置
+#Pipfile.lock
+
+# poetry 配置
+#poetry.lock
+
+# pdm 配置
+#pdm.lock
+
+# PEP 582 代码隔离相关
+__pypackages__/
+
+# Celery 异步任务相关
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath 脚本
+*.sage.py
+
+# 虚拟环境
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder 项目设置
+.spyderproject
+.spyproject
+
+# Rope 重构设置
+.ropeproject
+
+# mkdocs 静态站点
+/site
+
+# Mypy 类型检查缓存
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre 类型检查缓存
+.pyre/
+
+# pytype 静态分析缓存
+.pytype/
+
+# Cython 调试符号
+cython_debug/
+
+# PyCharm 设置
+.idea/
+
+# VS Code 设置
+.vscode/
+
+# --- 本项目特定忽略 ---
+
+# 模型文件（体积巨大，只保留下载链接）
+models/*/*/
+
+# 日志与按年归档的文件夹（如 2026/01/...）
+20*/
+
+# 音频文件
+*.mp3
+*.wav
+*.m4a
+
+# 运行生成的临时文件 / 二进制
+*.exe
+*.log
