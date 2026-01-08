@@ -78,7 +78,27 @@ def recognize(recognizer, punc_model, task: Task):
 
     # 最后与先前的结果合并
     result.timestamps += [t + task.offset for t in stream.result.timestamps[m:n]]
-    result.tokens += [token for token in stream.result.tokens[m:n]]
+    # 安全处理 tokens,过滤可能的无效 UTF-8 编码
+    new_tokens = []
+    for i, token in enumerate(stream.result.tokens[m:n]):
+        try:
+            # 确保 token 是有效的字符串
+            if isinstance(token, bytes):
+                token = token.decode('utf-8', errors='ignore')
+            new_tokens.append(token)
+        except (UnicodeDecodeError, UnicodeError):
+            # 打印调试信息
+            console.print(f'\n[red]编码错误 detected at token index {m+i}:')
+            console.print(f'  Token type: {type(token)}')
+            console.print(f'  Token repr: {repr(token)}')
+            console.print(f'  Slice range: tokens[{m}:{n}]')
+            console.print(f'  Task ID: {task.task_id}, is_final: {task.is_final}')
+            console.print('\n[yellow]完整 stream.result 对象:')
+            inspect(stream.result)
+            console.print()
+            # 跳过无效编码的 token
+            continue
+    result.tokens += new_tokens
 
     # token 合并为文本
     text = ' '.join(result.tokens).replace('@@ ', '')
