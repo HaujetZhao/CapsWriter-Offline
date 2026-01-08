@@ -6,4 +6,5 @@ websockets
 numpy
 typeguard==2.13.3
 kaldi-native-fbank==1.17
-jieba
+Pillow
+pystray

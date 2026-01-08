@@ -8,3 +8,6 @@ pypinyin
 watchdog
 typer
 srt
+pyinstaller
+Pillow
+pystray

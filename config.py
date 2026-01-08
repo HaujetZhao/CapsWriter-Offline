@@ -17,6 +17,8 @@ class ServerConfig:
     format_num = True  # 输出时是否将中文数字转为阿拉伯数字
     format_spell = True  # 输出时是否调整中英之间的空格
 
+    enable_tray = True        # 是否启用托盘图标功能
+
 
 # 客户端配置
 class ClientConfig:
@@ -46,6 +48,8 @@ class ClientConfig:
     hot_en   = True             # 是否启用英文热词替换，英文热词存储在 hot_en.txt 文件里
     hot_rule = True             # 是否启用自定义规则替换，自定义规则存储在 hot_rule.txt 文件里
     hot_kwd  = True             # 是否启用关键词日记功能，自定义关键词存储在 keyword.txt 文件里
+
+    enable_tray = True          # 客户端默认启用托盘图标功能
 
     mic_seg_duration = 15           # 麦克风听写时分段长度：15秒
     mic_seg_overlap = 2             # 麦克风听写时分段重叠：2秒
@@ -97,7 +101,7 @@ class SenseVoiceArgs:
     use_itn = True
     language = 'zh'
     num_threads = 4
-    provider = 'cuda'
+    provider = 'cpu'    # 用 cuda 可以加速，但模型用 CPU 本身也很快，加速没意义
     debug = False
 
 

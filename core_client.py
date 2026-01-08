@@ -47,6 +47,13 @@ async def main_mic():
     Cosmic.queue_in = asyncio.Queue()
     Cosmic.queue_out = asyncio.Queue()
 
+    # 根据配置决定是否启用托盘图标
+    if Config.enable_tray:
+        from util.tray import enable_min_to_tray
+        icon_path = BASE_DIR + '/assets/icon.ico'
+        enable_min_to_tray('CapsWriter Client', icon_path)
+    
+
     show_mic_tips()
 
     # 更新热词
@@ -59,7 +66,7 @@ async def main_mic():
     Cosmic.stream = stream_open()
 
     # Ctrl-C 关闭音频流，触发自动重启
-    # signal.signal(signal.SIGINT, stream_close)
+    signal.signal(signal.SIGINT, stream_close)
 
     # 绑定按键
     bond_shortcut()
