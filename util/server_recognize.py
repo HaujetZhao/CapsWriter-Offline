@@ -17,8 +17,8 @@ results = {}
 def format_text(text, punc_model):
     if Config.format_spell:
         text = adjust_space(text)       # 调空格
-    if Config.format_punc and punc_model and text:
-        text = punc_model(text)[0]  # 加标点
+    if punc_model and text:
+        text = punc_model.add_punctuation(text)  # 加标点
     if Config.format_num:
         text = chinese_to_num(text)     # 转数字
     if Config.format_spell:

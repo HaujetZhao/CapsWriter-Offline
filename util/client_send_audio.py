@@ -15,22 +15,34 @@ import uuid
 
 async def send_message(message):
     # 发送数据
+    # 检查 websocket 是否存在且未关闭
     if Cosmic.websocket is None:
         if message['is_final']:
             Cosmic.audio_files.pop(message['task_id'])
             console.print('    服务端未连接，无法发送\n')
-    else:
-        try:
-            await Cosmic.websocket.send(json.dumps(message))
-        except websockets.ConnectionClosedError as e:
+        return
+
+    try:
+        # 检查连接状态
+        if hasattr(Cosmic.websocket, 'closed') and Cosmic.websocket.closed:
             if message['is_final']:
-                console.print(f'[red]连接中断了')
-        except websockets.ConnectionClosedOK as e:
-            if message['is_final']:
-                console.print(f'[yellow]连接已正常关闭')
-        except Exception as e:
-            print('出错了')
-            print(e)
+                Cosmic.audio_files.pop(message['task_id'])
+                console.print('    服务端连接已关闭\n')
+            return
+
+        await Cosmic.websocket.send(json.dumps(message))
+
+    except websockets.ConnectionClosedError:
+        if message['is_final']:
+            Cosmic.audio_files.pop(message['task_id'])
+            console.print(f'[red]连接中断了')
+    except websockets.ConnectionClosedOK:
+        if message['is_final']:
+            Cosmic.audio_files.pop(message['task_id'])
+            console.print(f'[yellow]连接已正常关闭')
+    except Exception as e:
+        print('出错了')
+        print(e)
 
 
 async def send_audio():

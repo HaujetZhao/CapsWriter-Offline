@@ -21,8 +21,20 @@ class Handler:
 
 
 async def check_websocket() -> bool:
-    if Cosmic.websocket:
-        return True
+    # 检查 websocket 是否存在且处于打开状态
+    if Cosmic.websocket is not None:
+        try:
+            # 在新版本 websockets 中，使用 closed 属性检查状态
+            if not Cosmic.websocket.closed:
+                return True
+            # 如果已关闭，清理连接对象
+            else:
+                Cosmic.websocket = None
+        except AttributeError:
+            # 兼容旧版本，如果 websocket 对象存在就尝试使用
+            pass
+
+    # 尝试建立新连接
     for _ in range(3):
         with Handler():
             Cosmic.websocket = await websockets.connect(f"ws://{Config.addr}:{Config.port}", subprotocols=["binary"], max_size=None)

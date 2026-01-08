@@ -53,8 +53,15 @@ async def recv_result():
     except websockets.ConnectionClosedError:
         console.print('[red]连接断开\n')
     except websockets.ConnectionClosedOK:
-        console.print('[red]连接断开\n')
+        console.print('[yellow]连接已正常关闭\n')
     except Exception as e:
         print(e)
     finally:
+        # 清理已关闭的 websocket 连接
+        if Cosmic.websocket is not None:
+            try:
+                if Cosmic.websocket.closed:
+                    Cosmic.websocket = None
+            except Exception:
+                Cosmic.websocket = None
         return
