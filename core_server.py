@@ -5,7 +5,7 @@ from multiprocessing import Process, Manager
 from platform import system
 
 import websockets
-from config import ServerConfig as Config
+from config import ServerConfig as Config, __version__
 from util.server_cosmic import Cosmic, console
 from util.server_check_model import check_model
 from util.server_ws_recv import ws_recv
@@ -23,6 +23,7 @@ async def main():
 
     console.line(2)
     console.rule('[bold #d55252]CapsWriter Offline Server'); console.line()
+    console.print(f'版本：[bold green]{__version__}', end='\n\n')
     console.print(f'项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
     console.print(f'当前基文件夹：[cyan underline]{BASE_DIR}', end='\n\n')
     console.print(f'绑定的服务地址：[cyan underline]{Config.addr}:{Config.port}', end='\n\n')

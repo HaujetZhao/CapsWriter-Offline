@@ -2,6 +2,10 @@ from collections.abc import Iterable
 from pathlib import Path
 
 
+# 版本信息
+__version__ = '2.0'
+
+
 # 服务端配置
 class ServerConfig:
     addr = '0.0.0.0'

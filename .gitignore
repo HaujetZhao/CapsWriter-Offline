@@ -158,3 +158,9 @@ models/*/*/
 # 运行生成的临时文件 / 二进制
 *.exe
 *.log
+
+
+
+# 本地配置文件
+.claude
+.vscode
