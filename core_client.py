@@ -15,18 +15,18 @@ import colorama
 import keyboard
 
 from config import ClientConfig as Config, __version__
-from util.client_cosmic import console, Cosmic
-from util.client_stream import stream_open, stream_close
-from util.client_shortcut_handler import bond_shortcut
-from util.client_recv_result import recv_result
-from util.client_show_tips import show_mic_tips, show_file_tips
-from util.client_hot_update import update_hot_all, observe_hot
-from util.llm_handler import init_llm_system
+from util.client.client_cosmic import console, Cosmic
+from util.client.client_stream import stream_open, stream_close
+from util.client.client_shortcut_handler import bond_shortcut
+from util.client.client_recv_result import recv_result
+from util.client.client_show_tips import show_mic_tips, show_file_tips
+from util.client.client_hot_update import update_hot_all, observe_hot
+from util.llm.llm_handler import init_llm_system
 
-from util.client_transcribe import transcribe_check, transcribe_send, transcribe_recv
-from util.client_adjust_srt import adjust_srt
+from util.client.client_transcribe import transcribe_check, transcribe_send, transcribe_recv
+from util.client.client_adjust_srt import adjust_srt
 
-from util.empty_working_set import empty_current_working_set
+from util.tools.empty_working_set import empty_current_working_set
 
 # 确保根目录位置正确，用相对路径加载模型
 BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)
@@ -50,7 +50,7 @@ async def main_mic():
 
     # 根据配置决定是否启用托盘图标
     if Config.enable_tray:
-        from util.tray import enable_min_to_tray
+        from util.ui.tray import enable_min_to_tray
         icon_path = BASE_DIR + '/assets/icon.ico'
         enable_min_to_tray('CapsWriter Client', icon_path)
     

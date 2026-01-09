@@ -1,9 +1,13 @@
+import os
 from collections.abc import Iterable
 from pathlib import Path
 
 
 # 版本信息
 __version__ = '2.0'
+
+# 项目根目录
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # 服务端配置
@@ -59,6 +63,25 @@ class ClientConfig:
 
     file_seg_duration = 25           # 转录文件时分段长度
     file_seg_overlap = 2             # 转录文件时分段重叠
+
+
+class ModelDownloadLinks:
+    """模型下载链接配置"""
+
+    # FunASR-nano 模型（推荐，速度快）
+    funasr_nano = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-funasr-nano-2025-12-30.tar.bz2"
+
+    # SenseVoice 模型（多语言支持）
+    sensevoice = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2"
+
+    # Paraformer 模型（暂无官方下载链接）
+    paraformer = ""
+
+    # FireRed 模型（大模型，速度慢，不推荐用于实时语音输入）
+    firered = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-fire-red-asr-large-zh_en-2025-02-16.tar.bz2"
+
+    # 标点模型
+    punct = "https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherpa-onnx-online-punct-en-2024-08-06.tar.bz2"
 
 
 class ModelPaths:
@@ -123,3 +146,5 @@ class FunASRNanoArgs:
     temperature = 0.3
     top_p = 0.8
     seed = 42
+
+

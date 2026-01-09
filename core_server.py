@@ -5,11 +5,11 @@ from platform import system
 
 import websockets
 from config import ServerConfig as Config, __version__
-from util.server_cosmic import Cosmic, console
-from util.server_ws_recv import ws_recv
-from util.server_ws_send import ws_send
-from util.server_init_recognizer import init_recognizer
-from util.empty_working_set import empty_current_working_set
+from util.server.server_cosmic import Cosmic, console
+from util.server.server_ws_recv import ws_recv
+from util.server.server_ws_send import ws_send
+from util.server.server_init_recognizer import init_recognizer
+from util.tools.empty_working_set import empty_current_working_set
 
 BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)    # 确保 os.getcwd() 位置正确，用相对路径加载模型
 
@@ -17,7 +17,7 @@ BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)    # 确保 os.getcwd()
 def setup_tray():
     """启用托盘图标"""
     if Config.enable_tray:
-        from util.tray import enable_min_to_tray
+        from util.ui.tray import enable_min_to_tray
         icon_path = BASE_DIR + '/assets/icon.ico'
         enable_min_to_tray('CapsWriter Server', icon_path)
 
