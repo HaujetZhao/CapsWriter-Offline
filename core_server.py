@@ -10,8 +10,12 @@ from util.server.server_ws_recv import ws_recv
 from util.server.server_ws_send import ws_send
 from util.server.server_init_recognizer import init_recognizer
 from util.tools.empty_working_set import empty_current_working_set
+from util.logger import setup_logger
 
 BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)    # 确保 os.getcwd() 位置正确，用相对路径加载模型
+
+# 初始化日志系统
+logger = setup_logger('server', level=Config.log_level)
 
 
 def setup_tray():
@@ -20,6 +24,7 @@ def setup_tray():
         from util.ui.tray import enable_min_to_tray
         icon_path = BASE_DIR + '/assets/icon.ico'
         enable_min_to_tray('CapsWriter Server', icon_path)
+        logger.info("托盘图标已启用")
 
 
 def print_banner():
@@ -44,7 +49,9 @@ def start_recognizer_process():
                                       Cosmic.sockets_id),
                                 daemon=False)  # 改为非守护进程，可以优雅退出
     recognize_process.start()
+    logger.info("识别子进程已启动")
     Cosmic.queue_out.get()  # 等待模型加载完成
+    logger.info("模型加载完成，开始服务")
     console.rule('[green3]开始服务')
     console.line()
 
@@ -71,6 +78,11 @@ async def run_websocket_server():
 
 def init():
     """初始化并启动服务"""
+    logger.info("=" * 50)
+    logger.info("CapsWriter Offline Server 正在启动")
+    logger.info(f"版本: {__version__}")
+    logger.info(f"日志级别: {Config.log_level}")
+
     # 1. 启用托盘图标
     setup_tray()
 
@@ -82,15 +94,20 @@ def init():
 
     try:
         # 4. 运行 WebSocket 服务器
+        logger.info(f"WebSocket 服务器正在启动，监听地址: {Config.addr}:{Config.port}")
         asyncio.run(run_websocket_server())
 
     except KeyboardInterrupt:           # Ctrl-C 停止
+        logger.warning("收到停止信号，正在停止服务...")
         console.print('\n[yellow]正在停止服务...')
     except OSError as e:                # 端口占用
+        logger.error(f"OSError 错误: {e}")
         console.print(f'出错了：{e}', style='bright_red'); console.input('...')
     except Exception as e:
+        logger.error(f"未处理的异常: {e}", exc_info=True)
         print(e)
     finally:
+        logger.info("正在清理资源...")
         # 通知识别进程退出
         Cosmic.queue_in.put(None)
 
@@ -98,12 +115,15 @@ def init():
         if recognize_process.is_alive():
             recognize_process.join(timeout=5)
             if recognize_process.is_alive():
+                logger.warning("识别进程未能在5秒内退出，强制终止")
                 console.print('[red]识别进程未能在5秒内退出，强制终止')
                 recognize_process.terminate()
             else:
+                logger.info("识别进程已正常退出")
                 # console.print('[green4]识别进程已正常退出')
                 ...
 
+        logger.info("服务已停止")
         console.print('[green4]再见！')
         # 使用 os._exit 确保立即退出，不会被 asyncio 或托盘线程阻塞
         os._exit(0)

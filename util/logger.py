@@ -1,0 +1,105 @@
+# coding: utf-8
+
+import os
+import logging
+import sys
+from pathlib import Path
+from logging.handlers import RotatingFileHandler
+from datetime import datetime
+
+
+class Logger:
+    """日志系统管理器"""
+
+    _initialized = False
+    _loggers = {}
+
+    @classmethod
+    def setup(cls, name: str, log_dir: str = None, level: str = 'INFO', max_bytes: int = 10 * 1024 * 1024, backup_count: int = 5):
+        """
+        设置并返回一个日志记录器
+
+        Args:
+            name: 日志记录器名称（通常是 'server' 或 'client'）
+            log_dir: 日志文件目录，默认为项目根目录下的 log 文件夹
+            level: 日志级别，可选值：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+            max_bytes: 单个日志文件最大大小，默认 10MB
+            backup_count: 保留的日志文件数量，默认 5 个
+
+        Returns:
+            logging.Logger: 配置好的日志记录器
+        """
+        if name in cls._loggers:
+            return cls._loggers[name]
+
+        # 创建日志记录器
+        logger = logging.getLogger(name)
+        logger.setLevel(getattr(logging, level.upper(), logging.INFO))
+
+        # 避免重复添加 handler
+        if logger.handlers:
+            return logger
+
+        # 确定日志目录
+        if log_dir is None:
+            # 从 config 导入 BASE_DIR
+            from config import BASE_DIR
+            log_dir = os.path.join(BASE_DIR, 'log')
+
+        # 创建日志目录
+        Path(log_dir).mkdir(parents=True, exist_ok=True)
+
+        # 日志文件名（包含日期）
+        log_file = os.path.join(log_dir, f'{name}_{datetime.now().strftime("%Y%m%d")}.log')
+
+        # 创建格式化器
+        formatter = logging.Formatter(
+            fmt='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+
+        # 文件处理器（带轮转）
+        file_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=max_bytes,
+            backupCount=backup_count,
+            encoding='utf-8'
+        )
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+        # 控制台处理器
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+        # 缓存日志记录器
+        cls._loggers[name] = logger
+
+        return logger
+
+    @classmethod
+    def get_logger(cls, name: str):
+        """
+        获取已创建的日志记录器
+
+        Args:
+            name: 日志记录器名称
+
+        Returns:
+            logging.Logger: 日志记录器，如果不存在则返回 None
+        """
+        return cls._loggers.get(name)
+
+
+# 便捷函数
+def setup_logger(name: str, log_dir: str = None, level: str = 'INFO', **kwargs):
+    """设置日志记录器的便捷函数"""
+    return Logger.setup(name, log_dir, level, **kwargs)
+
+
+def get_logger(name: str):
+    """获取日志记录器的便捷函数"""
+    return Logger.get_logger(name)
