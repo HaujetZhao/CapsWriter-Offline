@@ -75,7 +75,7 @@ class MessageBuilder:
         messages.append({'role': 'user', 'content': user_content})
 
         # DEBUG: 打印投喂给模型的完整内容（原始JSON格式）
-        self._debug_print_messages(role_name, role_config, messages)
+        # self._debug_print_messages(role_name, role_config, messages)
 
         return messages
 
