@@ -153,7 +153,7 @@ class RoleLoader:
         """根据名字获取角色"""
         return self.roles_registry.get(name, {})
 
-    def format_role_status(self, role_name: str, role_config: dict) -> str:
+    def format_role_status(self, role_name: str, role_config: dict):
         """
         格式化角色状态显示
 
@@ -162,12 +162,10 @@ class RoleLoader:
             role_config: 角色配置字典
 
         Returns:
-            格式化的状态字符串
+            Text 对象（用于 Rich 渲染）
         """
-        from rich.console import Console
         from rich.text import Text
 
-        console = Console()
         text = Text()
 
         # 角色名称
@@ -211,7 +209,4 @@ class RoleLoader:
         provider = role_config.get('provider', '')
         text.append(f"  ({model} from {provider})", style="dim")
 
-        # 渲染到字符串（禁用换行）
-        with console.capture() as capture:
-            console.print(text, overflow="ignore", no_wrap=False)
-        return capture.get().strip()
+        return text
