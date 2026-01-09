@@ -88,11 +88,7 @@ def recognize(recognizer, punc_model, task: Task):
             new_tokens.append(token)
     except (UnicodeDecodeError, UnicodeError):
         # 打印调试信息
-        console.print(f'\n[red]编码错误 detected at token index {m+i}:')
-        console.print(f'  Token type: {type(token)}')
-        console.print(f'  Token repr: {repr(token)}')
-        console.print(f'  Slice range: tokens[{m}:{n}]')
-        console.print(f'  Task ID: {task.task_id}, is_final: {task.is_final}')
+        console.print(f'\n[red]编码错误')
         console.print('\n[yellow]完整 stream.result 对象:')
         inspect(stream.result)
         console.print()
