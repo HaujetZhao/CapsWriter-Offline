@@ -25,7 +25,7 @@ class RoleLoader:
         config_vars = {
             'name': '',
             'match': True,  # 是否启用前缀匹配（默认启用）
-            'process': True,  # 是否启用 LLM 处理
+            'process': False,  # 是否启用 LLM 处理
             'provider': 'ollama',
             'api_url': '',  # API URL（直接使用完整 URL）
             'api_key': '',
@@ -33,13 +33,13 @@ class RoleLoader:
             'enable_hotwords': False,
             'enable_thinking': False,
             'enable_history': False,
-            'max_context_length': 2000,
-            'forget_duration': 300,
+            'max_context_length': 4096,
+            'forget_duration': 600,
             'set_clipboard': False,  # 输出完成后是否复制到剪贴板
             'enable_clipboard_read': False,  # 是否启用剪贴板读取
             'clipboard_max_length': 1000,  # 剪贴板最大长度
             'output_mode': 'typing',  # 输出方式: 'typing' or 'toast'
-            'toast_initial_width': 400,  # Toast 初始宽度
+            'toast_initial_width': 0.5,  # Toast 初始宽度
             'toast_initial_height': 0,  # Toast 初始高度（0 表示自动计算）
             'toast_font_size': 14,  # Toast 字体大小
             'toast_font_color': 'white',  # Toast 字体颜色
@@ -47,7 +47,7 @@ class RoleLoader:
             'toast_duration': 3000,  # Toast 显示时长（毫秒）
             'temperature': 0.7,
             'top_p': 0.9,
-            'max_tokens': 512,
+            'max_tokens': 1024,
             'stop': '',
             'extra_options': {},
             'system_prompt': '',
@@ -186,7 +186,7 @@ class RoleLoader:
         if output_mode == 'typing':
             text.append("打字 ", style="green")
         elif output_mode == 'toast':
-            text.append("弹窗 ", style="yellow")
+            text.append("弹窗 ", style="blue")
         else:
             text.append("打字 ", style="dim")
 
@@ -211,7 +211,7 @@ class RoleLoader:
         provider = role_config.get('provider', '')
         text.append(f"  ({model} from {provider})", style="dim")
 
-        # 渲染到字符串
+        # 渲染到字符串（禁用换行）
         with console.capture() as capture:
-            console.print(text)
+            console.print(text, overflow="ignore", no_wrap=False)
         return capture.get().strip()
