@@ -51,6 +51,12 @@ def format_llm_result(llm_result: LLMResult) -> str:
     token_count = llm_result.token_count
     polish_time = llm_result.polish_time
 
+    # 处理文本：换行符替换为空格，并截断
+    polished_text = polished_text.replace('\n', ' ').replace('\r', ' ')
+    max_display_length = 50  # 最大显示长度
+    if len(polished_text) > max_display_length:
+        polished_text = polished_text[:max_display_length] + '...'
+
     # 构建显示的标签
     role_label = f'[{role_name}]' if role_name else ''
     result_text = f'[green]{polished_text}[/green]' if processed else polished_text
@@ -120,19 +126,16 @@ async def recv_result():
                 write_md(text, message['time_start'], file_audio)
 
             # LLM 结果显示和保存
-            if Config.llm_enabled and llm_result:
+            if Config.llm_enabled and llm_result and llm_result.processed:
                 console.print(format_llm_result(llm_result))
-
-                # 只有在 LLM 真正处理了文本（processed=True）时才保存到 Markdown
-                if llm_result.processed:
-                    file_audio = file_audio if Config.save_audio else None
-                    write_llm_md(
-                        llm_result.input_text,
-                        llm_result.result,
-                        llm_result.role_name,
-                        message['time_start'],
-                        file_audio
-                    )
+                file_audio = file_audio if Config.save_audio else None
+                write_llm_md(
+                    llm_result.input_text,
+                    llm_result.result,
+                    llm_result.role_name,
+                    message['time_start'],
+                    file_audio
+                )
 
 
             console.line()
