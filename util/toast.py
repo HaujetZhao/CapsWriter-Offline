@@ -31,17 +31,36 @@ class ToastWindow:
         self.initial_width = initial_width
         self.initial_height = initial_height
         self.timer_id = None
+        self.mouse_inside = False  # 鼠标是否在窗口内
+
+        # 计算实际宽度（支持比例）
+        screen_width = self.window.winfo_screenwidth()
+        if 0 < self.initial_width < 1:
+            # 0-1 之间的小数，使用屏幕宽度的比例
+            actual_width = int(screen_width * self.initial_width)
+        else:
+            # 绝对值（像素）
+            actual_width = self.initial_width
 
         # 设置窗口属性
-        self.window.overrideredirect(True)
-        self.window.attributes('-topmost', True)
+        self.window.overrideredirect(True)  # 无边框模式
+        self.window.attributes('-topmost', True)  # 保持置顶
         self.window.configure(bg=bg)
+        # self.window.title('')  # 无边框窗口不需要标题栏
+        self.window.resizable(True, True)  # 允许调整大小
 
         # 绑定可拖动
         self.window.bind('<ButtonPress-1>', self._on_drag_start)
         self.window.bind('<ButtonRelease-1>', self._on_drag_stop)
         self.window.bind('<B1-Motion>', self._on_drag_motion)
         self.window.bind('<Escape>', self._destroy_window)
+
+        # 绑定鼠标进入/离开事件
+        self.window.bind('<Enter>', self._on_mouse_enter)
+        self.window.bind('<Leave>', self._on_mouse_leave)
+
+        # 💡 关键改动 1: 禁用自动传播，完全由代码控制窗口尺寸
+        self.window.pack_propagate(False)
 
         # 创建文字标签
         self.label = tk.Label(
@@ -51,9 +70,14 @@ class ToastWindow:
             fg=fg,
             bg=bg,
             justify=tk.LEFT,
-            wraplength=self.initial_width - 40  # 预留 padding
+            # 💡 关键改动 2: 预先设定好 wraplength
+            wraplength=actual_width - 40,
+            # 💡 关键改动 2.5: 设置 anchor='nw' 确保文字在 Label 内部靠左上对齐
+            anchor='nw'
         )
-        self.label.pack(padx=20, pady=15)
+        # 💡 关键改动 3: 使用 side=tk.TOP 和 fill=tk.BOTH, expand=True
+        # 配合 pack_propagate(False) 和 anchor='nw'，这样文字换行时，只会向下长，顶部永远钉在窗口 (20, 15) 的位置
+        self.label.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=20, pady=15)
 
         # 设置初始窗口位置（屏幕中央，单行高度）
         self._set_window_position(initial=True)
@@ -82,8 +106,16 @@ class ToastWindow:
             label_width = self.label.winfo_reqwidth()
             label_height = self.label.winfo_reqheight()
 
+            # 计算初始宽度（支持比例或绝对值）
+            if 0 < self.initial_width < 1:
+                # 0-1 之间的小数，使用屏幕宽度的比例
+                calculated_width = int(screen_width * self.initial_width)
+            else:
+                # 绝对值（像素）
+                calculated_width = self.initial_width
+
             # 加上 padding
-            window_width = max(self.initial_width, label_width + 40)  # 左右各 20px padding
+            window_width = max(calculated_width, label_width + 40)  # 左右各 20px padding
 
             # 如果设置了初始高度，使用初始高度；否则自动计算
             if self.initial_height > 0:
@@ -91,8 +123,7 @@ class ToastWindow:
             else:
                 window_height = label_height + 30  # 上下各 15px padding
 
-            # 限制最大宽度和最小高度
-            window_width = min(window_width, 800)
+            # 限制最小高度
             window_height = max(window_height, 60)  # 最小高度 60px
 
             if initial:
@@ -109,22 +140,53 @@ class ToastWindow:
             pass
 
     def update_text(self, new_text):
-        """更新文本（流式模式）
-
-        Args:
-            new_text: 新的文本内容
-        """
+        """更新文本并丝滑向下扩展"""
         if not self.streaming:
             return
 
+        # 1. 更新文字
         self.label.config(text=new_text)
-        # 更新窗口高度
-        self._set_window_position(initial=False)
+        
+        # 2. 强制同步布局计算，获取 Label 的「理想高度」
+        self.window.update_idletasks()
+        
+        # 3. 计算窗口需要的新高度 (Label 高度 + 上下 padding)
+        needed_h = self.label.winfo_reqheight() + 30 
+        current_h = self.window.winfo_height()
+        current_w = self.window.winfo_width()
+        
+        # 4. 如果需要增长高度
+        if needed_h > current_h:
+            # 获取当前位置坐标，确保只向下长，不动 (x, y)
+            curr_x = self.window.winfo_x()
+            curr_y = self.window.winfo_y()
+            
+            # 直接更新几何尺寸。由于设置了 anchor='nw'，
+            # 窗口变大时，上方的文字会保持不动，只有下方空白区域变多，
+            # 随后文字填入，视觉上非常丝滑。
+            self.window.geometry(f"{current_w}x{int(needed_h)}+{curr_x}+{curr_y}")
 
     def finish(self):
         """完成流式输出，启动销毁计时器"""
         if self.streaming:
             self.streaming = False
+            # 只有当鼠标不在窗口内时才启动计时器
+            if not self.mouse_inside:
+                self._start_destroy_timer()
+
+    def _on_mouse_enter(self, event):
+        """鼠标进入窗口"""
+        self.mouse_inside = True
+        # 取消销毁计时器
+        if self.timer_id:
+            self.window.after_cancel(self.timer_id)
+            self.timer_id = None
+
+    def _on_mouse_leave(self, event):
+        """鼠标离开窗口"""
+        self.mouse_inside = False
+        # 如果流式输出已完成，启动销毁计时器
+        if not self.streaming:
             self._start_destroy_timer()
 
     def _start_destroy_timer(self):
@@ -281,12 +343,12 @@ class ToastMessageManager:
         """添加消息到队列"""
         self.message_queue.put((text, font_size, bg, fg, duration, initial_width, initial_height, streaming))
 
-    def update_last_toast(self, text):
-        """更新最后一个 toast 的文本（用于流式输出）"""
+    def update_last_toast(self, new_text):
+        """更新最后一个活动的 toast 文字"""
         if self.active_windows:
             last_window = self.active_windows[-1]
-            if last_window.streaming:
-                last_window.update_text(text)
+            # 💡 这里改用调用 window 实例的方法
+            last_window.update_text(new_text)
 
     def finish_last_toast(self):
         """完成最后一个 toast 的流式输出"""

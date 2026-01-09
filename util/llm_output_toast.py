@@ -1,0 +1,83 @@
+"""
+LLM Toast 输出模式
+
+流式显示在浮动窗口中，完成后停留 3 秒
+"""
+import asyncio
+
+from util.client_strip_punc import strip_punc
+from util.llm_stop_monitor import reset, should_stop
+
+
+async def handle_toast_mode(text: str, clipboard_text: str = "", role_config: dict = None) -> tuple:
+    """
+    Toast 浮动窗口模式
+
+    Args:
+        text: 待润色的文本
+        clipboard_text: 剪贴板内容（可选）
+        role_config: 角色配置
+
+    Returns:
+        (润色后的文本, 输出token数)
+    """
+    from util.llm_handler import polish_text
+    from util.toast import ToastMessageManager
+
+    reset()  # 重置停止标志
+
+    toast_manager = ToastMessageManager()
+
+    # 从角色配置获取 toast 参数
+    font_size = 14
+    bg = '#075077'
+    fg = 'white'
+    duration = 3000
+    initial_width = 400
+    initial_height = 0
+
+    if role_config:
+        font_size = role_config.get('toast_font_size', 14)
+        bg = role_config.get('toast_bg_color', '#075077')
+        fg = role_config.get('toast_font_color', 'white')
+        duration = role_config.get('toast_duration', 3000)
+        initial_width = role_config.get('toast_initial_width', 400)
+        initial_height = role_config.get('toast_initial_height', 0)
+
+        # Debug: 打印读取到的配置
+        role_name = role_config.get('name', '默认')
+        print(f"[DEBUG] Toast 配置 - 角色: {role_name}, 宽度: {initial_width}, 高度: {initial_height}")
+    else:
+        print(f"[DEBUG] Toast 配置 - role_config 为空!")
+
+    # 创建初始 toast（流式模式）
+    toast_manager.add_message("", font_size=font_size, bg=bg, fg=fg, duration=duration,
+                             initial_width=initial_width, initial_height=initial_height, streaming=True)
+
+    chunks = []
+    full_text = ""
+
+    def stream_toast_chunk(chunk: str):
+        """流式更新 toast"""
+        nonlocal full_text
+        chunks.append(chunk)
+        full_text = ''.join(chunks)
+        toast_manager.update_last_toast(full_text)
+
+    # 流式调用 LLM
+    polished_text, token_count = await asyncio.to_thread(
+        polish_text, text, clipboard_text, stream_toast_chunk, should_stop
+    )
+
+    if should_stop():
+        # 被中断，关闭 toast
+        toast_manager.close_last_toast()
+        return ("", 0)
+    else:
+        # 完成，启动销毁计时器（3秒）
+        toast_manager.finish_last_toast()
+
+        if not polished_text:
+            polished_text = text
+
+        return (strip_punc(polished_text), token_count)
