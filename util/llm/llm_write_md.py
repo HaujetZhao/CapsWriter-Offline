@@ -41,9 +41,9 @@ def write_llm_md(input_text: str, polished_text: str, role_name: str, time_start
     folder_path = Path() / time_year / time_month
     makedirs(folder_path, exist_ok=True)
 
-    # 文件名: 日期-角色.md（如果有角色名）
-    role_suffix = f'-{role_name}' if role_name else ''
-    file_md = folder_path / f'{time_day}{role_suffix}.md'
+    # 文件名: 日期-角色.md（如果有角色名，默认角色使用 '默认'）
+    role_name_for_file = role_name if role_name else '默认'
+    file_md = folder_path / f'{time_day}-{role_name_for_file}.md'
 
     # 确保 md 文件存在
     if not file_md.exists():

@@ -116,23 +116,23 @@ async def recv_result():
                 # 重命名录音文件
                 file_audio = rename_audio(message['task_id'], text, message['time_start'])
 
-                # 记录写入 md 文件（非 LLM 模式）
-                if not (Config.llm_enabled and llm_result):
-                    write_md(text, message['time_start'], file_audio)
+                # 写入普通 md 文件（无论是否启用 LLM）
+                write_md(text, message['time_start'], file_audio)
 
             # LLM 结果显示和保存
             if Config.llm_enabled and llm_result:
                 console.print(format_llm_result(llm_result))
 
-                # 保存 LLM 对话到 Markdown（使用处理后的输入文本）
-                file_audio = file_audio if Config.save_audio else None
-                write_llm_md(
-                    llm_result.input_text,
-                    llm_result.result,
-                    llm_result.role_name,
-                    message['time_start'],
-                    file_audio
-                )
+                # 只有在 LLM 真正处理了文本（processed=True）时才保存到 Markdown
+                if llm_result.processed:
+                    file_audio = file_audio if Config.save_audio else None
+                    write_llm_md(
+                        llm_result.input_text,
+                        llm_result.result,
+                        llm_result.role_name,
+                        message['time_start'],
+                        file_audio
+                    )
 
 
             console.line()
