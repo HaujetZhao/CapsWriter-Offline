@@ -30,6 +30,7 @@ MANIFEST
 # 通常这些文件由脚本生成，可能包含本地路径
 *.manifest
 *.spec
+*.zip
 
 # 安装日志
 pip-log.txt
@@ -146,6 +147,7 @@ cython_debug/
 
 # 模型文件（体积巨大，只保留下载链接）
 models/*/*/
+models/*.py
 
 # 日志与按年归档的文件夹（如 2026/01/...）
 20*/
