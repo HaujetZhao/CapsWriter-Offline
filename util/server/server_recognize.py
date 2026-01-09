@@ -107,6 +107,16 @@ def recognize(recognizer, punc_model, task: Task):
         new_timestamps = []
 
     # 最后与先前的结果合并
+    # 如果前一个片段的最后 token 是标点符号，则去掉它
+    if result.tokens:
+        # 常见的中文和英文标点符号
+        punctuation = '，。！？；：、、「」『』（）《》【》[]{}\',.!?;:"\''
+        # 检查最后一个 token 是否是标点
+        if result.tokens[-1] in punctuation:
+            result.tokens = result.tokens[:-1]
+            if result.timestamps:
+                result.timestamps = result.timestamps[:-1]
+
     result.timestamps += new_timestamps
     result.tokens += new_tokens
 
