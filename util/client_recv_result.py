@@ -53,7 +53,7 @@ def format_llm_result(llm_result: LLMResult) -> str:
 
     # 构建显示的标签
     role_label = f'[{role_name}]' if role_name else ''
-    result_text = f'[blue]{polished_text}[/blue]' if processed else polished_text
+    result_text = f'[green]{polished_text}[/green]' if processed else polished_text
 
     # 计算 token 数（如果 API 没有返回，则估算）
     if token_count == 0 and polished_text:
