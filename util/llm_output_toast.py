@@ -44,12 +44,6 @@ async def handle_toast_mode(text: str, clipboard_text: str = "", role_config: di
         initial_width = role_config.get('toast_initial_width', 400)
         initial_height = role_config.get('toast_initial_height', 0)
 
-        # Debug: 打印读取到的配置
-        role_name = role_config.get('name', '默认')
-        print(f"[DEBUG] Toast 配置 - 角色: {role_name}, 宽度: {initial_width}, 高度: {initial_height}")
-    else:
-        print(f"[DEBUG] Toast 配置 - role_config 为空!")
-
     # 创建初始 toast（流式模式）
     toast_manager.add_message("", font_size=font_size, bg=bg, fg=fg, duration=duration,
                              initial_width=initial_width, initial_height=initial_height, streaming=True)
