@@ -22,7 +22,7 @@ async def handle_toast_mode(text: str, clipboard_text: str = "", role_config: di
         (润色后的文本, 输出token数)
     """
     from util.llm_handler import polish_text
-    from util.toast import ToastMessageManager
+    from util.toast import ToastMessageManager, ToastMessage
 
     reset()  # 重置停止标志
 
@@ -45,8 +45,18 @@ async def handle_toast_mode(text: str, clipboard_text: str = "", role_config: di
         initial_height = role_config.get('toast_initial_height', 0)
 
     # 创建初始 toast（流式模式）
-    toast_manager.add_message("", font_size=font_size, bg=bg, fg=fg, duration=duration,
-                             initial_width=initial_width, initial_height=initial_height, streaming=True)
+    msg = ToastMessage(
+        text="",
+        font_size=font_size,
+        bg=bg,
+        fg=fg,
+        duration=duration,
+        initial_width=initial_width,
+        initial_height=initial_height,
+        streaming=True,
+        window_type='label'  # 使用 label 版本
+    )
+    toast_manager.add_message(msg)
 
     chunks = []
     full_text = ""
