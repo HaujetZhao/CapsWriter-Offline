@@ -195,7 +195,7 @@ class LLMFileWatcher(FileSystemEventHandler):
                 # 构建 "角色更新  " 前缀 + 状态行
                 prefix = Text("\n角色更新  ")
                 prefix.append(status_line)
-                console.print(prefix)
+                console.print(prefix + "\n")
 
         else:
             print(f"\n[LLM 监控] ✗ 重载失败: {file_name}")
