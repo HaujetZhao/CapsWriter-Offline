@@ -1,5 +1,6 @@
 from os import getcwd, sep, path
 import time
+import threading
 from util.client_cosmic import console
 from util import hot_sub_zh
 from util import hot_sub_en
@@ -15,6 +16,7 @@ path_zh = Path() / "hot-zh.txt"
 path_en = Path() / "hot-en.txt"
 path_rule = Path() / "hot-rule.txt"
 path_kwds = Path() / "keywords.txt"
+path_llm = Path() / "hot-llm.txt"
 
 
 def update_hot_zh():
@@ -68,11 +70,31 @@ def update_hot_kwds():
     console.print(f'已载入 [green4]{num_kwd:5}[/] 条日记关键词')
 
 
+def update_hot_llm():
+    """更新 LLM 热词（只加载热词，不初始化 LLM 系统）"""
+    if not path_llm.exists():
+        with open(path_llm, "w", encoding='utf-8') as f:
+            f.write('# 在此文件放置 LLM 热词，每行一个，开头带井号表示注释，会被省略')
+
+    # 统计热词数量
+    with open(path_llm, "r", encoding='utf-8') as f:
+        lines = [
+            line.strip()
+            for line in f
+            if line.strip() and not line.strip().startswith('#')
+        ]
+        num_llm = len(lines)
+
+    console.print(f'已载入 [green4]{num_llm:5}[/] 条 LLM 热词')
+
+
 def update_hot_all():
+    """更新所有热词"""
     update_hot_zh()
     update_hot_en()
     update_hot_rule()
     update_hot_kwds()
+    update_hot_llm()
     console.line()
 
 
@@ -85,35 +107,68 @@ def observe_hot():
 class HotHandler(FileSystemEventHandler):
     """用于动态更新热词的处理器"""
 
-    last_time = 0
+    # 防抖 + 延迟执行
+    _last_event = None  # (event_path, time)
+    _timer = None
+    _lock = threading.Lock()
+    _debounce_delay = 5  # 5秒后执行
 
     updates = {
         path_zh: update_hot_zh,
         path_en: update_hot_en,
         path_rule: update_hot_rule,
         path_kwds: update_hot_kwds,
+        path_llm: update_hot_llm,
     }
 
     def on_modified(self, event):
-        # 事件间隔小于2秒就取消
-        if time.time() - self.last_time < 2:
-            return
-
+        """文件修改时触发"""
         # 路径不对就取消
         event_path = Path(event.src_path)
         if event_path not in self.updates:
             return
 
-        # 更新时间
-        self.last_time = time.time()
+        # 记录最后一次修改事件
+        current_time = time.time()
 
-        # 延迟0.2秒，避免编辑器还没有将热词文件更新完成导致读空
-        time.sleep(0.2)
-        console.print('[green4]检测到配置文件更新，[/]', end='')
+        with self._lock:
+            self._last_event = (event_path, current_time)
 
-        # 更新
-        try:
-            self.updates[event_path]()
-            console.line()
-        except Exception as e:
-            console.print(f'更新热词失败：{e}', style='bright_red')
+            # 如果没有运行的定时器，启动一个
+            if self._timer is None or not self._timer.is_alive():
+                self._timer = threading.Thread(target=self._debounced_worker, daemon=True)
+                self._timer.start()
+
+    def _debounced_worker(self):
+        """防抖工作线程"""
+        while True:
+            time.sleep(self._debounce_delay)
+
+            with self._lock:
+                if self._last_event is None:
+                    break
+
+                event_path, event_time = self._last_event
+                current_time = time.time()
+
+                # 检查是否有新的修改
+                if current_time - event_time < self._debounce_delay:
+                    # 还有新的修改，继续等待
+                    continue
+
+                # 没有新修改超过 5 秒，执行更新
+                self._last_event = None
+
+            # 延迟0.2秒，避免编辑器还没有将热词文件更新完成导致读空
+            time.sleep(0.2)
+            console.print('[green4]检测到配置文件更新，[/]', end='')
+
+            # 执行更新
+            try:
+                self.updates[event_path]()
+                console.line()
+            except Exception as e:
+                console.print(f'更新热词失败：{e}', style='bright_red')
+
+            # 退出线程
+            break
