@@ -70,28 +70,44 @@ def recognize(recognizer, punc_model, task: Task):
     if task.is_final:
         n = len(stream.result.timestamps)
 
-    # 再细去重，依据：在端点是否有重复的字
-    if result.tokens and result.tokens[-2:] == stream.result.tokens[m:n][:2]:
-        m += 2
-    elif result.tokens and result.tokens[-1:] == stream.result.tokens[m:n][:1]:
-        m += 1
-
-    # 最后与先前的结果合并
-    result.timestamps += [t + task.offset for t in stream.result.timestamps[m:n]]
-    # 安全处理 tokens,过滤可能的无效 UTF-8 编码
+    # 安全处理 tokens，过滤可能的无效 UTF-8 编码
     new_tokens = []
+    new_timestamps = []
     try:
-        for i, token in enumerate(stream.result.tokens[m:n]):
+        # 先获取切片的 tokens 和 timestamps
+        sliced_tokens = stream.result.tokens[m:n]
+        sliced_timestamps = stream.result.timestamps[m:n]
+
+        # 再细去重，依据：在端点是否有重复的字
+        if result.tokens and result.tokens[-2:] == sliced_tokens[:2]:
+            sliced_tokens = sliced_tokens[2:]
+            sliced_timestamps = sliced_timestamps[2:]
+        elif result.tokens and result.tokens[-1:] == sliced_tokens[:1]:
+            sliced_tokens = sliced_tokens[1:]
+            sliced_timestamps = sliced_timestamps[1:]
+
+        # 处理 tokens
+        for token in sliced_tokens:
             # 确保 token 是有效的字符串
             if isinstance(token, bytes):
                 token = token.decode('utf-8', errors='ignore')
             new_tokens.append(token)
-    except (UnicodeDecodeError, UnicodeError):
+
+        # 处理 timestamps
+        new_timestamps = [t + task.offset for t in sliced_timestamps]
+
+    except (UnicodeDecodeError, UnicodeError) as e:
         # 打印调试信息
-        console.print(f'\n[red]编码错误')
+        console.print(f'\n[red]编码错误: {e}')
         console.print('\n[yellow]完整 stream.result 对象:')
         inspect(stream.result)
         console.print()
+        # 出错时使用空列表，避免程序崩溃
+        new_tokens = []
+        new_timestamps = []
+
+    # 最后与先前的结果合并
+    result.timestamps += new_timestamps
     result.tokens += new_tokens
 
     # token 合并为文本
