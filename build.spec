@@ -150,7 +150,7 @@ a_2.binaries = filtered_binaries
 
 
 # 排除不要打包的模块（这些将作为源文件复制）
-private_module = ['util', 'config',
+private_module = ['util', 'config', 'LLM', 
                   'core_server',
                   'core_client',
                   ]
@@ -246,7 +246,7 @@ my_files = [
     'keywords.txt',
     'readme.md'
 ]
-my_folders = ['assets', 'util']
+my_folders = ['assets', 'util', 'LLM']
 dest_root = join('dist', basename(coll.name))
 
 # 复制文件夹中的文件
