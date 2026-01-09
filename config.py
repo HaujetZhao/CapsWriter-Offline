@@ -33,7 +33,7 @@ class ClientConfig:
     suppress     = False        # 是否阻塞按键事件（让其它程序收不到这个按键消息）
     restore_key  = True         # 录音完成，松开按键后，是否自动再按一遍，以恢复 CapsLock 或 Shift 等按键之前的状态
     threshold    = 0.3          # 按下快捷键后，触发语音识别的时间阈值
-    paste        = True         # 是否以写入剪切板然后模拟 Ctrl-V 粘贴的方式输出结果
+    paste        = False         # 是否以写入剪切板然后模拟 Ctrl-V 粘贴的方式输出结果
     restore_clip = True         # 模拟粘贴后是否恢复剪贴板
 
     save_audio = True           # 是否保存录音文件
@@ -48,6 +48,9 @@ class ClientConfig:
     hot_en   = True             # 是否启用英文热词替换，英文热词存储在 hot_en.txt 文件里
     hot_rule = True             # 是否启用自定义规则替换，自定义规则存储在 hot_rule.txt 文件里
     hot_kwd  = True             # 是否启用关键词日记功能，自定义关键词存储在 keyword.txt 文件里
+
+    llm_enabled = True           # 是否启用 LLM 润色功能，需要配置 LLM/ 目录下的角色文件
+    llm_stop_key = 'esc'        # 中断 LLM 输出的快捷键
 
     enable_tray = True          # 客户端默认启用托盘图标功能
 

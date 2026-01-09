@@ -21,6 +21,7 @@ from util.client_shortcut_handler import bond_shortcut
 from util.client_recv_result import recv_result
 from util.client_show_tips import show_mic_tips, show_file_tips
 from util.client_hot_update import update_hot_all, observe_hot
+from util.llm_handler import init_llm_system
 
 from util.client_transcribe import transcribe_check, transcribe_send, transcribe_recv
 from util.client_adjust_srt import adjust_srt
@@ -61,6 +62,9 @@ async def main_mic():
 
     # 实时更新热词
     observer = observe_hot()
+
+    # 初始化 LLM 系统（加载角色和热词 RAG）
+    init_llm_system()
 
     # 打开音频流
     Cosmic.stream = stream_open()

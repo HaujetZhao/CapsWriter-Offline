@@ -3,12 +3,23 @@ import keyboard
 import pyclip
 import platform
 import asyncio
+from util.client_strip_punc import strip_punc
 
 
-async def type_result(text):
+async def typing_result(text: str, paste: bool = None):
+    """
+    输出结果（带标点消除）
+
+    Args:
+        text: 要输出的文本
+        paste: 是否使用 paste 方式（None 表示使用 Config.paste）
+    """
+    # 消除末尾标点
+    text = strip_punc(text)
+
 
     # 模拟粘贴
-    if Config.paste:
+    if paste:
 
         # 保存剪切板
         try:
