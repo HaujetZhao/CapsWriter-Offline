@@ -15,13 +15,12 @@ from util.llm_clipboard import copy_to_clipboard
 from util.llm_stop_monitor import reset, should_stop
 
 
-async def handle_typing_mode(text: str, clipboard_text: str = "", paste: bool = None) -> tuple:
+async def handle_typing_mode(text: str, paste: bool = None) -> tuple:
     """
     打字输出模式
 
     Args:
         text: 待润色的文本
-        clipboard_text: 剪贴板内容（可选）
         paste: 是否使用 paste 方式（None 表示使用 Config.paste）
 
     Returns:
@@ -34,7 +33,7 @@ async def handle_typing_mode(text: str, clipboard_text: str = "", paste: bool = 
     if paste:
         # paste 方式：等完成后再处理
         polished_text, token_count = await asyncio.to_thread(
-            polish_text, text, clipboard_text, None, should_stop
+            polish_text, text, None, should_stop
         )
         if should_stop():
             return ("", 0)  # 被中断
@@ -55,7 +54,7 @@ async def handle_typing_mode(text: str, clipboard_text: str = "", paste: bool = 
 
         # 流式调用 LLM，实时输出
         polished_text, token_count = await asyncio.to_thread(
-            polish_text, text, clipboard_text, stream_write_chunk, should_stop
+            polish_text, text, stream_write_chunk, should_stop
         )
 
         if should_stop():

@@ -11,7 +11,7 @@ from util.client_rename_audio import rename_audio
 from util.client_write_md import write_md
 from util.client_write_llm_md import write_llm_md
 from util.client_type_result import typing_result
-from util.client_type_llm_result import typing_llm_result, LLMResult
+from util.client_llm_process_text import llm_process_text, LLMResult
 from util.client_strip_punc import strip_punc
 from util.window_detector import get_active_window_info
 
@@ -106,7 +106,7 @@ async def recv_result():
             # LLM 处理和输出
             if Config.llm_enabled:
                 # 使用 LLM 润色后输出（LLM 会添加标点，所以内部会消除末尾标点）
-                llm_result = await typing_llm_result(text, return_result=True, window_info=window_info, paste=paste)
+                llm_result = await llm_process_text(text, return_result=True, window_info=window_info, paste=paste)
             else:
                 await typing_result(text, paste=paste)
                 llm_result = None

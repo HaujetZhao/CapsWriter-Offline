@@ -13,12 +13,12 @@ _last_output_content = ""
 _last_clipboard_by_role = {}
 
 
-def get_clipboard_text(role_config: dict = None, role_name: str = "") -> str:
+def get_clipboard_text(role_config = None, role_name: str = "") -> str:
     """
     获取剪贴板内容（如果启用且不重复）
 
     Args:
-        role_config: 角色配置字典（如果为 None，则返回空字符串）
+        role_config: 角色配置 RoleConfig 对象（如果为 None，则返回空字符串）
         role_name: 角色名称
 
     Returns:
@@ -29,7 +29,7 @@ def get_clipboard_text(role_config: dict = None, role_name: str = "") -> str:
     if not role_config:
         return ""
 
-    if not role_config.get('enable_clipboard_read', False):
+    if not role_config.enable_clipboard_read:
         return ""
 
     try:
@@ -42,12 +42,12 @@ def get_clipboard_text(role_config: dict = None, role_name: str = "") -> str:
         return ""
 
     # 检查长度限制
-    clipboard_max_length = role_config.get('clipboard_max_length', 1000)
+    clipboard_max_length = role_config.clipboard_max_length
     if len(current_clipboard) > clipboard_max_length:
         current_clipboard = current_clipboard[:clipboard_max_length]
 
     # 如果开启了历史记录，检查剪贴板内容是否与上一次使用的相同
-    if role_config.get('enable_history', False):
+    if role_config.enable_history:
         last_clipboard = _last_clipboard_by_role.get(role_name, "")
         if current_clipboard == last_clipboard:
             # 剪贴板内容没有变化，且上一次已经使用过，不再加入上下文
@@ -70,7 +70,7 @@ def record_clipboard_usage(role_name: str, clipboard_text: str):
 
 def set_output_content(content: str, role_name: str = ""):
     """
-    记录输出内容（用于避免重复读取）并更新剪贴板使用记录
+    记录输出内容（用于避免重复读取自己的输出）
 
     Args:
         content: 输出的内容
@@ -78,10 +78,6 @@ def set_output_content(content: str, role_name: str = ""):
     """
     global _last_output_content
     _last_output_content = content
-
-    # 如果有角色名，更新该角色的剪贴板使用记录
-    if role_name and content:
-        record_clipboard_usage(role_name, content)
 
 
 def copy_to_clipboard(content: str, role_name: str = ""):

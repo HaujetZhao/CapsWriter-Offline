@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Optional
 from config import ClientConfig as Config
 from util.client_strip_punc import strip_punc
-from util.llm_clipboard import get_clipboard_text, copy_to_clipboard
+from util.llm_clipboard import copy_to_clipboard
 from util.llm_output_typing import handle_typing_mode, output_text
 from util.llm_output_toast import handle_toast_mode
 from util.window_detector import get_active_window_info
@@ -27,7 +27,7 @@ class LLMResult:
     input_text: str                # 输入文本（已移除角色前缀）
 
 
-async def typing_llm_result(text: str, return_result: bool = False, window_info: dict = None, paste: bool = None) -> Optional[LLMResult]:
+async def llm_process_text(text: str, return_result: bool = False, window_info: dict = None, paste: bool = None) -> Optional[LLMResult]:
     """
     异步处理并输出 LLM 润色后的结果
     根据 output_mode 选择不同的处理方式
@@ -51,7 +51,7 @@ async def typing_llm_result(text: str, return_result: bool = False, window_info:
 
     # 获取当前角色的输出模式
     handler = get_handler()
-    _, role_config, content = handler.detect_role(text)
+    role_config, content = handler.detect_role(text)
 
     if not role_config:
         # 如果没有匹配到角色（包括默认角色被禁用），直接输出原文本
@@ -69,11 +69,11 @@ async def typing_llm_result(text: str, return_result: bool = False, window_info:
         return None
 
     # 获取角色显示名称（提前获取，供后续使用）
-    name = role_config.get('name', '默认')
+    name = role_config.name
     display_name = name if name else '默认'
 
     # 检查是否启用 LLM 处理
-    if not role_config.get('process', True):
+    if not role_config.process:
         # 角色匹配但未启用 LLM（如占位符），原样输出去除前缀后的文本
         result_text = strip_punc(content)
         await output_text(result_text, paste)
@@ -88,22 +88,19 @@ async def typing_llm_result(text: str, return_result: bool = False, window_info:
             )
         return None
 
-    output_mode = role_config.get('output_mode', 'typing')
-
-    # 获取剪贴板内容（如果启用）
-    clipboard_text = get_clipboard_text(role_config, display_name)
+    output_mode = role_config.output_mode
 
     # 根据输出模式处理
     if output_mode == 'toast':
-        result, token_count = await handle_toast_mode(text, clipboard_text, role_config)
+        result, token_count = await handle_toast_mode(text, role_config)
     else:  # typing
-        result, token_count = await handle_typing_mode(text, clipboard_text, paste)
+        result, token_count = await handle_typing_mode(text, paste)
 
     # 计算润色耗时
     polish_time = time.time() - start_time
 
     # 输出完成后复制到剪贴板（如果启用）
-    if result and role_config.get('set_clipboard', False):
+    if result and role_config.set_clipboard:
         copy_to_clipboard(result, display_name)
 
     if return_result:

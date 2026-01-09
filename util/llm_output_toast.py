@@ -9,13 +9,12 @@ from util.client_strip_punc import strip_punc
 from util.llm_stop_monitor import reset, should_stop
 
 
-async def handle_toast_mode(text: str, clipboard_text: str = "", role_config: dict = None) -> tuple:
+async def handle_toast_mode(text: str, role_config = None) -> tuple:
     """
     Toast 浮动窗口模式
 
     Args:
         text: 待润色的文本
-        clipboard_text: 剪贴板内容（可选）
         role_config: 角色配置
 
     Returns:
@@ -29,20 +28,20 @@ async def handle_toast_mode(text: str, clipboard_text: str = "", role_config: di
     toast_manager = ToastMessageManager()
 
     # 从角色配置获取 toast 参数
-    font_size = 14
-    bg = '#075077'
-    fg = 'white'
-    duration = 3000
-    initial_width = 400
-    initial_height = 0
-
     if role_config:
-        font_size = role_config.get('toast_font_size', 14)
-        bg = role_config.get('toast_bg_color', '#075077')
-        fg = role_config.get('toast_font_color', 'white')
-        duration = role_config.get('toast_duration', 3000)
-        initial_width = role_config.get('toast_initial_width', 400)
-        initial_height = role_config.get('toast_initial_height', 0)
+        font_size = role_config.toast_font_size
+        bg = role_config.toast_bg_color
+        fg = role_config.toast_font_color
+        duration = role_config.toast_duration
+        initial_width = role_config.toast_initial_width
+        initial_height = role_config.toast_initial_height
+    else:
+        font_size = 14
+        bg = '#075077'
+        fg = 'white'
+        duration = 3000
+        initial_width = 400
+        initial_height = 0
 
     # 创建初始 toast（流式模式）
     msg = ToastMessage(
@@ -70,7 +69,7 @@ async def handle_toast_mode(text: str, clipboard_text: str = "", role_config: di
 
     # 流式调用 LLM
     polished_text, token_count = await asyncio.to_thread(
-        polish_text, text, clipboard_text, stream_toast_chunk, should_stop
+        polish_text, text, stream_toast_chunk, should_stop
     )
 
     if should_stop():
