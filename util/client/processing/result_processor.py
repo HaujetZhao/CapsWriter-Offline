@@ -90,52 +90,22 @@ class ResultProcessor:
     
     def _log_modifier_key_state(self) -> None:
         """
-        检测并记录修饰键状态（Ctrl/Shift/Alt）
+        检测并记录当前按下的所有键
         
         用于调试按键卡住问题。
         """
         try:
-            import ctypes
-            user32 = ctypes.windll.user32
+            import keyboard
             
-            # 虚拟按键码
-            VK_SHIFT = 0x10
-            VK_CONTROL = 0x11
-            VK_MENU = 0x12  # Alt
-            VK_LWIN = 0x5B
-            VK_RWIN = 0x5C
-            VK_CAPITAL = 0x14  # CapsLock
+            # 获取所有当前按下的键
+            pressed_keys = keyboard._pressed_events
             
-            # GetAsyncKeyState 返回值：最高位为1表示按下
-            def is_pressed(vk):
-                return bool(user32.GetAsyncKeyState(vk) & 0x8000)
-            
-            # GetKeyState 返回值：最低位为1表示切换状态（对于 CapsLock 等）
-            def is_toggled(vk):
-                return bool(user32.GetKeyState(vk) & 0x0001)
-            
-            pressed = []
-            if is_pressed(VK_CONTROL):
-                pressed.append('Ctrl')
-            if is_pressed(VK_SHIFT):
-                pressed.append('Shift')
-            if is_pressed(VK_MENU):
-                pressed.append('Alt')
-            if is_pressed(VK_LWIN) or is_pressed(VK_RWIN):
-                pressed.append('Win')
-            
-            toggled = []
-            if is_toggled(VK_CAPITAL):
-                toggled.append('CapsLock')
-            
-            if pressed or toggled:
-                logger.debug(
-                    f"修饰键状态: 按下={pressed if pressed else '无'}, "
-                    f"切换={toggled if toggled else '无'}"
-                )
+            if pressed_keys:
+                key_names = list(pressed_keys.keys())
+                logger.debug(f"当前按下的键: {key_names}")
                 
         except Exception as e:
-            logger.debug(f"检测修饰键状态失败: {e}")
+            logger.debug(f"检测按键状态失败: {e}")
     
     async def process_loop(self) -> None:
         """主处理循环"""
