@@ -2,7 +2,6 @@
 
 import os
 import logging
-import sys
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from datetime import datetime
@@ -11,7 +10,6 @@ from datetime import datetime
 class Logger:
     """日志系统管理器"""
 
-    _initialized = False
     _loggers = {}
 
     @classmethod
@@ -29,20 +27,27 @@ class Logger:
         Returns:
             logging.Logger: 配置好的日志记录器
         """
+        # 设置日志级别
+        log_level = getattr(logging, level.upper(), logging.INFO)
+
+        # 如果已经初始化过，更新级别并返回
         if name in cls._loggers:
-            return cls._loggers[name]
+            logger = cls._loggers[name]
+            logger.setLevel(log_level)
+            # 更新所有 handler 的级别
+            for handler in logger.handlers:
+                handler.setLevel(log_level)
+            return logger
 
         # 创建日志记录器
         logger = logging.getLogger(name)
-        logger.setLevel(getattr(logging, level.upper(), logging.INFO))
+        logger.setLevel(log_level)
 
-        # 避免重复添加 handler
-        if logger.handlers:
-            return logger
+        # 确保不会传播到 root logger
+        logger.propagate = False
 
         # 确定日志目录
         if log_dir is None:
-            # 从 config 导入 BASE_DIR
             from config import BASE_DIR
             log_dir = os.path.join(BASE_DIR, 'log')
 
@@ -65,15 +70,9 @@ class Logger:
             backupCount=backup_count,
             encoding='utf-8'
         )
-        file_handler.setLevel(logging.DEBUG)
+        file_handler.setLevel(log_level)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-
-        # 控制台处理器
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
 
         # 缓存日志记录器
         cls._loggers[name] = logger
@@ -83,15 +82,19 @@ class Logger:
     @classmethod
     def get_logger(cls, name: str):
         """
-        获取已创建的日志记录器
+        获取已创建的日志记录器，如果不存在则创建一个默认的
 
         Args:
             name: 日志记录器名称
 
         Returns:
-            logging.Logger: 日志记录器，如果不存在则返回 None
+            logging.Logger: 日志记录器
         """
-        return cls._loggers.get(name)
+        if name not in cls._loggers:
+            # 如果 logger 还没有被初始化，先创建一个默认的（INFO 级别）
+            # 之后 core_client.py/core_server.py 会用正确的级别重新初始化
+            return cls.setup(name, level='INFO')
+        return cls._loggers[name]
 
 
 # 便捷函数

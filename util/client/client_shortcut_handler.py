@@ -1,6 +1,7 @@
 import keyboard
 from util.client.client_cosmic import Cosmic, console
 from config import ClientConfig as Config
+from util.logger import get_logger
 
 import time
 import asyncio
@@ -9,6 +10,8 @@ from concurrent.futures import ThreadPoolExecutor
 from util.client.client_send_audio import send_audio
 from util.tools.my_status import Status
 
+# 获取日志记录器
+logger = get_logger('client')
 
 task = asyncio.Future()
 status = Status('开始录音', spinner='point')
@@ -26,12 +29,16 @@ def shortcut_correct(e: keyboard.KeyboardEvent):
     # 在这里加一个判断，如果 e.name 不是我们期待的按键，就返回
     key_expect = keyboard.normalize_name(Config.shortcut).replace('left ', '')
     key_actual = e.name.replace('left ', '')
-    if key_expect != key_actual: return False
+    if key_expect != key_actual:
+        # logger.debug(f"快捷键不匹配: 期望 {key_expect}, 实际 {key_actual}")
+        return False
+    # logger.debug(f"快捷键匹配: {key_actual}")
     return True
 
 
 def launch_task():
     global task
+    logger.debug("启动录音任务")
 
     # 记录开始时间
     t1 = time.time()
@@ -56,6 +63,7 @@ def launch_task():
 
 
 def cancel_task():
+    logger.debug("取消录音任务（时间过短）")
     # 通知停止录音，关掉滚动条
     Cosmic.on = False
     status.stop()
@@ -66,6 +74,7 @@ def cancel_task():
 
 def finish_task():
     global task
+    logger.debug("完成录音任务")
 
     # 通知停止录音，关掉滚动条
     Cosmic.on = False
@@ -144,11 +153,13 @@ def hold_mode(e: keyboard.KeyboardEvent):
     global task
 
     if e.event_type == 'down' and not Cosmic.on:
+        logger.debug("检测到长按模式：按下")
         # 记录开始时间
         launch_task()
     elif e.event_type == 'up':
         # 记录持续时间，并标识录音线程停止向队列放数据
         duration = time.time() - Cosmic.on
+        logger.debug(f"检测到长按模式：松开，持续时间: {duration:.2f}s")
 
         # 取消或停止任务
         if duration < Config.threshold:
@@ -189,6 +200,9 @@ def click_handler(e: keyboard.KeyboardEvent) -> None:
 
 
 def bond_shortcut():
+    mode = "长按模式" if Config.hold_mode else "单击模式"
+    logger.info(f"绑定快捷键: {Config.shortcut} ({mode}), 阻塞: {not Config.hold_mode or Config.suppress}")
+
     if Config.hold_mode:
         keyboard.hook_key(Config.shortcut, hold_handler, suppress=Config.suppress)
     else:

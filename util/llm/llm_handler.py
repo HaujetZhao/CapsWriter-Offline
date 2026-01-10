@@ -15,6 +15,10 @@ from util.llm.llm_watcher import LLMFileWatcher
 from util.llm.llm_role_config import RoleConfig
 from util.llm.llm_client_pool import ClientPool
 from util.llm.llm_message_builder import MessageBuilder
+from util.logger import get_logger
+
+# 获取日志记录器
+logger = get_logger('client')
 
 
 # ======================================================================
@@ -24,9 +28,11 @@ class LLMHandler:
     """LLM 润色处理器（协调器）"""
 
     def __init__(self, hotwords_file: str = 'hot-llm.txt'):
+        logger.info("初始化 LLM 处理器")
         # 角色管理
         self.role_loader = RoleLoader()
         self.roles = self.role_loader.get_roles()
+        logger.info(f"已加载角色: {list(self.roles.keys())}")
 
         # 热词 RAG
         self.rag = HotwordsRAG(hotwords_file)
@@ -52,6 +58,7 @@ class LLMHandler:
 
     def reload_roles(self):
         """重新加载所有角色（保留历史记录）"""
+        logger.info("重新加载角色配置")
         # 保存旧的历史记录
         old_contexts = {}
         for role_name, ctx in self.context_managers.items():
@@ -65,6 +72,7 @@ class LLMHandler:
         self.client_pool.clear()
         self.role_loader.load_all_roles()
         self.roles = self.role_loader.get_roles()
+        logger.info(f"重新加载后角色: {list(self.roles.keys())}")
         self._init_context_managers()
 
         # 恢复历史记录
@@ -72,6 +80,7 @@ class LLMHandler:
             if role_name in old_contexts:
                 ctx.history = old_contexts[role_name]['history']
                 ctx.last_interaction = old_contexts[role_name]['last_interaction']
+                logger.debug(f"恢复角色 '{role_name}' 的历史记录: {len(ctx.history)} 条")
                 print(f"[上下文管理] 恢复角色 '{role_name}' 的历史记录: {len(ctx.history)} 条")
 
     def detect_role(self, text: str) -> Tuple[Optional[RoleConfig], str]:
@@ -80,6 +89,8 @@ class LLMHandler:
         Returns:
             (role_config, content) - role_config 是 RoleConfig 对象，content 是去除前缀后的文本
         """
+        # logger.debug(f"检测角色，输入文本: {text[:50]}...")
+
         for role_name, role_config in self.roles.items():
             if role_name == '默认':
                 continue
@@ -97,13 +108,16 @@ class LLMHandler:
                 remaining_text = text[len(name):]
                 remaining_text = remaining_text.lstrip('：，。,. ')
 
+                logger.debug(f"匹配到角色: {name}, 去除前缀后: {remaining_text[:50]}...")
                 return role_config, remaining_text
 
         # 未匹配，使用默认角色
         default_role = self.role_loader.get_default_role()
         if default_role.process:
+            logger.debug(f"未匹配到角色前缀，使用默认角色，处理: {default_role.process}")
             return default_role, text
 
+        logger.debug("未匹配到角色且默认角色不处理，返回原始文本")
         return None, text
 
     def process(self, text: str, callback=None, should_stop_check=None) -> tuple:
@@ -117,20 +131,30 @@ class LLMHandler:
         Returns:
             (处理后的文本, 输出token数)
         """
+        logger.debug(f"开始 LLM 处理，输入文本: {text}")
+
         role_config, content = self.detect_role(text)
 
         if not role_config:
+            logger.debug("角色配置为空，跳过 LLM 处理")
             return (text, 0)
 
         role_name = role_config.name
+        logger.debug(f"使用角色: {role_name}, 处理内容: {content}")
 
         # 获取上下文管理器（如果启用历史）
         context_manager = self.context_managers.get(role_name) if role_config.enable_history else None
+        if context_manager:
+            logger.debug(f"角色 '{role_name}' 启用历史，当前历史条数: {len(context_manager.history)}")
+        else:
+            logger.debug(f"角色 '{role_name}' 未启用历史")
 
         # 构建消息
         messages = self.message_builder.build_messages(role_config, content, context_manager)
+        logger.debug(f"构建消息完成，消息数量: {len(messages)}, 总token数: {sum(len(m.get('content', '')) for m in messages)}")
 
         # 获取客户端
+        logger.debug(f"获取 LLM 客户端，提供商: {role_config.provider}, API: {role_config.api_url}")
         client = self.client_pool.get_client(
             provider=role_config.provider,
             api_url=role_config.api_url,
@@ -142,6 +166,7 @@ class LLMHandler:
             'model': role_config.model,
             'messages': messages,
         }
+        logger.debug(f"请求模型: {role_config.model}")
 
         # 添加生成参数
         if role_config.temperature is not None:
@@ -152,6 +177,7 @@ class LLMHandler:
 
         if role_config.max_tokens > 0:
             request_params['max_tokens'] = role_config.max_tokens
+            logger.debug(f"最大tokens: {role_config.max_tokens}")
 
         # 处理停止序列
         stop = role_config.stop
@@ -160,12 +186,14 @@ class LLMHandler:
                 request_params['stop'] = [s.strip() for s in stop.split(',')]
             else:
                 request_params['stop'] = stop
+            logger.debug(f"停止序列: {request_params['stop']}")
 
         # 合并额外选项
         if role_config.extra_options:
             request_params.update(role_config.extra_options)
 
         try:
+            logger.debug("开始调用 LLM API（流式）")
             full_response = ""
             total_tokens = 0
 
@@ -173,9 +201,12 @@ class LLMHandler:
             request_params['stream'] = True
             stream = client.chat.completions.create(**request_params)
 
+            chunk_count = 0
             for chunk in stream:
+                chunk_count += 1
                 # 检查是否应该停止
                 if should_stop_check and should_stop_check():
+                    logger.debug(f"收到停止信号，当前已接收 {chunk_count} 个 chunks")
                     break
 
                 if chunk.choices[0].delta.content:
@@ -190,17 +221,21 @@ class LLMHandler:
                     if hasattr(chunk.usage, 'completion_tokens'):
                         total_tokens = chunk.usage.completion_tokens or 0
 
+            logger.debug(f"LLM 响应完成，接收 {chunk_count} 个 chunks, 输出tokens: {total_tokens}, 响应长度: {len(full_response)}")
+
             # 更新历史
             if role_config.enable_history and context_manager:
                 # 保存完整的用户提示词（包含剪贴板、热词等），而不是原始识别文本
                 # messages[-1]['content'] 就是完整的用户提示词
                 context_manager.add_message('user', messages[-1]['content'])
                 context_manager.add_message('assistant', full_response)
+                logger.debug(f"已更新历史记录，当前历史条数: {len(context_manager.history)}")
 
             return (full_response.strip(), total_tokens)
 
         except Exception as e:
             import traceback
+            logger.error(f"LLM 处理失败: {e}", exc_info=True)
             print(f"[LLM 处理器] 错误: {e}")
             print(f"[LLM 处理器] 错误详情:\n{traceback.format_exc()}")
             return (text, 0)

@@ -14,6 +14,10 @@ from util.client.client_type_result import typing_result
 from util.llm.llm_process_text import llm_process_text, LLMResult
 from util.client.client_strip_punc import strip_punc
 from util.tools.window_detector import get_active_window_info
+from util.logger import get_logger
+
+# 获取日志记录器
+logger = get_logger('client')
 
 
 def estimate_tokens(text: str) -> int:
@@ -76,8 +80,10 @@ def format_llm_result(llm_result: LLMResult) -> str:
 
 async def recv_result():
     if not await check_websocket():
+        logger.warning("WebSocket 连接检查失败")
         return
     console.print('[green]连接成功\n')
+    logger.info("WebSocket 连接成功")
     try:
         while True:
             # 接收消息
@@ -86,6 +92,8 @@ async def recv_result():
             text = message['text']
             delay = message['time_complete'] - message['time_submit']
 
+            logger.debug(f"接收到识别结果，文本: {text[:50]}{'...' if len(text) > 50 else ''}, 时延: {delay:.2f}s")
+
             # 如果非最终结果，继续等待
             if not message['is_final']:
                 continue
@@ -93,6 +101,8 @@ async def recv_result():
             # 热词替换
             text = hot_sub(text)
             text = strip_punc(text)
+
+            logger.debug(f"热词替换后: {text[:50]}{'...' if len(text) > 50 else ''}")
 
             # 控制台输出
             console.print(f'    转录时延：{delay:.2f}s')
@@ -108,6 +118,7 @@ async def recv_result():
                 compatibility_apps = ['weixin', '微信', 'wechat', 'WeChat']
                 if window_title in compatibility_apps:
                     paste = True
+                    logger.debug(f"检测到兼容性应用: {window_title}，使用粘贴模式")
 
             # LLM 处理和输出
             if Config.llm_enabled:
@@ -121,9 +132,11 @@ async def recv_result():
             if Config.save_audio:
                 # 重命名录音文件
                 file_audio = rename_audio(message['task_id'], text, message['time_start'])
+                logger.debug(f"保存录音文件: {file_audio}")
 
                 # 写入普通 md 文件（无论是否启用 LLM）
                 write_md(text, message['time_start'], file_audio)
+                logger.debug("写入 MD 文件")
 
             # LLM 结果显示和保存
             if Config.llm_enabled and llm_result and llm_result.processed:
@@ -136,15 +149,19 @@ async def recv_result():
                     message['time_start'],
                     file_audio
                 )
+                logger.debug("写入 LLM MD 文件")
 
 
             console.line()
 
     except websockets.ConnectionClosedError:
         console.print('[red]连接断开\n')
+        logger.error("WebSocket 连接断开")
     except websockets.ConnectionClosedOK:
         console.print('[yellow]连接已正常关闭\n')
+        logger.info("WebSocket 连接已正常关闭")
     except Exception as e:
+        logger.error(f"接收结果时发生错误: {e}", exc_info=True)
         print(e)
     finally:
         # 清理已关闭的 websocket 连接
@@ -152,6 +169,7 @@ async def recv_result():
             try:
                 if Cosmic.websocket.closed:
                     Cosmic.websocket = None
+                    logger.debug("WebSocket 连接已清理")
             except Exception:
                 Cosmic.websocket = None
         return
