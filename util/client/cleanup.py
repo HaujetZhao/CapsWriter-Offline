@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 客户端资源清理模块
 
@@ -8,7 +7,7 @@
 import asyncio
 from util.logger import get_logger
 from util.common.lifecycle import lifecycle
-from util.client.state import get_state
+from util.client.state import get_state, console
 
 logger = get_logger('client')
 
@@ -77,3 +76,4 @@ def cleanup_client_resources():
         logger.warning(f"停止托盘图标时发生错误: {e}")
 
     logger.info("客户端资源清理完成")
+    console.print('[green4]再见！')

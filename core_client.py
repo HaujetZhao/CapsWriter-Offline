@@ -35,8 +35,8 @@ os.chdir(BASE_DIR)
 # 确保终端能使用 ANSI 控制字符
 colorama.init()
 
-# 初始化日志系统 (配置 root logger)
-logger = setup_logger('', log_filename='client', level=Config.log_level)
+# 初始化日志系统
+logger = setup_logger('client', level=Config.log_level)
 
 # 全局变量，用于跟踪资源状态
 # _state is now managed by get_state() and its attributes
@@ -70,63 +70,17 @@ async def main_mic() -> None:
     # 保存当前任务的引用
     _main_task = asyncio.current_task()
 
-    from util.client.state import get_state, console
-    from util.client.audio import AudioStreamManager
-    from util.client.input import ShortcutHandler
-    from util.client.processing import ResultProcessor, HotwordManager
-    from util.client.ui import TipsDisplay
-    from util.llm.llm_handler import init_llm_system
-    from util.tools.empty_working_set import empty_current_working_set
+    from util.client.state import console
+    from util.client.processing import ResultProcessor
+    from util.client.startup import setup_client_components
 
     logger.info("=" * 50)
     logger.info("CapsWriter Offline Client 正在启动（麦克风模式）")
     logger.info(f"版本: {__version__}")
     logger.info(f"日志级别: {Config.log_level}")
 
-    # 初始化状态
-    _state = get_state()
-    _state.initialize()
-
-    # 根据配置决定是否启用托盘图标
-    if Config.enable_tray:
-        from util.ui.tray import enable_min_to_tray
-        icon_path = os.path.join(BASE_DIR, 'assets', 'icon.ico')
-        enable_min_to_tray('CapsWriter Client', icon_path, logger=logger, exit_callback=request_exit_from_tray)
-        logger.info("托盘图标已启用")
-
-    # 显示启动提示
-    TipsDisplay.show_mic_tips()
-
-    # 加载热词
-    logger.info("正在加载热词...")
-    hotword_manager = HotwordManager()
-    hotword_manager.load_all()
-
-    # 启动热词文件监视
-    hotword_manager.start_file_watcher()
-
-    # 初始化 LLM 系统
-    logger.info("正在初始化 LLM 系统...")
-    init_llm_system()
-    logger.info("LLM 系统初始化完成")
-
-    # 打开音频流
-    logger.info("正在打开音频流...")
-    _stream_manager = AudioStreamManager(_state)
-    _state.stream_manager = _stream_manager  # 注入状态以便清理
-    _stream_manager.open()
-
-    # 绑定快捷键
-    logger.info(f"正在绑定快捷键: {Config.shortcut}")
-    _shortcut_handler = ShortcutHandler(_state)
-    _state.shortcut_handler = _shortcut_handler # 注入状态以便清理
-    _shortcut_handler.bind()
-
-    # 清空物理内存工作集（Windows）
-    if system() == 'Windows':
-        empty_current_working_set()
-
-    logger.info("客户端初始化完成，等待语音输入...")
+    # 初始化所有组件
+    _state = setup_client_components(BASE_DIR)
 
     # 接收结果
     try:

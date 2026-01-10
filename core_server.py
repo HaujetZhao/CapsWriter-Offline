@@ -1,69 +1,28 @@
 import os
-import asyncio
-import signal
-import atexit
-from multiprocessing import Process, Manager
 from platform import system
-
+import asyncio
 import websockets
 from config import ServerConfig as Config, __version__
-from util.server.server_cosmic import Cosmic, console
 from util.server.server_ws_recv import ws_recv
 from util.server.server_ws_send import ws_send
-from util.server.server_init_recognizer import init_recognizer
 from util.tools.empty_working_set import empty_current_working_set
 from util.logger import setup_logger
 from util.common.lifecycle import lifecycle
-from util.server.state import get_state
 from util.server.cleanup import setup_tray, print_banner, cleanup_server_resources
-
-BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)    # 确保 os.getcwd() 位置正确，用相对路径加载模型
-
-# 初始化日志系统 (配置 root logger，同时写入 server_xxx.log)
-logger = setup_logger('', log_filename='server', level=Config.log_level)
-# websockets 日志会自动传播到 root logger，这里只需设置级别
+from util.server.service import start_recognizer_process
 import logging
-logging.getLogger('websockets.server').setLevel(logging.WARNING)
 
+BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)
 
+# 初始化日志系统
+logger = setup_logger('server', level=Config.log_level)
 
-
-def start_recognizer_process():
-    """启动识别子进程并等待模型加载完成"""
-    state = get_state()
-    Cosmic.sockets_id = Manager().list()
-    recognize_process = Process(target=init_recognizer,
-                                args=(Cosmic.queue_in,
-                                      Cosmic.queue_out,
-                                      Cosmic.sockets_id),
-                                daemon=False)
-    recognize_process.start()
-    state.recognize_process = recognize_process
-    logger.info("识别子进程已启动")
-    import queue
-    try:
-        while not lifecycle.is_shutting_down:
-            try:
-                Cosmic.queue_out.get(timeout=0.1)
-                break
-            except queue.Empty:
-                continue
-    except KeyboardInterrupt:
-        logger.warning("在加载模型时收到停止信号")
-        recognize_process.terminate()
-        raise
-
-    if lifecycle.is_shutting_down:
-        logger.warning("在加载模型时收到退出请求")
-        recognize_process.terminate()
-        # 这里需要引发一个异常或者直接退出，防止继续执行 run_websocket_server
-        # 由于外层 init 捕获 KeyboardInterrupt 并清理，我们可以模拟一个
-        raise KeyboardInterrupt
-
-    logger.info("模型加载完成，开始服务")
-    console.rule('[green3]开始服务')
-    console.line()
-    return recognize_process
+# 手动接管 websockets 日志
+ws_logger = logging.getLogger('websockets')
+ws_logger.setLevel(logging.WARNING) # 仅记录 WARNING 及以上
+ws_logger.propagate = False
+for handler in logger.handlers:
+    ws_logger.addHandler(handler)
 
 
 async def run_websocket_server():
