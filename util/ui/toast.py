@@ -6,9 +6,9 @@ Toast 消息管理模块
 Usage:
     # 普通 Toast
     toast("消息内容", duration=3000)
-    
+
     # 流式 Toast（用于测试）
-    toast_stream("消息内容", markdown=True)
+    toast_stream("消息内容", markdown=False)
 """
 import logging
 import threading
@@ -16,34 +16,44 @@ import time
 import tkinter as tk
 from queue import Queue
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Callable, Union, List
+from typing import Literal, Optional, Callable, Union, List, TYPE_CHECKING
 import sys
 import os
 
-# 直接运行时，切换工作目录到项目根目录
+# 直接运行时，将项目根目录添加到 sys.path
 if __name__ == "__main__":
     file_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(file_dir))
-    os.chdir(project_root)
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from util.ui.toast_text import ToastWindowText
     from util.ui.toast_label import ToastWindowLabel
+    from util.ui.toast_constants import (
+        QUEUE_POLL_INTERVAL_MS,
+        DEFAULT_DURATION_MS,
+        DEFAULT_INITIAL_WIDTH,
+        STREAM_CHAR_DELAY_S,
+        TK_SCALING_FACTOR,
+    )
 else:
     from .toast_text import ToastWindowText
     from .toast_label import ToastWindowLabel
+    from .toast_constants import (
+        QUEUE_POLL_INTERVAL_MS,
+        DEFAULT_DURATION_MS,
+        DEFAULT_INITIAL_WIDTH,
+        STREAM_CHAR_DELAY_S,
+        TK_SCALING_FACTOR,
+    )
+
+# 用于类型注解的前向引用
+if TYPE_CHECKING:
+    from .toast_text import ToastWindowText
+    from .toast_label import ToastWindowLabel
+
 
 # 配置日志（默认不输出，在测试时配置）
 logger = logging.getLogger(__name__)
-
-# ============================================================
-# 常量定义
-# ============================================================
-
-QUEUE_POLL_INTERVAL_MS = 100  # 队列轮询间隔（毫秒）
-DEFAULT_DURATION_MS = 2000  # 默认显示时长
-DEFAULT_INITIAL_WIDTH = 0.5  # 默认宽度（屏幕的50%）
-STREAM_CHAR_DELAY_MS = 0.001  # 流式输出每个字符的延迟（秒）
 
 
 # ============================================================
@@ -113,9 +123,9 @@ class ToastMessageManager:
             
         logger.debug("初始化 Toast 消息管理器")
         self._initialized = True
-        self.message_queue: Queue[ToastMessage] = Queue()
+        self.message_queue: 'Queue[ToastMessage]' = Queue()
         self.is_running = False
-        self.active_windows: List = []
+        self.active_windows: List = []  # 运行时类型，避免循环导入
         self.root: Optional[tk.Tk] = None
 
         # 在子线程中启动 Tkinter
@@ -133,7 +143,7 @@ class ToastMessageManager:
         # 创建隐藏的主窗口
         self.root = tk.Tk()
         self.root.withdraw()
-        self.root.tk.call('tk', 'scaling', 2)
+        self.root.tk.call('tk', 'scaling', TK_SCALING_FACTOR)
 
         # 设置窗口关闭时的行为
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -348,7 +358,7 @@ def toast_stream(
         for i in range(len(text) + 1):
             if i > 0:
                 manager.update_last_toast(text[:i])
-            time.sleep(STREAM_CHAR_DELAY_MS)
+            time.sleep(STREAM_CHAR_DELAY_S)
         manager.finish_last_toast()
 
     stream_thread = threading.Thread(

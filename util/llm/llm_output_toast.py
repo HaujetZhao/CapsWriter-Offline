@@ -57,7 +57,7 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
             initial_width=initial_width,
             initial_height=initial_height,
             streaming=True,
-            window_type='text',  # 使用 label 版本
+            window_type='text',  # 使用 text 版本（支持流式输出）
             stop_callback=lambda: on_stop_pressed()  # 传递停止函数
         )
         toast_manager.add_message(msg)

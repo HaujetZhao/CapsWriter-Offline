@@ -8,24 +8,22 @@ import tkinter as tk
 from tkinter import font
 from typing import Optional, Callable, Union
 
-from util.ui.toast_base import (
+from .toast_base import (
     ToastWindowBase,
+)
+from .toast_constants import (
     DEFAULT_FONT_FAMILY,
     DEFAULT_PADDING_X,
     DEFAULT_PADDING_Y,
     MIN_WINDOW_HEIGHT,
+    STREAMING_TEXT_HEIGHT,
+    NON_STREAMING_TEXT_HEIGHT,
+    HEIGHT_PADDING,
+    TEXT_WRAP_MODE,
 )
 
 # 配置日志
 logger = logging.getLogger(__name__)
-
-# ============================================================
-# 常量定义
-# ============================================================
-
-STREAMING_TEXT_HEIGHT = 50  # 流式模式预设行数，防止内容多时自动滚动
-NON_STREAMING_TEXT_HEIGHT = 1  # 非流式模式初始行数
-HEIGHT_PADDING = 40  # 窗口高度的额外边距
 
 
 class ToastWindowText(ToastWindowBase):
@@ -78,7 +76,7 @@ class ToastWindowText(ToastWindowBase):
         )
 
         # 创建字体对象用于计算行高
-        font_name = self.font_family if self.font_family else 'Microsoft YaHei'
+        font_name = self.font_family if self.font_family else DEFAULT_FONT_FAMILY
         self.my_font = font.Font(family=font_name, size=self.font_size)
         self.line_height = self.my_font.metrics('linespace')
         self.last_char_count = 0
@@ -95,7 +93,7 @@ class ToastWindowText(ToastWindowBase):
             pady=DEFAULT_PADDING_Y,
             borderwidth=0,
             highlightthickness=0,
-            wrap=tk.CHAR,  # 按字符自动换行
+            wrap=TEXT_WRAP_MODE,
             insertofftime=0,
             state=tk.DISABLED,
             cursor="arrow",
@@ -129,23 +127,19 @@ class ToastWindowText(ToastWindowBase):
 
     def _adjust_height_for_content(self) -> None:
         """根据内容调整窗口高度（非流式模式使用）"""
-        # 先计算并设置窗口宽度
-        screen_width = self.window.winfo_screenwidth()
+        # 使用基类的宽度计算方法
+        calculated_width = self._calculate_actual_width()
         screen_height = self.window.winfo_screenheight()
-        
-        if 0 < self.initial_width < 1:
-            calculated_width = int(screen_width * self.initial_width)
-        else:
-            calculated_width = int(self.initial_width)
-        
+
         # 设置临时窗口大小（只设置宽度，高度暂时设为100）
+        screen_width = self.window.winfo_screenwidth()
         x = (screen_width - calculated_width) // 2
         y = (screen_height - 100) // 2
         self.window.geometry(f'{calculated_width}x100+{x}+{y}')
-        
+
         # 强制更新，让 Text 组件按照新宽度重新计算换行
         self.window.update_idletasks()
-        
+
         # 现在计算实际行数
         result = self.text_area.count('1.0', 'end', 'displaylines')
         actual_lines = result[0] if result else 1
@@ -154,7 +148,7 @@ class ToastWindowText(ToastWindowBase):
 
     def _set_window_position(self, initial: bool = False) -> None:
         """设置窗口位置
-        
+
         Args:
             initial: 是否为初始位置（屏幕中央，单行高度）
         """
@@ -165,11 +159,8 @@ class ToastWindowText(ToastWindowBase):
             # 更新窗口以确保获取正确的尺寸
             self.window.update_idletasks()
 
-            # 计算初始宽度
-            if 0 < self.initial_width < 1:
-                calculated_width = int(screen_width * self.initial_width)
-            else:
-                calculated_width = int(self.initial_width)
+            # 使用基类的宽度计算方法
+            calculated_width = self._calculate_actual_width()
 
             # 获取实际渲染的行数
             result = self.text_area.count('1.0', 'end', 'displaylines')

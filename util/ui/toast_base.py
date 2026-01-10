@@ -13,24 +13,26 @@ import ctypes
 import markdown
 from tkhtmlview import HTMLLabel
 
+from .toast_constants import (
+    DEFAULT_FONT_FAMILY,
+    DEFAULT_PADDING_X,
+    DEFAULT_PADDING_Y,
+    MIN_WINDOW_HEIGHT,
+    MARKDOWN_HEIGHT_MARGIN,
+    MARKDOWN_MIN_HEIGHT,
+    SCROLL_STEP,
+    DESTROY_DELAY_MS,
+)
+
 # 配置日志
 logger = logging.getLogger(__name__)
 
-# DPI 感知设置
-ctypes.windll.shcore.SetProcessDpiAwareness(1)
-
-# ============================================================
-# 常量定义
-# ============================================================
-
-DEFAULT_FONT_FAMILY = 'Microsoft YaHei UI'
-DEFAULT_PADDING_X = 20
-DEFAULT_PADDING_Y = 15
-MIN_WINDOW_HEIGHT = 60
-MARKDOWN_HEIGHT_MARGIN = 120
-MARKDOWN_MIN_HEIGHT = 120
-SCROLL_STEP = 60
-DESTROY_DELAY_MS = 100
+# DPI 感知设置（只调用一次，避免重复调用）
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)
+except (OSError, AttributeError):
+    # Windows 7 或不支持 DPI 感知的系统
+    pass
 
 
 # ============================================================
@@ -352,7 +354,8 @@ class ToastWindowBase(ABC):
                     content_height = internal_widget.winfo_reqheight()
                 else:
                     content_height = self.md_label.winfo_reqheight()
-            except (IndexError, tk.TclError):
+            except (IndexError, tk.TclError, AttributeError):
+                # 如果获取内部组件失败，使用标签本身的高度
                 content_height = self.md_label.winfo_reqheight()
 
             # 计算新的窗口高度和宽度

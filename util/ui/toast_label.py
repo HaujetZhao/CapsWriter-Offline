@@ -8,23 +8,20 @@ import tkinter as tk
 from tkinter import font
 from typing import Optional, Callable, Union
 
-from util.ui.toast_base import (
+from .toast_base import (
     ToastWindowBase,
     add_zero_width_for_chinese,
+)
+from .toast_constants import (
     DEFAULT_FONT_FAMILY,
     DEFAULT_PADDING_X,
     DEFAULT_PADDING_Y,
     MIN_WINDOW_HEIGHT,
+    LABEL_HEIGHT_PADDING,
 )
 
 # 配置日志
 logger = logging.getLogger(__name__)
-
-# ============================================================
-# 常量定义
-# ============================================================
-
-LABEL_HEIGHT_PADDING = 30  # Label 窗口高度的额外边距
 
 
 class ToastWindowLabel(ToastWindowBase):
@@ -86,7 +83,7 @@ class ToastWindowLabel(ToastWindowBase):
         processed_text = add_zero_width_for_chinese(text) if text else text
 
         # 如果未指定字体，使用默认字体
-        font_name = font_family if font_family else 'Microsoft YaHei'
+        font_name = font_family if font_family else DEFAULT_FONT_FAMILY
 
         # 创建文字标签
         self.label = tk.Label(
@@ -135,10 +132,7 @@ class ToastWindowLabel(ToastWindowBase):
             screen_height = self.window.winfo_screenheight()
 
             # 计算初始宽度
-            if 0 < self.initial_width < 1:
-                calculated_width = int(screen_width * self.initial_width)
-            else:
-                calculated_width = int(self.initial_width)
+            calculated_width = self._calculate_actual_width()
 
             # 获取 Label 的理想高度
             needed_h = self.label.winfo_reqheight() + LABEL_HEIGHT_PADDING
