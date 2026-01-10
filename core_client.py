@@ -17,6 +17,7 @@ import asyncio
 import os
 import signal
 import sys
+import atexit
 from pathlib import Path
 from platform import system
 from typing import List
@@ -37,6 +38,129 @@ colorama.init()
 # 初始化日志系统
 logger = setup_logger('client', level=Config.log_level)
 
+# 全局变量，用于跟踪资源状态
+_state = None
+_shortcut_handler = None
+_stream_manager = None
+_processor = None  # 结果处理器引用
+_is_shutting_down = False
+_tray_exit_requested = False  # 托盘请求退出标志
+_main_task = None  # 主任务引用
+
+
+def request_exit_from_tray():
+    """从托盘请求退出"""
+    global _tray_exit_requested, _main_task, _processor
+    logger.info("托盘退出回调函数被调用")
+
+    # 方法1: 设置退出标志（原有逻辑）
+    _tray_exit_requested = True
+    logger.debug("托盘退出标志已设置")
+
+    # 方法2: 通知处理器退出（立即解除阻塞）
+    if _processor:
+        logger.debug("正在通知处理器退出...")
+        try:
+            _processor.request_exit()
+            logger.info("已通知处理器退出")
+        except Exception as e:
+            logger.warning(f"通知处理器退出时发生错误: {e}")
+
+    # 方法3: 取消主任务（确保退出）
+    if _main_task and not _main_task.done():
+        logger.debug("正在从托盘线程取消主任务...")
+        try:
+            _main_task.cancel()
+            logger.info("已请求取消主任务")
+        except Exception as e:
+            logger.warning(f"取消主任务时发生错误: {e}")
+
+
+def cleanup_client_resources():
+    """
+    清理客户端资源的函数
+
+    这个函数会被 atexit.register 注册，在程序退出时自动调用。
+    """
+    global _is_shutting_down
+
+    # 防止重复清理
+    if _is_shutting_down:
+        logger.debug("清理已经在进行中，跳过重复清理")
+        return
+
+    _is_shutting_down = True
+    logger.info("=" * 50)
+    logger.info("开始清理客户端资源...")
+
+    # 解绑快捷键
+    if _shortcut_handler:
+        try:
+            _shortcut_handler.unbind()
+            logger.debug("快捷键已解绑")
+        except Exception as e:
+            logger.warning(f"解绑快捷键时发生错误: {e}")
+
+    # 关闭音频流
+    if _stream_manager:
+        try:
+            _stream_manager.close()
+            logger.debug("音频流已关闭")
+        except Exception as e:
+            logger.warning(f"关闭音频流时发生错误: {e}")
+
+    # 关闭 WebSocket 连接
+    if _state and _state.websocket:
+        try:
+            # 检查是否有 close 方法
+            if hasattr(_state.websocket, 'closed'):
+                # WebSocket 连接对象，检查 closed 属性
+                if not _state.websocket.closed:
+                    # 需要在异步上下文中关闭
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(_state.websocket.close())
+                    loop.close()
+                    logger.debug("WebSocket 连接已关闭")
+            elif hasattr(_state.websocket, 'close'):
+                # 其他连接对象，直接调用 close
+                _state.websocket.close()
+                logger.debug("WebSocket 连接已关闭")
+        except Exception as e:
+            logger.warning(f"关闭 WebSocket 连接时发生错误: {e}")
+
+    logger.info("客户端资源清理完成")
+
+
+def signal_handler(signum, frame):
+    """
+    客户端的信号处理器
+
+    处理 SIGINT (Ctrl+C) 和 SIGTERM 信号，优雅地退出程序。
+    """
+    global _loop
+    signal_name = signal.Signals(signum).name
+    logger.info(f"收到信号 {signal_name} ({signum})，准备退出...")
+
+    # 执行清理
+    cleanup_client_resources()
+
+    # 停止事件循环（这会终止 asyncio.run）
+    if _loop and _loop.is_running():
+        logger.debug("正在停止事件循环...")
+        _loop.call_soon_threadsafe(_loop.stop)
+
+    # 退出程序
+    logger.debug("程序退出")
+    sys.exit(0)
+
+
+def register_signal_handlers():
+    """注册信号处理器"""
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    logger.debug("信号处理器已注册")
+
 
 def _check_macos_permissions() -> None:
     """检查 MacOS 权限设置"""
@@ -52,9 +176,14 @@ def _check_macos_permissions() -> None:
 async def main_mic() -> None:
     """
     麦克风模式主函数
-    
+
     启动实时语音识别，监听快捷键开始/结束录音。
     """
+    global _state, _shortcut_handler, _stream_manager, _tray_exit_requested, _processor, _main_task
+
+    # 保存当前任务的引用
+    _main_task = asyncio.current_task()
+
     from util.client.state import get_state, console
     from util.client.audio import AudioStreamManager
     from util.client.input import ShortcutHandler
@@ -62,68 +191,102 @@ async def main_mic() -> None:
     from util.client.ui import TipsDisplay
     from util.llm.llm_handler import init_llm_system
     from util.tools.empty_working_set import empty_current_working_set
-    
+
     logger.info("=" * 50)
     logger.info("CapsWriter Offline Client 正在启动（麦克风模式）")
     logger.info(f"版本: {__version__}")
     logger.info(f"日志级别: {Config.log_level}")
-    
+
     # 初始化状态
-    state = get_state()
-    state.initialize()
-    
+    _state = get_state()
+    _state.initialize()
+
     # 根据配置决定是否启用托盘图标
     if Config.enable_tray:
         from util.ui.tray import enable_min_to_tray
         icon_path = os.path.join(BASE_DIR, 'assets', 'icon.ico')
-        enable_min_to_tray('CapsWriter Client', icon_path)
+        enable_min_to_tray('CapsWriter Client', icon_path, logger=logger, exit_callback=request_exit_from_tray)
         logger.info("托盘图标已启用")
-    
+
     # 显示启动提示
     TipsDisplay.show_mic_tips()
-    
+
     # 加载热词
     logger.info("正在加载热词...")
     hotword_manager = HotwordManager()
     hotword_manager.load_all()
-    
+
     # 启动热词文件监视
     hotword_manager.start_file_watcher()
-    
+
     # 初始化 LLM 系统
     logger.info("正在初始化 LLM 系统...")
     init_llm_system()
     logger.info("LLM 系统初始化完成")
-    
+
     # 打开音频流
     logger.info("正在打开音频流...")
-    stream_manager = AudioStreamManager(state)
-    stream_manager.open()
-    
-    # Ctrl-C 关闭音频流，触发自动重启
-    def on_signal(signum, frame):
-        stream_manager.close()
-    signal.signal(signal.SIGINT, on_signal)
-    
+    _stream_manager = AudioStreamManager(_state)
+    _stream_manager.open()
+
     # 绑定快捷键
     logger.info(f"正在绑定快捷键: {Config.shortcut}")
-    shortcut_handler = ShortcutHandler(state)
-    shortcut_handler.bind()
-    
+    _shortcut_handler = ShortcutHandler(_state)
+    _shortcut_handler.bind()
+
     # 清空物理内存工作集（Windows）
     if system() == 'Windows':
         empty_current_working_set()
-    
+
     logger.info("客户端初始化完成，等待语音输入...")
-    
+
     # 接收结果
     try:
-        processor = ResultProcessor(state)
+        processor = ResultProcessor(_state)
+        global _processor
+        _processor = processor  # 保存引用以便退出时调用
+
         while True:
             await processor.process_loop()
+            # 检查托盘是否请求退出
+            if _tray_exit_requested:
+                logger.info("检测到托盘退出请求")
+                break
+    except asyncio.CancelledError:
+        logger.info("异步任务被取消，正在退出...")
+        raise
     except Exception as e:
         logger.error(f"接收结果时发生错误: {e}", exc_info=True)
         raise
+    finally:
+        # 清理资源（在异步上下文中）
+        logger.info("正在清理客户端资源（异步上下文）...")
+
+        # 解绑快捷键
+        try:
+            if _shortcut_handler:
+                _shortcut_handler.unbind()
+                logger.debug("快捷键已解绑")
+        except Exception as e:
+            logger.warning(f"解绑快捷键时发生错误: {e}")
+
+        # 关闭音频流
+        try:
+            if _stream_manager:
+                _stream_manager.close()
+                logger.debug("音频流已关闭")
+        except Exception as e:
+            logger.warning(f"关闭音频流时发生错误: {e}")
+
+        # 关闭 WebSocket 连接
+        try:
+            if _state.websocket and not _state.websocket.closed:
+                await _state.websocket.close()
+                logger.debug("WebSocket 连接已关闭")
+        except Exception as e:
+            logger.warning(f"关闭 WebSocket 连接时发生错误: {e}")
+
+        logger.info("客户端资源清理完成（异步上下文）")
 
 
 async def main_file(files: List[Path]) -> None:
@@ -172,17 +335,22 @@ async def main_file(files: List[Path]) -> None:
 def init_mic() -> None:
     """初始化并运行麦克风模式"""
     from util.client.state import console
-    
+
+    # 注册信号处理器和 atexit 处理器
+    register_signal_handlers()
+    atexit.register(cleanup_client_resources)
+
     try:
         asyncio.run(main_mic())
     except KeyboardInterrupt:
         logger.info("收到停止信号，正在退出...")
         console.print('再见！')
+    except asyncio.CancelledError:
+        logger.info("任务已取消，正在退出...")
+        console.print('再见！')
     except Exception as e:
         logger.error(f"运行时错误: {e}", exc_info=True)
         raise
-    finally:
-        print('...')
 
 
 def init_file(files: List[Path]) -> None:
@@ -198,6 +366,10 @@ def init_file(files: List[Path]) -> None:
         asyncio.run(main_file(files))
     except KeyboardInterrupt:
         logger.info("收到停止信号，正在退出...")
+        console.print('再见！')
+        sys.exit(0)
+    except asyncio.CancelledError:
+        logger.info("任务已取消，正在退出...")
         console.print('再见！')
         sys.exit(0)
     except Exception as e:
