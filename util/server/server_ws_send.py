@@ -37,10 +37,10 @@ async def ws_send():
                 'time_start': result.time_start,
                 'time_submit': result.time_submit,
                 'time_complete': result.time_complete,
+                'text': result.text,               # 主要输出（简单拼接）
+                'text_accu': result.text_accu,     # 精确输出（时间戳拼接）
                 'tokens': result.tokens,
                 'timestamps': result.timestamps,
-                'text': result.text,
-                'text_simple': result.text_simple,  # 基于文本拼接的结果
                 'is_final': result.is_final,
             }
 

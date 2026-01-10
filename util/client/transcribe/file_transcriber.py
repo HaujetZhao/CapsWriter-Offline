@@ -152,8 +152,11 @@ class FileTranscriber:
                 break
         
         # 解析结果
-        text_merge = message['text']
-        text_split = re.sub('[，。？]', '\n', text_merge)
+        # text: 简单拼接（用于显示）
+        # text_accu: 精确拼接（用于字幕生成，带时间戳）
+        text_display = message['text']
+        text_accu = message.get('text_accu', message['text'])
+        text_split = re.sub('[，。？]', '\n', text_accu)
         timestamps = message['timestamps']
         tokens = message['tokens']
         
@@ -163,7 +166,7 @@ class FileTranscriber:
         merge_filename = self.file.with_suffix('.merge.txt')
         
         with open(merge_filename, 'w', encoding='utf-8') as f:
-            f.write(text_merge)
+            f.write(text_accu)
         with open(txt_filename, 'w', encoding='utf-8') as f:
             f.write(text_split)
         with open(json_filename, 'w', encoding='utf-8') as f:
@@ -173,9 +176,9 @@ class FileTranscriber:
         
         process_duration = message['time_complete'] - message['time_start']
         console.print(f'\033[K    处理耗时：{process_duration:.2f}s')
-        console.print(f'    识别结果：\n[green]{text_merge}')
+        console.print(f'    识别结果：\n[green]{text_display}')
         
         logger.info(
             f"转录完成: {self.file}, 处理耗时: {process_duration:.2f}s, "
-            f"文本长度: {len(text_merge)}"
+            f"文本长度: {len(text_display)}"
         )

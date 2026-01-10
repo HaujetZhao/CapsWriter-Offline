@@ -56,9 +56,12 @@ class Result:
         time_start: 录音/音频开始时间戳
         time_submit: 片段提交时间戳
         time_complete: 识别完成时间戳
-        tokens: 字级 token 列表
-        timestamps: 字级时间戳列表（对应 tokens）
-        text: 合并后的文本
+        
+        text: 主要输出 - 简单文本拼接（不依赖时间戳，用于语音输入）
+        text_accu: 精确输出 - 时间戳去重拼接（用于字幕生成）
+        tokens: 字级 token 列表（与 timestamps 对应）
+        timestamps: 字级时间戳列表（秒）
+        
         is_final: 是否已完成所有片段识别
     """
     task_id: str
@@ -70,8 +73,12 @@ class Result:
     time_submit: float = 0.0
     time_complete: float = 0.0
     
+    # 主要输出（简单文本拼接）
+    text: str = ''
+    
+    # 精确输出（时间戳拼接）
+    text_accu: str = ''
     tokens: List[str] = field(default_factory=list)
     timestamps: List[float] = field(default_factory=list)
-    text: str = ''
-    text_simple: str = ''  # 基于文本拼接的结果（不依赖时间戳）
+    
     is_final: bool = False
