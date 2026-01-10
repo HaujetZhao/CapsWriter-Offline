@@ -4,8 +4,25 @@ import tkinter as tk
 from queue import Queue
 from dataclasses import dataclass
 from typing import Literal
+import sys
+import os
 
-from util.ui.toast_windows import ToastWindowText, ToastWindowLabel
+# 直接运行时，切换工作目录到项目根目录，并添加到搜索路径
+if __name__ == "__main__":
+    # 获取文件所在目录的父目录（项目根目录）
+    file_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(os.path.dirname(file_dir))
+    os.chdir(project_root)
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+
+    # 现在可以使用绝对导入了
+    from util.ui.toast_text import ToastWindowText
+    from util.ui.toast_label import ToastWindowLabel
+else:
+    # 作为模块导入时，使用相对导入
+    from .toast_text import ToastWindowText
+    from .toast_label import ToastWindowLabel
 
 
 @dataclass
@@ -22,6 +39,7 @@ class ToastMessage:
     streaming: bool = False
     window_type: Literal['text', 'label'] = 'text'
     stop_callback: any = None  # 窗口关闭时的回调函数（用于停止 LLM 输出）
+    markdown: bool = False     # 是否在完成后转换为 Markdown 渲染
 
 
 class ToastMessageManager:
@@ -95,7 +113,8 @@ class ToastMessageManager:
                         msg.initial_width,
                         msg.initial_height,
                         streaming=msg.streaming,
-                        stop_callback=msg.stop_callback
+                        stop_callback=msg.stop_callback,
+                        markdown=msg.markdown
                     )
                 else:  # 默认使用 text 版本
                     toast_window = ToastWindowText(
@@ -109,7 +128,8 @@ class ToastMessageManager:
                         msg.initial_width,
                         msg.initial_height,
                         streaming=msg.streaming,
-                        stop_callback=msg.stop_callback
+                        stop_callback=msg.stop_callback,
+                        markdown=msg.markdown
                     )
 
                 self.active_windows.append(toast_window)
@@ -164,7 +184,7 @@ class ToastMessageManager:
 
 
 def toast(text, font_size=14, bg="#C41529", fg='white', duration=2000,
-         initial_width=400, initial_height=0, streaming=False, window_type='text'):
+         initial_width=0.5, initial_height=0, streaming=False, window_type='text', markdown=False):
     """显示浮动消息的便捷函数
 
     Args:
@@ -177,6 +197,7 @@ def toast(text, font_size=14, bg="#C41529", fg='white', duration=2000,
         initial_height: 初始高度（0 表示自动计算）
         streaming: 是否为流式模式
         window_type: 窗口类型 ('text' 或 'label')
+        markdown: 是否在完成后转换为 Markdown 渲染（仅当 streaming=True 时有效）
     """
     manager = ToastMessageManager()
     msg = ToastMessage(
@@ -188,34 +209,149 @@ def toast(text, font_size=14, bg="#C41529", fg='white', duration=2000,
         initial_width=initial_width,
         initial_height=initial_height,
         streaming=streaming,
-        window_type=window_type
+        window_type=window_type,
+        markdown=markdown
     )
     manager.add_message(msg)
 
 
+def toast_stream(text, font_size=14, bg="#C41529", fg='white', duration=2000,
+                initial_width=0.5, initial_height=0, window_type='text', markdown=False):
+    """模拟流式输入的 Toast（用于测试流式输出效果）
+
+    Args:
+        text: 消息文本
+        font_size: 字体大小
+        bg: 背景颜色
+        fg: 字体颜色
+        duration: 显示时长（毫秒）
+        initial_width: 初始宽度
+        initial_height: 初始高度（0 表示自动计算）
+        window_type: 窗口类型 ('text' 或 'label')
+        markdown: 是否在完成后转换为 Markdown 渲染
+    """
+    manager = ToastMessageManager()
+
+    # 创建流式 toast
+    msg = ToastMessage(
+        text="",
+        font_size=font_size,
+        bg=bg,
+        fg=fg,
+        duration=duration,
+        initial_width=initial_width,
+        initial_height=initial_height,
+        streaming=True,
+        window_type=window_type,
+        markdown=markdown
+    )
+    manager.add_message(msg)
+
+    # 模拟流式输出（逐字显示）
+    def simulate_streaming():
+        for i in range(len(text) + 1):
+            if i > 0:
+                manager.update_last_toast(text[:i])
+            time.sleep(0.001)  # 每 5ms 显示一个字符
+
+        # 流式输出完成
+        manager.finish_last_toast()
+
+    # 在新线程中模拟流式输出
+    import threading
+    stream_thread = threading.Thread(target=simulate_streaming, daemon=True)
+    stream_thread.start()
+
+
 # 使用示例
 if __name__ == "__main__":
-    message_text = """21:14:13 【国际航协：中国\n\n\n\n\n\n\n\n\n\n\n\n四大航空公司加入航班数据交互项目】 财联社11月14日电，从国际航协获悉，中国东方航空公司宣布加入国际航协航班计划数据交互项目（SDEP）。至此，该计划已涵盖中国四大航空公司——中国国际航空公司、中国东方航空公司、中国南方航空公司和海南航空公司，标志着该计划在中国市场的推进迈出了重要一步。随着中国四大航空公司加入航班计划数据交互项目，该项目目前涵盖了中国民航75%以上的运力。 (证券时报)"""
+    print("=" * 60)
+    print("全面 Toast 测试程序")
+    print("=" * 60)
+    print("\n将执行 8 个测试用例:")
+    print("1. Text 版本 - 普通文本 - 非流式")
+    print("2. Text 版本 - 普通文本 - 流式")
+    print("3. Text 版本 - Markdown - 非流式")
+    print("4. Text 版本 - Markdown - 流式")
+    print("5. Label 版本 - 普通文本 - 非流式")
+    print("6. Label 版本 - 普通文本 - 流式")
+    print("7. Label 版本 - Markdown - 非流式")
+    print("8. Label 版本 - Markdown - 流式")
+    print("=" * 60)
 
-    # 测试多个消息（使用 Text 版本）
-    toast(message_text, bg="#075077", duration=3000, window_type='text', initial_width=1200)
-    time.sleep(4)
-    # toast(message_text, bg="#C41529", duration=2000, window_type='text')
-    time.sleep(4)
-    # 使用 Label 版本
-    # toast(message_text, bg="#008000", duration=1000, window_type='label')
+    # 测试文本
+    plain_text = """在这个快节奏、信息爆炸的时代，我们似乎总是被一种无形的压力所裹挟，焦虑、烦恼、疲惫，像潮水般涌入我们的内心。我们争分夺秒地奔波于工作、学习、社交之间，却往往忽略了内心深处那片安静的土地。在这样的背景下，寻找静心，成为了我们重新审视自我、找回平衡的重要途径。"""
+    markdown_text = """# Markdown 测试
 
-    # 或者使用 ToastMessage 对象
-    msg = ToastMessage(
-        text="使用 Dataclass 的消息",
-        bg="#FF5722",
-        window_type='label'
-    )
-    manager = ToastMessageManager()
+## 功能特性
+
+这是一段**粗体文字**和*斜体文字*的示例。
+
+### 代码示例
+```python
+def hello():
+    print("Hello, World!")
+```
+
+### 列表
+- 第一项
+- 第二项
+- 第三项
+
+> 这是一段引用文字"""
+
+    # ========== Text 版本测试 ==========
+    
+    # 测试 1: Text 版本 - 普通文本 - 非流式
+    print("\n[测试 1] Text 版本 - 普通文本 - 非流式 (3秒)")
+    toast(plain_text, bg="#075077", fg='white', duration=3000, window_type='text', initial_width=800)
+    time.sleep(4)
+
+    # 测试 2: Text 版本 - 普通文本 - 流式
+    print("[测试 2] Text 版本 - 普通文本 - 流式 (5秒)")
+    toast_stream(plain_text, bg="#2E7D32", fg='white', duration=5000, window_type='text', initial_width=800, markdown=False)
+    time.sleep(7)
+
+    # 测试 3: Text 版本 - Markdown - 非流式
+    print("[测试 3] Text 版本 - Markdown - 非流式 (3秒)")
+    toast(markdown_text, bg="#1565C0", fg='white', duration=3000, window_type='text', initial_width=800, markdown=True)
+    time.sleep(4)
+
+    # 测试 4: Text 版本 - Markdown - 流式
+    print("[测试 4] Text 版本 - Markdown - 流式 (5秒)")
+    toast_stream(markdown_text, bg="#C62828", fg='white', duration=5000, window_type='text', initial_width=800, markdown=True)
+    time.sleep(7)
+
+    # ========== Label 版本测试 ==========
+    
+    # 测试 5: Label 版本 - 普通文本 - 非流式
+    print("[测试 5] Label 版本 - 普通文本 - 非流式 (3秒)")
+    toast(plain_text, bg="#F57C00", fg='white', duration=3000, window_type='label', initial_width=800)
+    time.sleep(4)
+
+    # 测试 6: Label 版本 - 普通文本 - 流式
+    print("[测试 6] Label 版本 - 普通文本 - 流式 (5秒)")
+    toast_stream(plain_text, bg="#7B1FA2", fg='white', duration=5000, window_type='label', initial_width=800, markdown=False)
+    time.sleep(7)
+
+    # 测试 7: Label 版本 - Markdown - 非流式
+    print("[测试 7] Label 版本 - Markdown - 非流式 (3秒)")
+    toast(markdown_text, bg="#00796B", fg='white', duration=3000, window_type='label', initial_width=800, markdown=True)
+    time.sleep(4)
+
+    # 测试 8: Label 版本 - Markdown - 流式
+    print("[测试 8] Label 版本 - Markdown - 流式 (5秒)")
+    toast_stream(markdown_text, bg="#5D4037", fg='white', duration=5000, window_type='label', initial_width=800, markdown=True)
+    time.sleep(7)
+
+
+    print("\n" + "=" * 60)
+    print("所有测试完成！按 Ctrl+C 退出程序")
+    print("=" * 60)
 
     # 保持主线程运行
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("程序退出")
+        print("\n程序退出")
