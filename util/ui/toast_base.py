@@ -18,7 +18,6 @@ from .toast_constants import (
     DEFAULT_PADDING_X,
     DEFAULT_PADDING_Y,
     MIN_WINDOW_HEIGHT,
-    MARKDOWN_HEIGHT_MARGIN,
     MARKDOWN_MIN_HEIGHT,
     SCROLL_STEP,
     DESTROY_DELAY_MS,
@@ -219,7 +218,9 @@ class ToastWindowBase(ABC):
     def _on_mouse_wheel(self, event: tk.Event) -> str:
         """滚轮调整窗口垂直位置
 
-        限制在屏幕中线到底边之间滚动。
+        允许在屏幕中线到屏幕底边之间滚动：
+        - 窗口底部超出屏幕时，可以向上滚动（减小 y）
+        - 窗口顶部超过屏幕中线时，可以向下滚动（增加 y）
 
         Returns:
             "break" 阻止事件继续传播
@@ -243,17 +244,25 @@ class ToastWindowBase(ABC):
                 return "break"
 
             # 计算边界
+            # top_limit: 窗口在最低位置时的 y 坐标（底部刚好在屏幕底边）
+            # bottom_limit: 窗口在最高位置时的 y 坐标（顶部在屏幕中线）
             top_limit = screen_height - window_height
             bottom_limit = screen_middle
 
-            # 只要窗口底部超出屏幕，就允许滚动
+            # 检查是否允许滚动
             window_bottom = current_y + window_height
-            if window_bottom > screen_height:
-                if is_scroll_up:
-                    target_y = max(current_y - SCROLL_STEP, top_limit)
-                else:
-                    target_y = min(current_y + SCROLL_STEP, bottom_limit)
+            can_scroll_up = window_bottom > screen_height  # 底部超出屏幕，可向上滚动
+            can_scroll_down = current_y < screen_middle    # 顶部在中线之上，可向下滚动
 
+            # 根据滚动方向和位置判断是否执行滚动
+            if is_scroll_up and can_scroll_up:
+                # 向上滚动（减小 y）
+                target_y = max(current_y - SCROLL_STEP, top_limit)
+                if target_y != current_y:
+                    self.window.geometry(f"+{self.window.winfo_x()}+{int(target_y)}")
+            elif not is_scroll_up and can_scroll_down:
+                # 向下滚动（增加 y）
+                target_y = min(current_y + SCROLL_STEP, bottom_limit)
                 if target_y != current_y:
                     self.window.geometry(f"+{self.window.winfo_x()}+{int(target_y)}")
 
@@ -321,23 +330,21 @@ class ToastWindowBase(ABC):
                 extensions=['extra', 'nl2br']
             )
 
-            # 包装为完整的 HTML
+            # 包装为完整的 HTML（不设置 padding，让 HTMLLabel 组件处理）
             full_html = f"""
-            <div style="background-color:{self.bg}; color:{self.fg}; 
-                        font-family:{self.font_family}; font-size:{self.font_size}px; 
-                        padding: {DEFAULT_PADDING_Y}px {DEFAULT_PADDING_X}px;">
+            <div style="background-color:{self.bg}; color:{self.fg};
+                        font-family:{self.font_family}; font-size:{self.font_size}px;">
                 {raw_html}
             </div>
             """
 
-            # 创建 HTMLLabel 组件
+            # 创建 HTMLLabel 组件（不带滚动条）
             self.md_label = HTMLLabel(
                 self.window,
                 html=full_html,
                 background=self.bg,
                 padx=DEFAULT_PADDING_X,
-                pady=DEFAULT_PADDING_Y,
-                state=tk.DISABLED
+                pady=DEFAULT_PADDING_Y
             )
             self.md_label.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
@@ -345,23 +352,61 @@ class ToastWindowBase(ABC):
             self.window.update()
             self.window.update_idletasks()
 
-            # 获取内部渲染内容的实际高度
+            # 测量 fit_height() 前的高度
+            height_before = self.md_label.winfo_height()
+            reqheight_before = self.md_label.winfo_reqheight()
+            logger.debug(f"fit_height() 之前:")
+            logger.debug(f"  winfo_height(): {height_before}")
+            logger.debug(f"  winfo_reqheight(): {reqheight_before}")
+
+            # 使用 fit_height() 方法获取真实的内容高度
+            # 这会自动调整标签高度以适应所有内容
+            self.md_label.fit_height()
+            self.window.update()
+            self.window.update_idletasks()
+
+            # 测量 fit_height() 后的高度
+            height_after = self.md_label.winfo_height()
+            reqheight_after = self.md_label.winfo_reqheight()
+            logger.debug(f"fit_height() 之后:")
+            logger.debug(f"  winfo_height(): {height_after}")
+            logger.debug(f"  winfo_reqheight(): {reqheight_after}")
+
+            # 使用较大的高度值（reqheight 可能更准确）
+            content_height = max(height_after, reqheight_after)
+            logger.debug(f"  使用 content_height: {content_height}")
+
+            # 获取内部渲染组件的信息（用于调试）
             try:
                 children = self.md_label.winfo_children()
-                internal_widget = children[0] if children else None
-                if internal_widget:
-                    content_height = internal_widget.winfo_reqheight()
-                else:
-                    content_height = self.md_label.winfo_reqheight()
-            except (IndexError, tk.TclError, AttributeError):
-                # 如果获取内部组件失败，使用标签本身的高度
-                content_height = self.md_label.winfo_reqheight()
+                logger.debug(f"  children 数量: {len(children)}")
+                if children:
+                    internal_widget = children[0]
+                    logger.debug(f"  internal_widget 类型: {type(internal_widget).__name__}")
+                    logger.debug(f"  internal_widget.winfo_height(): {internal_widget.winfo_height()}")
+            except Exception as e:
+                logger.debug(f"  获取内部组件信息失败: {e}")
 
             # 计算新的窗口高度和宽度
-            final_h = max(content_height + MARKDOWN_HEIGHT_MARGIN, MARKDOWN_MIN_HEIGHT)
+            # 使用 1.2 系数确保内容完全显示
+            final_h = max(int(content_height + 200), MARKDOWN_MIN_HEIGHT)
             final_w = self._calculate_actual_width()
 
+            logger.debug(f"设置窗口几何尺寸前:")
+            logger.debug(f"  HTMLLabel.winfo_height(): {self.md_label.winfo_height()}")
+            logger.debug(f"  HTMLLabel.winfo_reqheight(): {self.md_label.winfo_reqheight()}")
+
             self.window.geometry(f"{final_w}x{int(final_h)}+{cx}+{cy}")
+
+            # 更新布局后再次测量
+            self.window.update()
+            self.window.update_idletasks()
+
+            logger.debug(f"设置窗口几何尺寸后:")
+            logger.debug(f"  HTMLLabel.winfo_height(): {self.md_label.winfo_height()}")
+            logger.debug(f"  HTMLLabel.winfo_reqheight(): {self.md_label.winfo_reqheight()}")
+
+            logger.debug(f"最终窗口尺寸: 宽={final_w}, 高={final_h} (content_height={content_height}, 系数=1.2)")
 
         except Exception as e:
             logger.error(f"Markdown 转换失败: {e}")

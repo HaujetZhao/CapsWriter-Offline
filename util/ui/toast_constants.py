@@ -29,7 +29,6 @@ TEXT_WRAP_MODE = tk.CHAR  # Text 组件的换行模式（CHAR=按字符换行，
 LABEL_HEIGHT_PADDING = 30  # Label 窗口高度的额外边距
 
 # Markdown 渲染专用
-MARKDOWN_HEIGHT_MARGIN = 120  # Markdown 窗口高度的额外边距
 MARKDOWN_MIN_HEIGHT = 120  # Markdown 窗口最小高度
 
 # ============================================================

@@ -421,43 +421,43 @@ def hello():
 - 第二项
 - 第三项
 
-> 这是一段引用文字"""*5
+> 这是一段引用文字"""*1
 
     # ========== Text 版本测试 ==========
     
-    print("\n[测试 1] Text 版本 - 普通文本 - 非流式 (3秒)")
-    toast(plain_text, bg="#075077", fg='white', duration=3000, window_type='text', initial_width=800)
-    time.sleep(4)
+    # print("\n[测试 1] Text 版本 - 普通文本 - 非流式 (3秒)")
+    # toast(plain_text, bg="#075077", fg='white', duration=3000, window_type='text', initial_width=800)
+    # time.sleep(4)
 
-    print("[测试 2] Text 版本 - 普通文本 - 流式 (5秒)")
-    toast_stream(plain_text, bg="#2E7D32", fg='white', duration=5000, window_type='text', initial_width=800, markdown=False)
-    time.sleep(7)
+    # print("[测试 2] Text 版本 - 普通文本 - 流式 (5秒)")
+    # toast_stream(plain_text, bg="#2E7D32", fg='white', duration=5000, window_type='text', initial_width=800, markdown=False)
+    # time.sleep(7)
 
-    print("[测试 3] Text 版本 - Markdown - 非流式 (3秒)")
-    toast(markdown_text, bg="#1565C0", fg='white', duration=3000, window_type='text', initial_width=800, markdown=True)
-    time.sleep(4)
+    # print("[测试 3] Text 版本 - Markdown - 非流式 (3秒)")
+    # toast(markdown_text, bg="#1565C0", fg='white', duration=3000, window_type='text', initial_width=800, markdown=True)
+    # time.sleep(4)
 
-    print("[测试 4] Text 版本 - Markdown - 流式 (5秒)")
-    toast_stream(markdown_text, bg="#C62828", fg='white', duration=5000, window_type='text', initial_width=800, markdown=True)
-    time.sleep(7)
+    # print("[测试 4] Text 版本 - Markdown - 流式 (5秒)")
+    # toast_stream(markdown_text, bg="#C62828", fg='white', duration=5000, window_type='text', initial_width=800, markdown=True)
+    # time.sleep(7)
 
-    # ========== Label 版本测试 ==========
+    # # ========== Label 版本测试 ==========
     
-    print("[测试 5] Label 版本 - 普通文本 - 非流式 (3秒)")
-    toast(plain_text, bg="#F57C00", fg='white', duration=3000, window_type='label', initial_width=800)
-    time.sleep(4)
+    # print("[测试 5] Label 版本 - 普通文本 - 非流式 (3秒)")
+    # toast(plain_text, bg="#F57C00", fg='white', duration=3000, window_type='label', initial_width=800)
+    # time.sleep(4)
 
-    print("[测试 6] Label 版本 - 普通文本 - 流式 (5秒)")
-    toast_stream(plain_text, bg="#7B1FA2", fg='white', duration=5000, window_type='label', initial_width=800, markdown=False)
-    time.sleep(7)
+    # print("[测试 6] Label 版本 - 普通文本 - 流式 (5秒)")
+    # toast_stream(plain_text, bg="#7B1FA2", fg='white', duration=5000, window_type='label', initial_width=800, markdown=False)
+    # time.sleep(7)
 
     print("[测试 7] Label 版本 - Markdown - 非流式 (3秒)")
     toast(markdown_text, bg="#00796B", fg='white', duration=3000, window_type='label', initial_width=800, markdown=True)
     time.sleep(4)
 
-    print("[测试 8] Label 版本 - Markdown - 流式 (5秒)")
-    toast_stream(markdown_text, bg="#5D4037", fg='white', duration=5000, window_type='label', initial_width=800, markdown=True)
-    time.sleep(7)
+    # print("[测试 8] Label 版本 - Markdown - 流式 (5秒)")
+    # toast_stream(markdown_text, bg="#5D4037", fg='white', duration=5000, window_type='label', initial_width=800, markdown=True)
+    # time.sleep(7)
 
     print("\n" + "=" * 60)
     print("所有测试完成！按 Ctrl+C 退出程序")
