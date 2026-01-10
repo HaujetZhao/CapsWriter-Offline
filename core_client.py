@@ -15,9 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-import signal
 import sys
-import atexit
 from pathlib import Path
 from platform import system
 from typing import List
@@ -28,6 +26,7 @@ import typer
 from config import ClientConfig as Config, __version__
 from util.logger import setup_logger
 from util.common.lifecycle import lifecycle
+from util.client.cleanup import cleanup_client_resources, request_exit_from_tray
 
 # 确保根目录位置正确，用相对路径加载模型
 BASE_DIR = os.path.dirname(__file__)
@@ -36,99 +35,14 @@ os.chdir(BASE_DIR)
 # 确保终端能使用 ANSI 控制字符
 colorama.init()
 
-# 初始化日志系统
-logger = setup_logger('client', level=Config.log_level)
+# 初始化日志系统 (配置 root logger)
+logger = setup_logger('', log_filename='client', level=Config.log_level)
 
 # 全局变量，用于跟踪资源状态
-_state = None
-_shortcut_handler = None
-_stream_manager = None
-_processor = None  # 结果处理器引用
+# _state is now managed by get_state() and its attributes
+# _shortcut_handler and _stream_manager are now attributes of _state
+# _processor is now an attribute of _state
 _main_task = None  # 主任务引用
-
-
-def request_exit_from_tray():
-    """从托盘请求退出"""
-    global _main_task, _processor
-    logger.info("托盘退出回调函数被调用")
-
-    # 1. 触发通用生命周期退出
-    lifecycle.request_shutdown(reason="Tray Icon")
-
-    # 2. 通知处理器退出（立即解除阻塞）
-    if _processor:
-        logger.debug("正在通知处理器退出...")
-        try:
-            _processor.request_exit()
-        except Exception as e:
-            logger.warning(f"通知处理器退出时发生错误: {e}")
-
-    # 3. 取消主任务（确保退出）
-    if _main_task and not _main_task.done():
-        logger.debug("正在从托盘线程取消主任务...")
-        try:
-            _main_task.cancel()
-        except Exception as e:
-            logger.warning(f"取消主任务时发生错误: {e}")
-
-
-def cleanup_client_resources():
-    """
-    清理客户端资源的函数
-    注册到 LifecycleManager
-    """
-    logger.info("=" * 50)
-    logger.info("开始清理客户端资源...")
-
-    # 解绑快捷键
-    if _shortcut_handler:
-        try:
-            _shortcut_handler.unbind()
-            logger.debug("快捷键已解绑")
-        except Exception as e:
-            logger.warning(f"解绑快捷键时发生错误: {e}")
-
-    # 关闭音频流
-    if _stream_manager:
-        try:
-            _stream_manager.close()
-            logger.debug("音频流已关闭")
-        except Exception as e:
-            logger.warning(f"关闭音频流时发生错误: {e}")
-
-    # 关闭 WebSocket 连接
-    if _state and _state.websocket:
-        try:
-            # 检查是否有 close 方法
-            if hasattr(_state.websocket, 'closed'):
-                # WebSocket 连接对象，检查 closed 属性
-                if not _state.websocket.closed:
-                    # 需要在异步上下文中关闭
-                    # 注意：如果此时 loop 已关闭，这里会失败。
-                    # LifecycleManager 的 cleanup 策略很重要。
-                    try:
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        loop.run_until_complete(_state.websocket.close())
-                        loop.close()
-                        logger.debug("WebSocket 连接已关闭")
-                    except Exception:
-                        pass
-            elif hasattr(_state.websocket, 'close'):
-                # 其他连接对象，直接调用 close
-                _state.websocket.close()
-                logger.debug("WebSocket 连接已关闭")
-        except Exception as e:
-            logger.warning(f"关闭 WebSocket 连接时发生错误: {e}")
-
-    # 停止托盘图标
-    try:
-        from util.ui.tray import stop_tray
-        stop_tray()
-    except Exception as e:
-        logger.warning(f"停止托盘图标时发生错误: {e}")
-
-    logger.info("客户端资源清理完成")
 
 
 def _check_macos_permissions() -> None:
@@ -148,7 +62,7 @@ async def main_mic() -> None:
 
     启动实时语音识别，监听快捷键开始/结束录音。
     """
-    global _state, _shortcut_handler, _stream_manager, _processor, _main_task
+    global _main_task
     
     # 初始化生命周期
     lifecycle.initialize(logger=logger, exit_on_signal=True)
@@ -199,11 +113,13 @@ async def main_mic() -> None:
     # 打开音频流
     logger.info("正在打开音频流...")
     _stream_manager = AudioStreamManager(_state)
+    _state.stream_manager = _stream_manager  # 注入状态以便清理
     _stream_manager.open()
 
     # 绑定快捷键
     logger.info(f"正在绑定快捷键: {Config.shortcut}")
     _shortcut_handler = ShortcutHandler(_state)
+    _state.shortcut_handler = _shortcut_handler # 注入状态以便清理
     _shortcut_handler.bind()
 
     # 清空物理内存工作集（Windows）
@@ -215,8 +131,7 @@ async def main_mic() -> None:
     # 接收结果
     try:
         processor = ResultProcessor(_state)
-        global _processor
-        _processor = processor  # 保存引用以便退出时调用
+        _state.processor = processor # 注入状态以便清理
 
         # 主循环：只要没收到退出信号，就一直运行
         while not lifecycle.is_shutting_down:
@@ -278,7 +193,6 @@ async def main_file(files: List[Path]) -> None:
     
     logger.info("=" * 50)
     logger.info("CapsWriter Offline Client 正在启动（文件转录模式）")
-    # ... (省略部分未变代码)
     logger.info(f"版本: {__version__}")
     logger.info(f"日志级别: {Config.log_level}")
     logger.info(f"待处理文件: {[str(f) for f in files]}")

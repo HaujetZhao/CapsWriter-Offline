@@ -220,14 +220,7 @@ class _TraySystem:
                 if log:
                     log.error(f"调用退出回调函数时发生错误: {e}")
 
-        # 4. 等待主进程退出（最多 5 秒）
-        import time
-        if log:
-            log.debug("等待主进程清理并退出...")
-        for _ in range(50):  # 等待最多 5 秒
-            if not threading.main_thread().is_alive():
-                break
-            time.sleep(0.1)
+
 
         # 5. 停止托盘图标
         try:

@@ -10,6 +10,9 @@ import core_server
 
 
 
+import sys
+
 if __name__ == '__main__':
     freeze_support()
     core_server.init()
+    sys.exit(0)

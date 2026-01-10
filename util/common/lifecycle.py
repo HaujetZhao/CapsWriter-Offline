@@ -40,7 +40,6 @@ class LifecycleManager:
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         
         # 默认 Logger (Console), init 时可覆盖
-        logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger('lifecycle')
         self._exit_on_signal = False
         
@@ -139,7 +138,7 @@ class LifecycleManager:
         self._cleanup_done = True
         self._is_shutting_down = True  # 标记为正在退出
 
-        self.logger.info("LifecycleManager 开始执行清理回调...")
+        self.logger.debug("LifecycleManager 开始执行清理回调...")
         for callback in self._cleanup_callbacks:
             try:
                 name = getattr(callback, '__name__', str(callback))
@@ -147,7 +146,7 @@ class LifecycleManager:
                 callback()
             except Exception as e:
                 self.logger.error(f"清理回调执行失败: {e}", exc_info=True)
-        self.logger.info("LifecycleManager 清理完成")
+        self.logger.debug("LifecycleManager 清理完成")
 
     def _atexit_handler(self):
         """atexit 处理器，确保最后被调用"""

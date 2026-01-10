@@ -13,7 +13,7 @@ class Logger:
     _loggers = {}
 
     @classmethod
-    def setup(cls, name: str, log_dir: str = None, level: str = 'INFO', max_bytes: int = 10 * 1024 * 1024, backup_count: int = 5):
+    def setup(cls, name: str, log_dir: str = None, level: str = 'INFO', max_bytes: int = 10 * 1024 * 1024, backup_count: int = 5, log_filename: str = None):
         """
         设置并返回一个日志记录器
 
@@ -23,6 +23,7 @@ class Logger:
             level: 日志级别，可选值：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
             max_bytes: 单个日志文件最大大小，默认 10MB
             backup_count: 保留的日志文件数量，默认 5 个
+            log_filename: 自定义日志文件名前缀，如果不填则默认使用 name 或 'root'
 
         Returns:
             logging.Logger: 配置好的日志记录器
@@ -40,11 +41,13 @@ class Logger:
             return logger
 
         # 创建日志记录器
-        logger = logging.getLogger(name)
+        # 创建日志记录器 (如果 name 为空字符串，则获取 root logger)
+        logger = logging.getLogger(name if name else None)
         logger.setLevel(log_level)
 
-        # 确保不会传播到 root logger
-        logger.propagate = False
+        # 确保不会传播到 root logger (仅对非 root logger 有效)
+        if name:
+            logger.propagate = False
 
         # 确定日志目录
         if log_dir is None:
@@ -55,7 +58,14 @@ class Logger:
         Path(log_dir).mkdir(parents=True, exist_ok=True)
 
         # 日志文件名（包含日期）
-        log_file = os.path.join(log_dir, f'{name}_{datetime.now().strftime("%Y%m%d")}.log')
+        if log_filename:
+             file_name_prefix = log_filename
+        elif not name:
+             file_name_prefix = 'root'
+        else:
+             file_name_prefix = name
+        
+        log_file = os.path.join(log_dir, f'{file_name_prefix}_{datetime.now().strftime("%Y%m%d")}.log')
 
         # 创建格式化器
         formatter = logging.Formatter(
