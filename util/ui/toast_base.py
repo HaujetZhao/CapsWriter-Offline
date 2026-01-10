@@ -346,9 +346,6 @@ class ToastWindowBase(ABC):
             # 保存当前位置
             cx, cy = self.window.winfo_x(), self.window.winfo_y()
 
-            # 销毁原有组件（由子类实现）
-            self._destroy_content_widget()
-
             # 转换 Markdown 为 HTML
             raw_html = markdown.markdown(
                 self.full_text,
@@ -363,7 +360,7 @@ class ToastWindowBase(ABC):
             </div>
             """
 
-            # 创建 HTMLLabel 组件（不带滚动条）
+            # 先创建 HTMLLabel 组件，覆盖在原有组件上面
             self.md_label = HTMLLabel(
                 self.window,
                 html=full_html,
@@ -372,6 +369,9 @@ class ToastWindowBase(ABC):
                 pady=DEFAULT_PADDING_Y
             )
             self.md_label.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+            # 现在 Markdown 组件已经显示，再销毁原有组件
+            self._destroy_content_widget()
 
             # 多次更新以确保布局完全计算
             self.window.update()
