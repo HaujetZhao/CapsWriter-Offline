@@ -110,7 +110,7 @@ class LLMHandler:
             should_stop_check: 检查是否应该停止的函数（返回 True 表示停止）
 
         Returns:
-            (处理后的文本, 输出token数)
+            (处理后的文本, 输出token数, 生成时间秒)
         """
         logger.debug(f"开始 LLM 处理，输入文本: {text}")
 
@@ -118,7 +118,7 @@ class LLMHandler:
 
         if not role_config:
             logger.debug("角色配置为空，跳过 LLM 处理")
-            return (text, 0)
+            return (text, 0, 0.0)
 
         role_name = role_config.name
         logger.debug(f"使用角色: {role_name}, 处理内容: {content}")
@@ -174,7 +174,7 @@ def init_llm_system():
         try:
             get_handler()
         except Exception as e:
-            from util.client.client_cosmic import console
+            from util.client.state import console
             console.print(f'[red]LLM 系统初始化失败: {e}[/]')
 
 

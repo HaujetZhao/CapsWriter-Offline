@@ -34,7 +34,7 @@ class RoleDetector:
             (role_config, content) - role_config 是 RoleConfig 对象，
             content 是去除前缀后的文本
         """
-        logger.debug(f"检测角色，输入文本: {text[:50]}...")
+        # logger.debug(f"检测角色，输入文本: {text[:50]}...")
 
         for role_name, role_config in self.role_loader.get_roles().items():
             if role_name == '默认':
@@ -53,14 +53,14 @@ class RoleDetector:
                 remaining_text = text[len(name):]
                 remaining_text = remaining_text.lstrip('：，。,. ')
 
-                logger.debug(f"匹配到角色: {name}, 去除前缀后: {remaining_text[:50]}...")
+                # logger.debug(f"匹配到角色: {name}, 去除前缀后: {remaining_text[:50]}...")
                 return role_config, remaining_text
 
         # 未匹配，使用默认角色
         default_role = self.role_loader.get_default_role()
         if default_role.process:
-            logger.debug(f"未匹配到角色前缀，使用默认角色，处理: {default_role.process}")
+            # logger.debug(f"未匹配到角色前缀，使用默认角色，处理: {default_role.process}")
             return default_role, text
 
-        logger.debug("未匹配到角色且默认角色不处理，返回原始文本")
+        # logger.debug("未匹配到角色且默认角色不处理，返回原始文本")
         return None, text

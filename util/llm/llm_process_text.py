@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 from config import ClientConfig as Config
-from util.client.client_strip_punc import strip_punc
+from util.client.processing.output import TextOutput
 from util.llm.llm_clipboard import copy_to_clipboard
 from util.llm.llm_output_typing import handle_typing_mode, output_text
 from util.llm.llm_output_toast import handle_toast_mode
@@ -23,8 +23,9 @@ class LLMResult:
     role_name: Optional[str]       # 角色名
     processed: bool                # 是否经过处理
     token_count: int               # token数
-    polish_time: float             # 耗时（秒）
+    polish_time: float             # 总耗时（秒）
     input_text: str                # 输入文本（已移除角色前缀）
+    generation_time: float = 0.0   # 生成时间（秒，从第一个 token 开始）
 
 
 async def llm_process_text(text: str, return_result: bool = False, window_info: dict = None, paste: bool = None) -> Optional[LLMResult]:
@@ -55,7 +56,7 @@ async def llm_process_text(text: str, return_result: bool = False, window_info: 
 
     if not role_config:
         # 如果没有匹配到角色（包括默认角色被禁用），直接输出原文本
-        result_text = strip_punc(text)
+        result_text = TextOutput.strip_punc(text)
         await output_text(result_text, paste)
         if return_result:
             return LLMResult(
@@ -75,7 +76,7 @@ async def llm_process_text(text: str, return_result: bool = False, window_info: 
     # 检查是否启用 LLM 处理
     if not role_config.process:
         # 角色匹配但未启用 LLM（如占位符），原样输出去除前缀后的文本
-        result_text = strip_punc(content)
+        result_text = TextOutput.strip_punc(content)
         await output_text(result_text, paste)
         if return_result:
             return LLMResult(
@@ -92,9 +93,9 @@ async def llm_process_text(text: str, return_result: bool = False, window_info: 
 
     # 根据输出模式处理
     if output_mode == 'toast':
-        result, token_count = await handle_toast_mode(text, role_config)
+        result, token_count, generation_time = await handle_toast_mode(text, role_config)
     else:  # typing
-        result, token_count = await handle_typing_mode(text, paste)
+        result, token_count, generation_time = await handle_typing_mode(text, paste)
 
     # 计算润色耗时
     polish_time = time.time() - start_time
@@ -110,6 +111,7 @@ async def llm_process_text(text: str, return_result: bool = False, window_info: 
             processed=True,
             token_count=token_count,
             polish_time=polish_time,
-            input_text=content
+            input_text=content,
+            generation_time=generation_time
         )
     return None

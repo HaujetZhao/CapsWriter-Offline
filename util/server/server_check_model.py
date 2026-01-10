@@ -1,16 +1,32 @@
+# coding: utf-8
+"""
+模型检查模块
+
+检查配置的语音模型文件是否存在，如果不存在则提供下载链接。
+"""
+
 import sys
 from pathlib import Path
 
 from config import ModelPaths, ServerConfig as Config, ModelDownloadLinks
 from util.server.server_cosmic import console
+from util.logger import get_logger
+
+# 日志记录器
+logger = get_logger('server')
 
 
-def check_model():
+def check_model() -> None:
     """
     根据配置的模型类型检查所需的模型文件是否存在
-    如果不存在，提供下载链接
+    
+    如果模型文件不存在，显示错误信息和下载链接后退出程序。
+    
+    Raises:
+        SystemExit: 当模型类型不支持或模型文件缺失时退出
     """
     model_type = Config.model_type.lower()
+    logger.debug(f"检查模型文件, 类型: {model_type}")
 
     # 根据模型类型确定需要检查的文件
     if model_type == 'funasr_nano':
@@ -48,8 +64,10 @@ def check_model():
         model_name = "Paraformer"
         punct_download_link = ModelDownloadLinks.punct
     else:
+        error_msg = f"不支持的模型类型: {Config.model_type}"
+        logger.error(error_msg)
         console.print(f'''
-    不支持的模型类型：{Config.model_type}
+    [bold red]不支持的模型类型：{Config.model_type}[/bold red]
 
     请在 config.py 中将 ServerConfig.model_type 设置为：
     - 'funasr_nano'
@@ -58,7 +76,7 @@ def check_model():
 
         ''', style='bright_red')
         input('按回车退出')
-        sys.exit()
+        sys.exit(1)
 
     # 检查所有必需的文件
     missing_files = []
@@ -66,6 +84,7 @@ def check_model():
         for file_path in files:
             if not file_path.exists():
                 missing_files.append((category, file_path))
+                logger.warning(f"模型文件缺失: {file_path}")
 
     # 如果有缺失的文件，显示错误信息并提供下载链接
     if missing_files:
@@ -90,9 +109,11 @@ def check_model():
         error_msg += f'    下载后请解压到：[cyan]{ModelPaths.model_dir}[/cyan]\n'
         error_msg += '    \n    按回车退出\n    '
 
+        logger.error(f"模型文件检查失败，共 {len(missing_files)} 个文件缺失")
         console.print(error_msg)
         input()
-        sys.exit()
+        sys.exit(1)
 
     # 所有检查通过
+    logger.info(f"模型文件检查通过 ({model_type})")
     console.print(f'[green4]模型文件检查通过 ({model_type})', end='\n\n')

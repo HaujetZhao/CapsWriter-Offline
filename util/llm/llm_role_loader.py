@@ -47,6 +47,7 @@ class RoleLoader:
             'output_mode': 'typing',
             'toast_initial_width': 0.5,
             'toast_initial_height': 0,
+            'toast_font_family': '',
             'toast_font_size': 14,
             'toast_font_color': 'white',
             'toast_bg_color': '#075077',

@@ -5,12 +5,18 @@ LLM 处理引擎
 1. 执行 LLM API 调用
 2. 处理流式输出
 3. 更新上下文历史
+4. 统一的错误处理和包装
+5. 精确的生成时间统计（从第一个 token 开始）
 """
+import time
 from typing import Callable, Optional, Dict, Any, List
 from util.llm.llm_role_config import RoleConfig
 from util.llm.llm_interfaces import IContextManager
 from util.llm.llm_client_pool import ClientPool
-from util.llm.llm_exceptions import APIException, StreamInterruptedError
+from util.llm.llm_exceptions import (
+    APIException,
+    wrap_openai_error, OpenAIErrorWrapper
+)
 from util.logger import get_logger
 
 logger = get_logger('client')
@@ -33,7 +39,7 @@ class LLMProcessor:
         callback: Optional[Callable[[str], None]] = None,
         should_stop_check: Optional[Callable[[], bool]] = None,
         context_manager: Optional[IContextManager] = None
-    ) -> tuple[str, int]:
+    ) -> tuple[str, int, float]:
         """
         执行 LLM 处理
 
@@ -45,7 +51,7 @@ class LLMProcessor:
             context_manager: 上下文管理器（用于更新历史）
 
         Returns:
-            (处理后的文本, 输出token数)
+            (处理后的文本, 输出token数, 生成时间秒)
         """
         logger.debug(f"开始 LLM 处理，模型: {role_config.model}")
 
@@ -73,19 +79,31 @@ class LLMProcessor:
                 messages
             )
 
-        except StreamInterruptedError:
-            # 流式中断，返回空结果
-            logger.info("流式输出被用户中断")
-            return ("", 0)
+        except OpenAIErrorWrapper:
+            # 已包装的 OpenAI 异常，直接重新抛出
+            raise
         except APIException:
-            # API 相关异常，直接重新抛出
+            # 其他 API 相关异常，直接重新抛出
             raise
         except Exception as e:
+            # 捕获 OpenAI SDK 原生异常并包装
+            import openai
+            if isinstance(e, (
+                openai.AuthenticationError,
+                openai.RateLimitError,
+                openai.APITimeoutError,
+                openai.APIConnectionError,
+                openai.APIError
+            )):
+                wrapped_error = wrap_openai_error(e, role_config.provider)
+                logger.error(f"LLM API 调用失败: {wrapped_error}")
+                raise wrapped_error from e
+
             # 其他未预期的异常
             import traceback
             logger.error(f"LLM 处理失败: {e}\n{traceback.format_exc()}")
             # 返回空结果而不是抛出异常，保持向后兼容
-            return ("", 0)
+            return ("", 0, 0.0)
 
     def _build_request_params(
         self,
@@ -133,8 +151,12 @@ class LLMProcessor:
         role_config: RoleConfig,
         context_manager: Optional[IContextManager],
         messages: List[Dict[str, str]]
-    ) -> tuple[str, int]:
-        """执行流式请求"""
+    ) -> tuple[str, int, float]:
+        """执行流式请求
+
+        Returns:
+            (响应文本, token数, 生成时间秒)
+        """
         request_params['stream'] = True
         stream = client.chat.completions.create(**request_params)
 
@@ -142,17 +164,32 @@ class LLMProcessor:
         total_tokens = 0
         chunk_count = 0
 
+        # 计时：从第一个 token 开始
+        first_token_time = None
+        generation_start_time = None
+
         for chunk in stream:
             chunk_count += 1
             # 检查是否应该停止
             if should_stop_check and should_stop_check():
                 logger.debug(f"收到停止信号，当前已接收 {chunk_count} 个 chunks")
-                # 抛出流式中断异常
-                raise StreamInterruptedError(chunk_count)
+                # 关闭流式响应，终止模型继续生成
+                try:
+                    stream.close()
+                except:
+                    pass
+                # 中断循环，返回已生成的部分
+                break
 
             if chunk.choices[0].delta.content:
                 content_chunk = chunk.choices[0].delta.content
                 full_response += content_chunk
+
+                # 记录第一个 token 到达时间
+                if first_token_time is None:
+                    first_token_time = time.time()
+                    generation_start_time = first_token_time
+
                 if callback:
                     callback(content_chunk)
 
@@ -160,9 +197,24 @@ class LLMProcessor:
             # 注意：某些提供商（如 Ollama）的流式响应不包含 usage
             if hasattr(chunk, 'usage') and chunk.usage:
                 if hasattr(chunk.usage, 'completion_tokens'):
-                    total_tokens = chunk.usage.completion_tokens or 0
+                    tokens = chunk.usage.completion_tokens or 0
+                    if tokens > 0:
+                        # 使用最后一个非零的 token 数
+                        total_tokens = tokens
 
-        logger.debug(f"LLM 响应完成，接收 {chunk_count} 个 chunks, 输出tokens: {total_tokens}, 响应长度: {len(full_response)}")
+        # 计算生成时间（从第一个 token 到最后一个 token）
+        generation_time = 0.0
+        if generation_start_time is not None:
+            generation_end_time = time.time()
+            generation_time = generation_end_time - generation_start_time
+
+        # 如果 API 没有返回 token 数，使用估算（针对 Ollama 等不返回 usage 的提供商）
+        if total_tokens == 0 and full_response:
+            from util.llm.llm_constants import estimate_tokens
+            total_tokens = estimate_tokens(full_response)
+            logger.debug(f"API 未返回 token 数，使用估算值: {total_tokens}")
+
+        logger.debug(f"LLM 响应完成，接收 {chunk_count} 个 chunks, 输出tokens: {total_tokens}, 响应长度: {len(full_response)}, 生成时间: {generation_time:.3f}秒")
 
         # 更新历史
         if role_config.enable_history and context_manager:
@@ -171,4 +223,4 @@ class LLMProcessor:
             context_manager.add_message('assistant', full_response)
             logger.debug(f"已更新历史记录")
 
-        return (full_response.strip(), total_tokens)
+        return (full_response.strip(), total_tokens, generation_time)

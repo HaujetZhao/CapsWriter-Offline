@@ -36,10 +36,14 @@ class ClientPool:
             # 获取 api_key
             final_key = api_key or APIConfig.DEFAULT_API_KEYS.get(provider, '')
 
+            # 获取超时配置（根据 provider 选择，未配置则使用默认值）
+            timeout = APIConfig.DEFAULT_TIMEOUTS.get(provider, APIConfig.DEFAULT_TIMEOUT)
+
             # 创建客户端
             self._clients[cache_key] = OpenAI(
                 base_url=final_url,
                 api_key=final_key,
+                timeout=timeout,
             )
 
         return self._clients[cache_key]

@@ -27,22 +27,25 @@ def add_zero_width_for_chinese(text: str) -> str:
 
 class ToastWindowText:
     """基于 Text 组件的浮动消息窗口（适合流式输出）"""
-    def __init__(self, parent_root, text, font_size=14, bg='#075077', fg='white',
-                 duration=3000, initial_width=400, initial_height=0, streaming=False):
+    def __init__(self, parent_root, text, font_size=14, font_family='', bg='#075077', fg='white',
+                 duration=3000, initial_width=400, initial_height=0, streaming=False, stop_callback=None):
         """创建浮动消息窗口
 
         Args:
             parent_root: 父窗口
             text: 初始文本
             font_size: 字体大小
+            font_family: 字体（空字符串表示使用系统默认）
             bg: 背景颜色
             fg: 字体颜色
             duration: 显示时长（毫秒）
             initial_width: 初始宽度
             initial_height: 初始高度（0 表示自动计算）
             streaming: 是否为流式模式（支持动态更新文本）
+            stop_callback: 窗口关闭时的回调函数（用于停止 LLM 输出）
         """
         self.parent_root = parent_root
+        self.stop_callback = stop_callback
         self.window = tk.Toplevel(parent_root)
         self.window.hang_on = False
         self.streaming = streaming
@@ -74,7 +77,9 @@ class ToastWindowText:
         self.window.pack_propagate(False)
 
         # 创建字体对象用于计算行高
-        self.my_font = font.Font(family='Microsoft YaHei', size=font_size)
+        # 如果未指定字体，使用默认字体
+        font_name = font_family if font_family else 'Microsoft YaHei'
+        self.my_font = font.Font(family=font_name, size=font_size)
         self.line_height = self.my_font.metrics('linespace')
         self.last_char_count = 0
 
@@ -237,6 +242,15 @@ class ToastWindowText:
         if not self.streaming:
             return
 
+        # 检查窗口是否还存在（防止窗口已关闭时继续更新）
+        try:
+            if not self.window.winfo_exists():
+                self.streaming = False
+                return
+        except:
+            self.streaming = False
+            return
+
         # 计算新增的字符
         current_char_count = len(new_text)
         if current_char_count > self.last_char_count:
@@ -314,6 +328,10 @@ class ToastWindowText:
     def _destroy_window(self, event=None):
         """销毁窗口"""
         try:
+            # 调用停止回调（用于停止 LLM 输出）
+            if hasattr(self, 'stop_callback') and self.stop_callback:
+                self.stop_callback()
+
             if self.pause:
                 # 如果窗口被暂停（拖动），延迟销毁
                 if self.timer_id:
@@ -329,22 +347,25 @@ class ToastWindowText:
 
 class ToastWindowLabel:
     """基于 Label 组件的浮动消息窗口（适合普通提示消息）"""
-    def __init__(self, parent_root, text, font_size=14, bg='#075077', fg='white',
-                 duration=3000, initial_width=400, initial_height=0, streaming=False):
+    def __init__(self, parent_root, text, font_size=14, font_family='', bg='#075077', fg='white',
+                 duration=3000, initial_width=400, initial_height=0, streaming=False, stop_callback=None):
         """创建浮动消息窗口 (基于 Label)
 
         Args:
             parent_root: 父窗口
             text: 初始文本
             font_size: 字体大小
+            font_family: 字体（空字符串表示使用系统默认）
             bg: 背景颜色
             fg: 字体颜色
             duration: 显示时长（毫秒）
             initial_width: 初始宽度
             initial_height: 初始高度（0 表示自动计算）
             streaming: 是否为流式模式（支持动态更新文本）
+            stop_callback: 窗口关闭时的回调函数（用于停止 LLM 输出）
         """
         self.parent_root = parent_root
+        self.stop_callback = stop_callback
         self.window = tk.Toplevel(parent_root)
         self.window.hang_on = False
         self.streaming = streaming
@@ -393,11 +414,14 @@ class ToastWindowLabel:
         # 处理文本：在中文字符后添加零宽空格，强制按字符换行
         processed_text = add_zero_width_for_chinese(text) if text else text
 
+        # 如果未指定字体，使用默认字体
+        font_name = font_family if font_family else 'Microsoft YaHei'
+
         # 创建文字标签
         self.label = tk.Label(
             self.window,
             text=processed_text,
-            font=('Microsoft YaHei', font_size),
+            font=(font_name, font_size),
             fg=fg,
             bg=bg,
             justify=tk.LEFT,
@@ -602,6 +626,10 @@ class ToastWindowLabel:
     def _destroy_window(self, event=None):
         """销毁窗口"""
         try:
+            # 调用停止回调（用于停止 LLM 输出）
+            if hasattr(self, 'stop_callback') and self.stop_callback:
+                self.stop_callback()
+
             if self.pause:
                 # 如果窗口被暂停（拖动），延迟销毁
                 if self.timer_id:

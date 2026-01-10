@@ -78,6 +78,7 @@ class RoleConfigDefaults:
     # Toast 配置
     DEFAULT_TOAST_INITIAL_WIDTH = 0.5
     DEFAULT_TOAST_INITIAL_HEIGHT = 0
+    DEFAULT_TOAST_FONT_FAMILY = ''
     DEFAULT_TOAST_FONT_SIZE = 14
     DEFAULT_TOAST_FONT_COLOR = 'white'
     DEFAULT_TOAST_BG_COLOR = '#075077'
@@ -114,6 +115,22 @@ class APIConfig:
         'moonshot': '',
         'zhipu': '',
     }
+
+    # 请求超时配置（秒）
+    # 本地模型第一次可能需要载入，时间稍长
+    # 超过10秒可以认为网络有问题
+    DEFAULT_TIMEOUTS = {
+        'ollama': 20.0,       # 本地模型
+        'openai': 10.0,       # OpenAI API
+        'deepseek': 10.0,     # DeepSeek API
+        'moonshot': 10.0,     # Moonshot API
+        'zhipu': 10.0,        # 智谱 API
+        'claude': 10.0,       # Claude API
+        'gemini': 10.0,       # Gemini API
+    }
+
+    # 默认超时（用于未列出的 provider）
+    DEFAULT_TIMEOUT = 10.0
 
 
 # ==================== Token 估算工具 ====================

@@ -5,8 +5,8 @@ LLM Toast 输出模式
 """
 import asyncio
 
-from util.client.client_strip_punc import strip_punc
-from util.llm.llm_stop_monitor import reset, should_stop
+from util.client.processing.output import TextOutput
+from util.llm.llm_stop_monitor import reset, should_stop, on_stop_pressed
 
 
 async def handle_toast_mode(text: str, role_config = None) -> tuple:
@@ -18,7 +18,7 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
         role_config: 角色配置
 
     Returns:
-        (润色后的文本, 输出token数)
+        (润色后的文本, 输出token数, 生成时间秒)
     """
     from util.llm.llm_handler import polish_text
     from util.ui.toast import ToastMessageManager, ToastMessage
@@ -29,6 +29,7 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
 
     # 从角色配置获取 toast 参数
     if role_config:
+        font_family = role_config.toast_font_family
         font_size = role_config.toast_font_size
         bg = role_config.toast_bg_color
         fg = role_config.toast_font_color
@@ -36,6 +37,7 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
         initial_width = role_config.toast_initial_width
         initial_height = role_config.toast_initial_height
     else:
+        font_family = ''
         font_size = 14
         bg = '#075077'
         fg = 'white'
@@ -43,44 +45,61 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
         initial_width = 400
         initial_height = 0
 
-    # 创建初始 toast（流式模式）
-    msg = ToastMessage(
-        text="",
-        font_size=font_size,
-        bg=bg,
-        fg=fg,
-        duration=duration,
-        initial_width=initial_width,
-        initial_height=initial_height,
-        streaming=True,
-        window_type='text'  # 使用 label 版本
-    )
-    toast_manager.add_message(msg)
+    try:
+        # 创建初始 toast（流式模式）
+        msg = ToastMessage(
+            text="",
+            font_family=font_family,
+            font_size=font_size,
+            bg=bg,
+            fg=fg,
+            duration=duration,
+            initial_width=initial_width,
+            initial_height=initial_height,
+            streaming=True,
+            window_type='text',  # 使用 label 版本
+            stop_callback=lambda: on_stop_pressed()  # 传递停止函数
+        )
+        toast_manager.add_message(msg)
 
-    chunks = []
-    full_text = ""
+        chunks = []
+        full_text = ""
 
-    def stream_toast_chunk(chunk: str):
-        """流式更新 toast"""
-        nonlocal full_text
-        chunks.append(chunk)
-        full_text = ''.join(chunks)
-        toast_manager.update_last_toast(full_text)
+        def stream_toast_chunk(chunk: str):
+            """流式更新 toast"""
+            nonlocal full_text
+            chunks.append(chunk)
+            full_text = ''.join(chunks)
+            toast_manager.update_last_toast(full_text)
 
-    # 流式调用 LLM
-    polished_text, token_count = await asyncio.to_thread(
-        polish_text, text, stream_toast_chunk, should_stop
-    )
+        # 流式调用 LLM
+        polished_text, token_count, generation_time = await asyncio.to_thread(
+            polish_text, text, stream_toast_chunk, should_stop
+        )
 
-    if should_stop():
-        # 被中断，关闭 toast
+        if should_stop():
+            # 被中断，关闭 toast
+            toast_manager.close_last_toast()
+            # 使用已生成的部分，处理方式与完成时相同
+            if not full_text:
+                full_text = text
+            return (TextOutput.strip_punc(full_text), token_count, generation_time)
+        else:
+            # 完成，启动销毁计时器（3秒）
+            toast_manager.finish_last_toast()
+
+            if not polished_text:
+                polished_text = text
+
+            return (TextOutput.strip_punc(polished_text), token_count, generation_time)
+
+    except Exception as e:
+        # 关闭当前的 toast
         toast_manager.close_last_toast()
-        return ("", 0)
-    else:
-        # 完成，启动销毁计时器（3秒）
-        toast_manager.finish_last_toast()
 
-        if not polished_text:
-            polished_text = text
+        # 处理 LLM 异常（显示错误通知）
+        from util.llm.llm_error_handler import show_error_notification
+        show_error_notification(e, "LLM")
 
-        return (strip_punc(polished_text), token_count)
+        # 返回空字符串表示失败
+        return ("", 0, 0.0)

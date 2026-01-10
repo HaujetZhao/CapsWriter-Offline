@@ -13,6 +13,7 @@ class ToastMessage:
     """Toast 消息数据类"""
     text: str
     font_size: int = 14
+    font_family: str = ''     # 字体（空字符串表示使用系统默认）
     bg: str = '#075077'
     fg: str = 'white'
     duration: int = 3000
@@ -20,6 +21,7 @@ class ToastMessage:
     initial_height: int = 0
     streaming: bool = False
     window_type: Literal['text', 'label'] = 'text'
+    stop_callback: any = None  # 窗口关闭时的回调函数（用于停止 LLM 输出）
 
 
 class ToastMessageManager:
@@ -86,24 +88,28 @@ class ToastMessageManager:
                         self.root,
                         msg.text,
                         msg.font_size,
+                        msg.font_family,
                         msg.bg,
                         msg.fg,
                         msg.duration,
                         msg.initial_width,
                         msg.initial_height,
-                        streaming=msg.streaming
+                        streaming=msg.streaming,
+                        stop_callback=msg.stop_callback
                     )
                 else:  # 默认使用 text 版本
                     toast_window = ToastWindowText(
                         self.root,
                         msg.text,
                         msg.font_size,
+                        msg.font_family,
                         msg.bg,
                         msg.fg,
                         msg.duration,
                         msg.initial_width,
                         msg.initial_height,
-                        streaming=msg.streaming
+                        streaming=msg.streaming,
+                        stop_callback=msg.stop_callback
                     )
 
                 self.active_windows.append(toast_window)

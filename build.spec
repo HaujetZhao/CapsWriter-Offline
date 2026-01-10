@@ -246,7 +246,7 @@ my_files = [
     'keywords.txt',
     'readme.md'
 ]
-my_folders = ['assets', 'util', 'LLM']
+my_folders = []     # 这里是要复制的文件夹
 dest_root = join('dist', basename(coll.name))
 
 # 复制文件夹中的文件
@@ -276,7 +276,7 @@ from platform import system
 from subprocess import run
 
 if system() == 'Windows':
-    link_folders = ['models']  # 不再链接 util，因为 util 已经被复制
+    link_folders = ['models', 'assets', 'util', 'LLM', '2026', 'log']  # 不再链接 util，因为 util 已经被复制
     for folder in link_folders:
         if not exists(folder):
             continue

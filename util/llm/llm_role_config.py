@@ -43,6 +43,7 @@ class RoleConfig:
     # Toast 弹窗配置
     toast_initial_width: float = 0.5             # Toast 窗口初始宽度（0.5 = 50% 屏幕宽度）
     toast_initial_height: int = 0                # Toast 窗口初始高度（0 表示自动计算）
+    toast_font_family: str = ''                  # Toast 字体（空字符串表示使用系统默认）
     toast_font_size: int = 16                    # Toast 字体大小
     toast_font_color: str = 'white'              # Toast 字体颜色
     toast_bg_color: str = '#075077'              # Toast 背景颜色

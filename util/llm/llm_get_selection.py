@@ -14,7 +14,7 @@ import keyboard
 from util.logger import get_logger
 from util.llm.llm_clipboard import safe_paste
 
-logger = get_logger('llm.get_selection')
+logger = get_logger('client')
 
 
 # 全局变量：记录每个角色最后一次使用的选中文字

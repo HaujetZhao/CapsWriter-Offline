@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Tuple, Optional
 from util.logger import get_logger
 
-logger = get_logger('llm.hotword_rag')
+logger = get_logger('client')
 
 try:
     from pypinyin import pinyin, Style

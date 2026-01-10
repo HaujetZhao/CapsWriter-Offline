@@ -3,6 +3,7 @@ LLM 自定义异常
 
 定义 LLM 模块的异常层次结构
 """
+from openai import AuthenticationError, RateLimitError, APITimeoutError, APIConnectionError, APIError
 
 
 # ======================================================================
@@ -12,6 +13,74 @@ class LLMException(Exception):
     """LLM 模块基础异常"""
 
     pass
+
+
+# ======================================================================
+# --- OpenAI SDK 异常包装 ---
+
+class OpenAIErrorWrapper(LLMException):
+    """OpenAI SDK 异常的包装基类"""
+
+    def __init__(self, original_error: Exception, provider: str = 'unknown'):
+        self.original_error = original_error
+        self.provider = provider
+        super().__init__(f"[{provider}] {type(original_error).__name__}: {str(original_error)}")
+
+
+class AuthenticationErrorWrapper(OpenAIErrorWrapper):
+    """认证失败异常 (401)"""
+    user_message = "API 认证失败，请检查 API Key 配置"
+
+
+class RateLimitErrorWrapper(OpenAIErrorWrapper):
+    """速率限制异常 (429)"""
+    user_message = "API 速率限制，请稍后重试"
+
+
+class TimeoutErrorWrapper(OpenAIErrorWrapper):
+    """请求超时异常"""
+    user_message = "API 请求超时，请检查网络连接"
+
+
+class ConnectionErrorWrapper(OpenAIErrorWrapper):
+    """连接失败异常"""
+    user_message = "API 连接失败，请检查网络和 API 地址"
+
+
+class APIResponseErrorWrapper(OpenAIErrorWrapper):
+    """API 响应错误异常 (4xx, 5xx)"""
+    user_message = "API 响应错误，请检查配置和参数"
+
+
+# OpenAI 异常映射表
+OPENAI_EXCEPTION_MAP = {
+    AuthenticationError: AuthenticationErrorWrapper,
+    RateLimitError: RateLimitErrorWrapper,
+    APITimeoutError: TimeoutErrorWrapper,
+    APIConnectionError: ConnectionErrorWrapper,
+    APIError: APIResponseErrorWrapper,
+}
+
+
+def wrap_openai_error(error: Exception, provider: str = 'unknown') -> LLMException:
+    """
+    将 OpenAI SDK 异常包装为自定义异常
+
+    Args:
+        error: OpenAI SDK 原生异常
+        provider: API 提供商名称
+
+    Returns:
+        包装后的自定义异常
+    """
+    error_type = type(error)
+    wrapper_class = OPENAI_EXCEPTION_MAP.get(error_type)
+
+    if wrapper_class:
+        return wrapper_class(error, provider)
+    else:
+        # 未知异常类型，使用通用包装
+        return OpenAIErrorWrapper(error, provider)
 
 
 # ======================================================================

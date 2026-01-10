@@ -14,7 +14,7 @@ import pyclip
 import keyboard
 from util.logger import get_logger
 
-logger = get_logger('llm.clipboard')
+logger = get_logger('client')
 
 # 支持的编码列表
 CLIPBOARD_ENCODINGS = ['utf-8', 'gbk', 'utf-16', 'latin1']

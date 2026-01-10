@@ -1,15 +1,38 @@
+# coding: utf-8
+"""
+提示信息显示模块
+
+提供 TipsDisplay 类用于显示启动提示信息。
+"""
+
+from __future__ import annotations
+
 import os
 
-from util.client.client_cosmic import console
-from config import ClientConfig as Config, __version__
 from rich.markdown import Markdown
 
+from util.client.state import console
+from config import ClientConfig as Config, __version__
+from util.logger import get_logger
 
-def show_mic_tips():
-    console.rule('[bold #d55252]CapsWriter Offline Client')
-    console.print(f'\n版本：[bold green]{__version__}')
-    # console.print(f'\n项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
-    markdown = (f'''
+# 日志记录器
+logger = get_logger('client')
+
+
+class TipsDisplay:
+    """
+    提示信息显示器
+    
+    显示客户端启动时的提示信息。
+    """
+    
+    @staticmethod
+    def show_mic_tips() -> None:
+        """显示麦克风模式的启动提示"""
+        console.rule('[bold #d55252]CapsWriter Offline Client')
+        console.print(f'\n版本：[bold green]{__version__}')
+        
+        markdown = f'''
 
 项目地址：https://github.com/HaujetZhao/CapsWriter-Offline
 
@@ -40,21 +63,25 @@ def show_mic_tips():
 2. 音视频文件转录功能依赖于 `FFmpeg`
 3. 默认的快捷键是 {Config.shortcut}，你可以打开 `core_client.py` 进行修改
 4. MacOS 无法监测到 `caps lock` 按键，可改为 `right shift` 按键
-    ''')
-    console.print(Markdown(markdown), highlight=True)
-    console.rule()
-    console.print(f'\n当前基文件夹：[cyan underline]{os.getcwd()}')
-    console.print(f'\n服务端地址： [cyan underline]{Config.addr}:{Config.port}')
-    console.print(f'\n当前所用快捷键：[green4]{Config.shortcut}')
-
-
-    console.line()
-
-
-
-def show_file_tips():
-    console.print(f'\n版本：[bold green]{__version__}')
-    markdown = f'\n项目地址：https://github.com/HaujetZhao/CapsWriter-Offline'
-    console.print(Markdown(markdown), height=True)
-    console.print(f'当前基文件夹：[cyan underline]{os.getcwd()}')
-    console.print(f'服务端地址： [cyan underline]{Config.addr}:{Config.port}')
+        '''
+        
+        console.print(Markdown(markdown), highlight=True)
+        console.rule()
+        console.print(f'\n当前基文件夹：[cyan underline]{os.getcwd()}')
+        console.print(f'\n服务端地址： [cyan underline]{Config.addr}:{Config.port}')
+        console.print(f'\n当前所用快捷键：[green4]{Config.shortcut}')
+        console.line()
+        
+        logger.debug("已显示麦克风模式启动提示")
+    
+    @staticmethod
+    def show_file_tips() -> None:
+        """显示文件转录模式的启动提示"""
+        console.print(f'\n版本：[bold green]{__version__}')
+        
+        markdown = '\n项目地址：https://github.com/HaujetZhao/CapsWriter-Offline'
+        console.print(Markdown(markdown), highlight=True)
+        console.print(f'当前基文件夹：[cyan underline]{os.getcwd()}')
+        console.print(f'服务端地址： [cyan underline]{Config.addr}:{Config.port}')
+        
+        logger.debug("已显示文件转录模式启动提示")
