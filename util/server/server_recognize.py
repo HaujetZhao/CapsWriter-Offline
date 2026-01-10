@@ -1,5 +1,8 @@
 import re
 import time
+import pickle
+from pathlib import Path
+from datetime import datetime
 
 import numpy as np
 
@@ -27,6 +30,73 @@ def format_text(text, punc_model):
     if Config.format_spell:
         text = adjust_space(text)       # 调空格
     return text
+
+
+def merge_by_text(prev_text: str, new_text: str, overlap_chars: int = 20) -> str:
+    """
+    基于文本重叠进行拼接（不依赖时间戳）
+    
+    通过在 prev_text 末尾和 new_text 开头寻找最长公共子串来去重拼接。
+    
+    Args:
+        prev_text: 之前累积的文本
+        new_text: 新识别的文本
+        overlap_chars: 在末尾/开头查找重叠的字符数
+        
+    Returns:
+        合并后的文本
+    """
+    if not prev_text:
+        return new_text
+    if not new_text:
+        return prev_text
+    
+    # 取 prev_text 末尾 N 个字符
+    tail = prev_text[-overlap_chars:] if len(prev_text) >= overlap_chars else prev_text
+    
+    # 在 new_text 开头查找匹配（从长到短）
+    for match_len in range(min(len(tail), len(new_text)), 0, -1):
+        if tail[-match_len:] == new_text[:match_len]:
+            return prev_text + new_text[match_len:]
+    
+    # 未找到重叠，直接拼接
+    return prev_text + new_text
+
+
+def save_error_pickle(stream_result, task_id: str, error: Exception) -> None:
+    """
+    将出错的 stream.result 保存为 pickle 文件到 log 文件夹
+    
+    Args:
+        stream_result: sherpa-onnx 的识别结果对象
+        task_id: 任务ID
+        error: 发生的错误
+    """
+    try:
+        log_dir = Path("log")
+        log_dir.mkdir(exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = log_dir / f"decode_error_{timestamp}_{task_id[:8]}.pkl"
+        
+        # 保存相关信息
+        error_data = {
+            'task_id': task_id,
+            'error': str(error),
+            'error_type': type(error).__name__,
+            'stream_result': stream_result,
+            'timestamp': timestamp,
+        }
+        
+        with open(filename, 'wb') as f:
+            pickle.dump(error_data, f)
+        
+        logger.info(f"已保存错误数据到: {filename}")
+        console.print(f'[yellow]已保存错误数据到: {filename}')
+        
+    except Exception as save_error:
+        logger.error(f"保存错误 pickle 失败: {save_error}", exc_info=True)
+        console.print(f'[red]保存错误 pickle 失败: {save_error}')
 
 
 def recognize(recognizer, punc_model, task: Task):
@@ -62,6 +132,23 @@ def recognize(recognizer, punc_model, task: Task):
         result.time_submit = task.time_submit
         result.time_complete = time.time()
 
+        # ========== 文本拼接（不依赖时间戳）==========
+        # 获取片段的原始文本（用于 text_simple）
+        try:
+            segment_text = stream.result.text
+            # 清理文本：去除 @@ 标记和多余空格
+            segment_text = segment_text.replace('@@', '').strip()
+            segment_text = re.sub(r'\s+', ' ', segment_text)
+            
+            # 基于文本重叠进行拼接
+            result.text_simple = merge_by_text(result.text_simple, segment_text)
+            logger.debug(f"文本拼接完成，当前长度: {len(result.text_simple)}")
+            
+        except Exception as e:
+            logger.warning(f"文本拼接失败: {e}")
+            # 文本拼接失败不影响主流程
+
+        # ========== 时间戳拼接（用于字幕生成）==========
         # 先粗去重，依据：字级时间戳
         m = n = len(stream.result.timestamps)
         for i, timestamp in enumerate(stream.result.timestamps, start=0):
@@ -112,6 +199,10 @@ def recognize(recognizer, punc_model, task: Task):
             inspect(stream.result)
             console.print()
             logger.error(f"Token 编码错误，任务ID {task.task_id}: {e}")
+            
+            # 保存错误数据到 pickle
+            save_error_pickle(stream.result, task.task_id, e)
+            
             # 出错时使用空列表，避免程序崩溃
             new_tokens = []
             new_timestamps = []
@@ -120,7 +211,7 @@ def recognize(recognizer, punc_model, task: Task):
         # 如果前一个片段的最后 token 是标点符号，则去掉它
         if result.tokens:
             # 常见的中文和英文标点符号
-            punctuation = '，。！？；：、，「」『』（）《》【》[]{}\',.!?;:"\''
+            punctuation = r'，。！？；：、「」『』（）《》【】[]{},.!?;:"' + "'"
             # 检查最后一个 token 是否是标点
             if result.tokens[-1] in punctuation:
                 result.tokens = result.tokens[:-1]
@@ -142,6 +233,7 @@ def recognize(recognizer, punc_model, task: Task):
 
         # 调整文本格式
         result.text = format_text(text, punc_model)
+        result.text_simple = format_text(result.text_simple, punc_model)
 
         # 若最后一个片段完成识别，从字典摘取任务
         result = results.pop(task.task_id)

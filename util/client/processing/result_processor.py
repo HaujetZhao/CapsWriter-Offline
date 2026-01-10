@@ -118,7 +118,9 @@ class ResultProcessor:
         # 接收消息
         message = await self.state.websocket.recv()
         message = json.loads(message)
-        text = message['text']
+        
+        # 语音输入优先使用文本拼接结果（不依赖时间戳，更稳定）
+        text = message.get('text_simple') or message['text']
         delay = message['time_complete'] - message['time_submit']
         
         logger.debug(

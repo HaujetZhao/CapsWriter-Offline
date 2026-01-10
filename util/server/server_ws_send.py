@@ -40,6 +40,7 @@ async def ws_send():
                 'tokens': result.tokens,
                 'timestamps': result.timestamps,
                 'text': result.text,
+                'text_simple': result.text_simple,  # 基于文本拼接的结果
                 'is_final': result.is_final,
             }
 

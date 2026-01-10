@@ -73,4 +73,5 @@ class Result:
     tokens: List[str] = field(default_factory=list)
     timestamps: List[float] = field(default_factory=list)
     text: str = ''
+    text_simple: str = ''  # 基于文本拼接的结果（不依赖时间戳）
     is_final: bool = False
