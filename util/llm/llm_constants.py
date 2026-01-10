@@ -105,6 +105,7 @@ class APIConfig:
         'deepseek': 'https://api.deepseek.com/v1',
         'moonshot': 'https://api.moonshot.cn/v1',
         'zhipu': 'https://open.bigmodel.cn/api/paas/v4',
+        'cerebras': 'https://api.cerebras.ai/v1',
     }
 
     # 默认 API Keys
@@ -114,6 +115,7 @@ class APIConfig:
         'deepseek': '',
         'moonshot': '',
         'zhipu': '',
+        'cerebras': '',
     }
 
     # 请求超时配置（秒）
@@ -125,6 +127,7 @@ class APIConfig:
         'deepseek': 10.0,     # DeepSeek API
         'moonshot': 10.0,     # Moonshot API
         'zhipu': 10.0,        # 智谱 API
+        'cerebras': 10.0,     # Cerebras API
         'claude': 10.0,       # Claude API
         'gemini': 10.0,       # Gemini API
     }
