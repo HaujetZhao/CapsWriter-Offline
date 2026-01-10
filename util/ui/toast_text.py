@@ -100,8 +100,19 @@ class ToastWindowText(ToastWindowBase):
             height=text_height
         )
 
-        # 锚定在左上角，使用 fill=X 水平填充窗口
-        self.text_area.pack(side=tk.TOP, anchor='nw', fill=tk.X)
+        # 锚定在左上角，使用 fill=BOTH 填充窗口
+        self.text_area.pack(side=tk.TOP, anchor='nw', fill=tk.BOTH, expand=True)
+
+        # 禁用 Text 组件的默认滚轮行为，让其传播到窗口
+        # 通过将事件绑定到空函数来阻止 Text 的内置滚动，但不阻止传播
+        def pass_to_window(event):
+            # 让窗口处理这个事件
+            self.window.event_generate('<MouseWheel>', x=event.x, y=event.y, delta=event.delta)
+            return "break"
+
+        self.text_area.bind('<MouseWheel>', pass_to_window)
+        self.text_area.bind('<Button-4>', pass_to_window)  # Linux
+        self.text_area.bind('<Button-5>', pass_to_window)  # Linux
 
         # 初始化时插入初始文本
         if text:

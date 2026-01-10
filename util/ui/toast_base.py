@@ -218,9 +218,9 @@ class ToastWindowBase(ABC):
 
     def _on_mouse_wheel(self, event: tk.Event) -> str:
         """滚轮调整窗口垂直位置
-        
+
         限制在屏幕中线到底边之间滚动。
-        
+
         Returns:
             "break" 阻止事件继续传播
         """
@@ -230,10 +230,6 @@ class ToastWindowBase(ABC):
             window_height = self.window.winfo_height()
             screen_height = self.window.winfo_screenheight()
             screen_middle = screen_height // 2
-
-            # 检查窗口高度是否足以进行滚动
-            if window_height <= (screen_height - screen_middle):
-                return "break"
 
             # 判定滚动方向
             delta = getattr(event, 'delta', 0)
@@ -250,13 +246,16 @@ class ToastWindowBase(ABC):
             top_limit = screen_height - window_height
             bottom_limit = screen_middle
 
-            if is_scroll_up:
-                target_y = max(current_y - SCROLL_STEP, top_limit)
-            else:
-                target_y = min(current_y + SCROLL_STEP, bottom_limit)
+            # 只要窗口底部超出屏幕，就允许滚动
+            window_bottom = current_y + window_height
+            if window_bottom > screen_height:
+                if is_scroll_up:
+                    target_y = max(current_y - SCROLL_STEP, top_limit)
+                else:
+                    target_y = min(current_y + SCROLL_STEP, bottom_limit)
 
-            if target_y != current_y:
-                self.window.geometry(f"+{self.window.winfo_x()}+{int(target_y)}")
+                if target_y != current_y:
+                    self.window.geometry(f"+{self.window.winfo_x()}+{int(target_y)}")
 
             return "break"
         except tk.TclError as e:
