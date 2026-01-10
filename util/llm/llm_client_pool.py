@@ -7,30 +7,7 @@ LLM 客户端池
 """
 from openai import OpenAI
 from typing import Dict
-
-
-# ======================================================================
-# --- API 配置映射 ---
-# provider 仅作为标识，当 api_url 为空时用于查找默认 URL
-# 可以随意填写，也可以添加新的 provider 和对应的默认 URL
-
-API_URLS = {
-    'ollama': 'http://localhost:11434/v1',
-    'openai': 'https://api.openai.com/v1',
-    'deepseek': 'https://api.deepseek.com/v1',
-    'moonshot': 'https://api.moonshot.cn/v1',
-    'zhipu': 'https://open.bigmodel.cn/api/paas/v4',
-    # 可以添加更多 provider
-}
-
-DEFAULT_API_KEYS = {
-    'ollama': 'ollama',
-    'openai': '',
-    'deepseek': '',
-    'moonshot': '',
-    'zhipu': '',
-    # 可以添加更多默认 key
-}
+from util.llm.llm_constants import APIConfig
 
 
 class ClientPool:
@@ -54,10 +31,10 @@ class ClientPool:
 
         if cache_key not in self._clients:
             # 获取 api_url（优先使用配置的 URL，否则使用默认值）
-            final_url = api_url or API_URLS.get(provider)
+            final_url = api_url or APIConfig.DEFAULT_API_URLS.get(provider)
 
             # 获取 api_key
-            final_key = api_key or DEFAULT_API_KEYS.get(provider, '')
+            final_key = api_key or APIConfig.DEFAULT_API_KEYS.get(provider, '')
 
             # 创建客户端
             self._clients[cache_key] = OpenAI(

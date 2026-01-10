@@ -12,6 +12,8 @@ import threading
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from util.llm.llm_constants import WatcherConstants
+from util.llm.llm_role_formatter import RoleFormatter
 
 
 class LLMFileWatcher(FileSystemEventHandler):
@@ -27,7 +29,7 @@ class LLMFileWatcher(FileSystemEventHandler):
         self._last_event = None  # (file_path, time)
         self._timer = None
         self._lock = threading.Lock()
-        self._debounce_delay = 3  # 3秒后执行
+        self._debounce_delay = WatcherConstants.DEBOUNCE_DELAY
 
     def on_modified(self, event):
         """文件修改时触发"""
@@ -36,10 +38,10 @@ class LLMFileWatcher(FileSystemEventHandler):
 
         file_path = event.src_path
 
-        if not file_path.endswith('.py'):
+        if not file_path.endswith(WatcherConstants.PY_EXTENSION):
             return
 
-        if '__pycache__' in file_path:
+        if WatcherConstants.CACHE_DIR in file_path:
             return
 
         # 记录最后一次修改事件
@@ -60,17 +62,17 @@ class LLMFileWatcher(FileSystemEventHandler):
 
         file_path = event.src_path
 
-        if not file_path.endswith('.py'):
+        if not file_path.endswith(WatcherConstants.PY_EXTENSION):
             return
 
-        if '__pycache__' in file_path:
+        if WatcherConstants.CACHE_DIR in file_path:
             return
 
         # 新文件创建，重新加载所有角色
         current_time = time.time()
 
         with self._lock:
-            self._last_event = ('__reload_all__', current_time)
+            self._last_event = (WatcherConstants.RELOAD_ALL_MARKER, current_time)
 
             if self._timer is None or not self._timer.is_alive():
                 self._timer = threading.Thread(target=self._debounced_worker, daemon=True)
@@ -83,17 +85,17 @@ class LLMFileWatcher(FileSystemEventHandler):
 
         file_path = event.src_path
 
-        if not file_path.endswith('.py'):
+        if not file_path.endswith(WatcherConstants.PY_EXTENSION):
             return
 
-        if '__pycache__' in file_path:
+        if WatcherConstants.CACHE_DIR in file_path:
             return
 
         # 文件被删除，需要重新加载所有角色并清理
         current_time = time.time()
 
         with self._lock:
-            self._last_event = ('__reload_all__', current_time)
+            self._last_event = (WatcherConstants.RELOAD_ALL_MARKER, current_time)
 
             if self._timer is None or not self._timer.is_alive():
                 self._timer = threading.Thread(target=self._debounced_worker, daemon=True)
@@ -120,7 +122,7 @@ class LLMFileWatcher(FileSystemEventHandler):
         current_time = time.time()
 
         with self._lock:
-            self._last_event = ('__reload_all__', current_time)
+            self._last_event = (WatcherConstants.RELOAD_ALL_MARKER, current_time)
 
             if self._timer is None or not self._timer.is_alive():
                 self._timer = threading.Thread(target=self._debounced_worker, daemon=True)
@@ -155,7 +157,7 @@ class LLMFileWatcher(FileSystemEventHandler):
     def _do_reload(self, file_path: str):
         """执行重载"""
         # 检查是否需要重新加载所有角色
-        if file_path == '__reload_all__':
+        if file_path == WatcherConstants.RELOAD_ALL_MARKER:
             self.handler.role_loader.load_all_roles()
             self.handler.reload_roles()
 
@@ -185,18 +187,7 @@ class LLMFileWatcher(FileSystemEventHandler):
                     break
 
             if role_config:
-                from util.llm.llm_role_loader import RoleLoader
-                from rich.console import Console
-                from rich.text import Text
-
-                loader = RoleLoader()
-                console = Console()
-                status_line = loader.format_role_status(role_name, role_config)
-
-                # 构建 "角色更新  " 前缀 + 状态行
-                prefix = Text("\n角色更新  ")
-                prefix.append(status_line)
-                console.print(prefix + "\n")
+                RoleFormatter.print_update(role_name, role_config)
 
         else:
             print(f"\n[LLM 监控] ✗ 重载失败: {file_name}")
@@ -232,16 +223,4 @@ class LLMFileWatcher(FileSystemEventHandler):
 
     def _print_role_info(self, role_name: str, role_config):
         """打印单个角色信息（使用 Rich 带颜色格式）"""
-        from util.llm.llm_role_loader import RoleLoader
-        from rich.console import Console
-        from rich.text import Text
-
-        # 使用统一格式化函数（带颜色）
-        loader = RoleLoader()
-        console = Console()
-        status_line = loader.format_role_status(role_name, role_config)
-
-        # 在前面添加两个空格
-        prefix = Text("  ")
-        prefix.append(status_line)
-        console.print(prefix)
+        RoleFormatter.print_status(role_name, role_config)

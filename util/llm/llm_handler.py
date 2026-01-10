@@ -9,15 +9,16 @@ LLM 处理器 - 协调器
 
 from typing import Dict, Tuple, Optional
 from util.llm.llm_role_loader import RoleLoader
-from util.llm.llm_rag import HotwordsRAG
+from util.llm.llm_hotword_rag import HotwordsRAG
 from util.llm.llm_context import ContextManager
 from util.llm.llm_watcher import LLMFileWatcher
 from util.llm.llm_role_config import RoleConfig
 from util.llm.llm_client_pool import ClientPool
 from util.llm.llm_message_builder import MessageBuilder
+from util.llm.llm_role_detector import RoleDetector
+from util.llm.llm_processor import LLMProcessor
 from util.logger import get_logger
 
-# 获取日志记录器
 logger = get_logger('client')
 
 
@@ -29,6 +30,7 @@ class LLMHandler:
 
     def __init__(self, hotwords_file: str = 'hot-llm.txt'):
         logger.info("初始化 LLM 处理器")
+
         # 角色管理
         self.role_loader = RoleLoader()
         self.roles = self.role_loader.get_roles()
@@ -46,6 +48,12 @@ class LLMHandler:
 
         # 消息构建器
         self.message_builder = MessageBuilder(rag=self.rag)
+
+        # 角色检测器
+        self.role_detector = RoleDetector(self.role_loader)
+
+        # LLM 处理引擎
+        self.processor = LLMProcessor(self.client_pool)
 
     def _init_context_managers(self):
         """为启用了历史的角色创建上下文管理器"""
@@ -81,44 +89,17 @@ class LLMHandler:
                 ctx.history = old_contexts[role_name]['history']
                 ctx.last_interaction = old_contexts[role_name]['last_interaction']
                 logger.debug(f"恢复角色 '{role_name}' 的历史记录: {len(ctx.history)} 条")
-                print(f"[上下文管理] 恢复角色 '{role_name}' 的历史记录: {len(ctx.history)} 条")
 
     def detect_role(self, text: str) -> Tuple[Optional[RoleConfig], str]:
         """检测文本是否匹配某个角色前缀
 
+        Args:
+            text: 输入文本
+
         Returns:
             (role_config, content) - role_config 是 RoleConfig 对象，content 是去除前缀后的文本
         """
-        # logger.debug(f"检测角色，输入文本: {text[:50]}...")
-
-        for role_name, role_config in self.roles.items():
-            if role_name == '默认':
-                continue
-
-            # 检查是否启用前缀匹配
-            if not role_config.match:
-                continue
-
-            name = role_config.name
-            # 空名字和「默认」都不作为前缀匹配
-            if not name or name == '默认':
-                continue
-
-            if name and text.startswith(name):
-                remaining_text = text[len(name):]
-                remaining_text = remaining_text.lstrip('：，。,. ')
-
-                logger.debug(f"匹配到角色: {name}, 去除前缀后: {remaining_text[:50]}...")
-                return role_config, remaining_text
-
-        # 未匹配，使用默认角色
-        default_role = self.role_loader.get_default_role()
-        if default_role.process:
-            logger.debug(f"未匹配到角色前缀，使用默认角色，处理: {default_role.process}")
-            return default_role, text
-
-        logger.debug("未匹配到角色且默认角色不处理，返回原始文本")
-        return None, text
+        return self.role_detector.detect(text)
 
     def process(self, text: str, callback=None, should_stop_check=None) -> tuple:
         """处理输入文本
@@ -153,92 +134,16 @@ class LLMHandler:
         messages = self.message_builder.build_messages(role_config, content, context_manager)
         logger.debug(f"构建消息完成，消息数量: {len(messages)}, 总token数: {sum(len(m.get('content', '')) for m in messages)}")
 
-        # 获取客户端
-        logger.debug(f"获取 LLM 客户端，提供商: {role_config.provider}, API: {role_config.api_url}")
-        client = self.client_pool.get_client(
-            provider=role_config.provider,
-            api_url=role_config.api_url,
-            api_key=role_config.api_key
+        # 使用 LLM 处理引擎执行请求
+        result = self.processor.process(
+            role_config=role_config,
+            messages=messages,
+            callback=callback,
+            should_stop_check=should_stop_check,
+            context_manager=context_manager
         )
 
-        # 构建请求参数
-        request_params = {
-            'model': role_config.model,
-            'messages': messages,
-        }
-        logger.debug(f"请求模型: {role_config.model}")
-
-        # 添加生成参数
-        if role_config.temperature is not None:
-            request_params['temperature'] = role_config.temperature
-
-        if role_config.top_p is not None:
-            request_params['top_p'] = role_config.top_p
-
-        if role_config.max_tokens > 0:
-            request_params['max_tokens'] = role_config.max_tokens
-            logger.debug(f"最大tokens: {role_config.max_tokens}")
-
-        # 处理停止序列
-        stop = role_config.stop
-        if stop:
-            if isinstance(stop, str):
-                request_params['stop'] = [s.strip() for s in stop.split(',')]
-            else:
-                request_params['stop'] = stop
-            logger.debug(f"停止序列: {request_params['stop']}")
-
-        # 合并额外选项
-        if role_config.extra_options:
-            request_params.update(role_config.extra_options)
-
-        try:
-            logger.debug("开始调用 LLM API（流式）")
-            full_response = ""
-            total_tokens = 0
-
-            # 流式输出（typing 和 toast 都使用流式）
-            request_params['stream'] = True
-            stream = client.chat.completions.create(**request_params)
-
-            chunk_count = 0
-            for chunk in stream:
-                chunk_count += 1
-                # 检查是否应该停止
-                if should_stop_check and should_stop_check():
-                    logger.debug(f"收到停止信号，当前已接收 {chunk_count} 个 chunks")
-                    break
-
-                if chunk.choices[0].delta.content:
-                    content_chunk = chunk.choices[0].delta.content
-                    full_response += content_chunk
-                    if callback:
-                        callback(content_chunk)
-
-                # 统计 token 数（在最后一个 chunk 中获取）
-                # 注意：某些提供商（如 Ollama）的流式响应不包含 usage
-                if hasattr(chunk, 'usage') and chunk.usage:
-                    if hasattr(chunk.usage, 'completion_tokens'):
-                        total_tokens = chunk.usage.completion_tokens or 0
-
-            logger.debug(f"LLM 响应完成，接收 {chunk_count} 个 chunks, 输出tokens: {total_tokens}, 响应长度: {len(full_response)}")
-
-            # 更新历史
-            if role_config.enable_history and context_manager:
-                # 保存完整的用户提示词（包含剪贴板、热词等），而不是原始识别文本
-                # messages[-1]['content'] 就是完整的用户提示词
-                context_manager.add_message('user', messages[-1]['content'])
-                context_manager.add_message('assistant', full_response)
-                logger.debug(f"已更新历史记录，当前历史条数: {len(context_manager.history)}")
-
-            return (full_response.strip(), total_tokens)
-
-        except Exception as e:
-            import traceback
-            logger.error(f"LLM 处理失败: {e}", exc_info=True)
-            print(f"[LLM 处理器] 错误: {e}")
-            print(f"[LLM 处理器] 错误详情:\n{traceback.format_exc()}")
-            return (text, 0)
+        return result
 
 
 # ======================================================================

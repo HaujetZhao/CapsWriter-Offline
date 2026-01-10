@@ -7,11 +7,10 @@ LLM Typing 输出模式
 """
 import asyncio
 import keyboard
-import platform
 
 from config import ClientConfig as Config
 from util.client.client_strip_punc import strip_punc
-from util.llm.llm_clipboard import copy_to_clipboard
+from util.llm.llm_clipboard import paste_text
 from util.llm.llm_stop_monitor import reset, should_stop
 
 
@@ -41,7 +40,7 @@ async def handle_typing_mode(text: str, paste: bool = None) -> tuple:
         if not polished_text:
             polished_text = text
         polished_text = strip_punc(polished_text)
-        await _paste_text(polished_text)
+        await paste_text(polished_text, restore_clipboard=Config.restore_clip)
         return (polished_text, token_count)
     else:
         # 非 paste 方式：实时流式 write
@@ -89,37 +88,9 @@ async def handle_typing_mode(text: str, paste: bool = None) -> tuple:
             return (strip_punc(full_text), token_count)
 
 
-async def _paste_text(text: str):
-    """粘贴文本"""
-    import pyclip
-
-    # 保存剪切板
-    try:
-        temp = pyclip.paste().decode('utf-8')
-    except:
-        temp = ''
-
-    # 复制结果
-    pyclip.copy(text)
-
-    # 粘贴结果
-    if platform.system() == 'Darwin':
-        keyboard.press(55)
-        keyboard.press(9)
-        keyboard.release(55)
-        keyboard.release(9)
-    else:
-        keyboard.send('ctrl + v')
-
-    # 还原剪贴板
-    if Config.restore_clip:
-        await asyncio.sleep(0.1)
-        pyclip.copy(temp)
-
-
 async def output_text(text: str, paste: bool = None):
     """输出文本（根据 paste 或 Config.paste 选择方式）"""
     if paste:
-        await _paste_text(text)
+        await paste_text(text, restore_clipboard=Config.restore_clip)
     else:
         keyboard.write(text)

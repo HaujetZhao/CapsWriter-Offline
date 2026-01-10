@@ -11,39 +11,14 @@ LLM 获取选中文字功能
 import time
 import pyclip
 import keyboard
+from util.logger import get_logger
+from util.llm.llm_clipboard import safe_paste
+
+logger = get_logger('llm.get_selection')
 
 
 # 全局变量：记录每个角色最后一次使用的选中文字
 _last_selection_by_role = {}
-
-
-def safe_paste_decode() -> str:
-    """
-    安全地从剪贴板读取并解码文本
-    尝试多种编码方式，确保能够正确读取
-
-    Returns:
-        解码后的文本字符串，失败返回空字符串
-    """
-    try:
-        clipboard_data = pyclip.paste()
-
-        # 尝试多种编码方式
-        encodings = ['utf-8', 'gbk', 'utf-16', 'latin1']
-
-        for encoding in encodings:
-            try:
-                return clipboard_data.decode(encoding)
-            except (UnicodeDecodeError, AttributeError):
-                continue
-
-        # 如果所有编码都失败，返回空字符串
-        print(f"[剪贴板解码] 无法解码剪贴板内容，尝试了编码: {encodings}")
-        return ""
-
-    except Exception as e:
-        print(f"[剪贴板解码] 读取失败: {e}")
-        return ""
 
 
 def get_selected_text(role_config) -> str:
@@ -66,7 +41,7 @@ def get_selected_text(role_config) -> str:
 
     try:
         # 保存当前剪贴板内容
-        original_clipboard = safe_paste_decode()
+        original_clipboard = safe_paste()
 
         # 模拟 Ctrl+C 复制选中的文字
         keyboard.press_and_release('ctrl+c')
@@ -75,7 +50,7 @@ def get_selected_text(role_config) -> str:
         time.sleep(0.1)
 
         # 读取新的剪贴板内容
-        selected_text = safe_paste_decode()
+        selected_text = safe_paste()
 
         # 还原原来的剪贴板内容
         pyclip.copy(original_clipboard)
@@ -103,7 +78,7 @@ def get_selected_text(role_config) -> str:
         return selected_text
 
     except Exception as e:
-        print(f"[获取选中文字] 错误: {e}")
+        logger.warning(f"获取选中文字失败: {e}")
         return ""
 
 

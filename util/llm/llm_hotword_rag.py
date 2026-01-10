@@ -7,12 +7,15 @@ LLM 热词 RAG 检索
 import re
 from pathlib import Path
 from typing import List, Tuple, Optional
+from util.logger import get_logger
+
+logger = get_logger('llm.hotword_rag')
 
 try:
     from pypinyin import pinyin, Style
     from pypinyin.style._utils import get_finals, get_initials
 except ImportError:
-    print("Warning: pypinyin not found. Please install it using `pip install pypinyin`.")
+    logger.warning("pypinyin 未安装，热词音素匹配功能不可用。运行 'pip install pypinyin' 安装。")
     pinyin = None
     Style = None
     get_finals = None
@@ -163,8 +166,7 @@ class LLMHotwordRAG:
     def load_hotwords(self):
         """加载热词列表"""
         if not self.hotwords_file.exists():
-            if self.verbose:
-                print(f"[LLM 热词 RAG] 文件不存在: {self.hotwords_file}")
+            logger.debug(f"热词文件不存在: {self.hotwords_file}")
             return
 
         try:
@@ -177,28 +179,22 @@ class LLMHotwordRAG:
                 ]
 
             self.hotwords = lines
-
-            if self.verbose and self.hotwords:
-                print(f"[LLM 热词 RAG] 已加载 {len(self.hotwords)} 个热词")
+            logger.debug(f"已加载 {len(self.hotwords)} 个热词")
 
             # 预计算音素序列
             if self.hotwords:
                 import time
                 start = time.time()
 
-                if self.verbose:
-                    print(f"[LLM 热词 RAG] 正在预计算音素...", end=' ', flush=True)
-
                 self.hotword_phonemes = {}
                 for hw in self.hotwords:
                     if hw:
                         self.hotword_phonemes[hw] = get_phoneme_seq(hw)
 
-                if self.verbose:
-                    print(f"完成 ({time.time() - start:.2f}秒)")
+                logger.debug(f"预计算音素完成，耗时 {time.time() - start:.2f} 秒")
 
         except Exception as e:
-            print(f"[LLM 热词 RAG] 加载失败: {e}")
+            logger.error(f"热词加载失败: {e}")
 
     def search(self, text: str, top_k: int = 10, threshold: float = 0.4) -> List[Tuple[str, float]]:
         """
@@ -213,21 +209,17 @@ class LLMHotwordRAG:
             [(hotword, score), ...] 按分数降序排列
         """
         if not self.hotwords:
-            print("[RAG DEBUG] 热词列表为空")
+            logger.debug("热词列表为空")
             return []
 
         text_seq = get_phoneme_seq(text)
         if not text_seq:
-            print("[RAG DEBUG] 文本音素序列为空")
+            logger.debug("文本音素序列为空")
             return []
 
-        print(f"[RAG DEBUG] 输入文本: {text}")
-        print(f"[RAG DEBUG] 文本音素: {text_seq}")
-        print(f"[RAG DEBUG] 热词总数: {len(self.hotwords)}")
-        print(f"[RAG DEBUG] 阈值: {threshold}, Top-K: {top_k}")
+        logger.debug(f"热词检索: 输入='{text}', 音素={text_seq}, 热词数={len(self.hotwords)}")
 
         scored_hotwords = []
-        all_scores = []
 
         for hw, hw_seq in self.hotword_phonemes.items():
             if not hw_seq:
@@ -237,21 +229,20 @@ class LLMHotwordRAG:
             min_dist = fuzzy_substring_distance(text_seq, hw_seq)
             denom = len(hw_seq) if len(hw_seq) > 0 else 1
             score = 1.0 - (min_dist / denom)
-            all_scores.append((hw, score, min_dist))
 
             if score >= threshold:
                 scored_hotwords.append((hw, round(score, 3)))
 
-        # 打印所有得分（用于调试）
-        all_scores.sort(key=lambda x: x[1], reverse=True)
-        print(f"[RAG DEBUG] 所有热词得分 (Top 10):")
-        for hw, score, dist in all_scores[:10]:
-            match = "✓" if score >= threshold else "✗"
-            print(f"  {match} {hw:10} 得分:{score:.3f} 距离:{dist}")
-
         # 按分数降序排序
         scored_hotwords.sort(key=lambda x: x[1], reverse=True)
-        return scored_hotwords[:top_k]
+        result = scored_hotwords[:top_k]
+
+        if result:
+            logger.debug(f"热词匹配结果: {[(hw, f'{s:.3f}') for hw, s in result]}")
+        else:
+            logger.debug(f"未匹配到热词（阈值={threshold}）")
+
+        return result
 
     def format_hotwords_prompt(self, hotwords: List[Tuple[str, float]]) -> str:
         """
@@ -271,49 +262,58 @@ class LLMHotwordRAG:
         return f"热词列表：[{', '.join(hotword_list)}]"
 
 
-# 测试
-if __name__ == "__main__":
-    print("=" * 60)
-    print("LLM 热词 RAG - 测试模式")
-    print("=" * 60)
+# ======================================================================
+# --- 热词检索器封装（原 llm_rag.py）---
 
-    # 创建测试热词文件
-    test_file = Path("test_hot_llm.txt")
-    test_file.write_text("""# 测试热词文件
-周杰伦
-篮球
-天气
-今天
-不错
-乒乓球
-足球
-""", encoding='utf-8')
 
-    # 创建检索器
-    rag = LLMHotwordRAG(str(test_file), verbose=True)
+class HotwordsRAG:
+    """热词检索器 - LLMHotwordRAG 的高层封装"""
 
-    # 测试检索
-    test_cases = [
-        "今天天其不错",
-        "我们去打蓝球吧",
-        "叫上周杰仑",
-    ]
+    def __init__(self, hotwords_file: str = 'hot-llm.txt'):
+        from util.llm.llm_constants import RAGConstants
+        self._rag = LLMHotwordRAG(hotwords_file, verbose=False)
+        self._constants = RAGConstants
+        from threading import Lock
+        self._lock = Lock()
 
-    print("\n" + "=" * 60)
-    print("检索测试")
-    print("=" * 60)
+    def load_hotwords(self):
+        """加载热词列表"""
+        with self._lock:
+            self._rag.load_hotwords()
 
-    for text in test_cases:
-        print(f"\n输入: {text}")
-        results = rag.search(text, top_k=5, threshold=0.3)
-        print(f"检索结果:")
-        for hw, score in results:
-            print(f"  {hw:8} - 相似度: {score:.3f}")
+    def search(self, text: str, top_k: int = None) -> List[Tuple[str, float]]:
+        """
+        从热词中搜索相关词汇
 
-        print(f"\nPrompt:")
-        print(rag.format_hotwords_prompt(results))
+        Args:
+            text: 输入文本
+            top_k: 返回前 k 个热词，默认使用配置值
 
-    # 清理
-    test_file.unlink()
+        Returns:
+            [(hotword, score), ...] 按分数降序排列
+        """
+        if top_k is None:
+            top_k = self._constants.DEFAULT_TOP_K
 
-    print("\n" + "=" * 60)
+        with self._lock:
+            return self._rag.search(text, top_k=top_k, threshold=self._constants.DEFAULT_THRESHOLD)
+
+    def format_prompt(self, text: str) -> str:
+        """
+        生成热词提示
+
+        Args:
+            text: 输入文本
+
+        Returns:
+            格式化的提示字符串，如果没有相关热词则返回空字符串
+        """
+        hotwords = self.search(text)
+
+        logger.debug(f"热词匹配 - 输入: '{text}'")
+        if hotwords:
+            logger.debug(f"热词匹配 - 命中 {len(hotwords)} 个: {[hw for hw, _ in hotwords]}")
+
+        prompt = self._rag.format_hotwords_prompt(hotwords)
+        return prompt
+
