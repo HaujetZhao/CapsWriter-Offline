@@ -4,9 +4,12 @@ LLM Toast 输出模式
 流式显示在浮动窗口中，完成后停留 3 秒
 """
 import asyncio
+import logging
 
 from util.client.processing.output import TextOutput
 from util.llm.llm_stop_monitor import reset, should_stop, on_stop_pressed
+
+logger = logging.getLogger(__name__)
 
 
 async def handle_toast_mode(text: str, role_config = None) -> tuple:
@@ -46,7 +49,7 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
         initial_height = 0
 
     try:
-        # 创建初始 toast（流式模式）
+        # 创建初始 toast（流式模式，启用 Markdown）
         msg = ToastMessage(
             text="",
             font_family=font_family,
@@ -58,9 +61,20 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
             initial_height=initial_height,
             streaming=True,
             window_type='text',  # 使用 text 版本（支持流式输出）
+            markdown=True,  # 启用 Markdown 渲染
             stop_callback=lambda: on_stop_pressed()  # 传递停止函数
         )
-        toast_manager.add_message(msg)
+
+        # 添加消息并获取唯一标识符
+        msg_id = toast_manager.add_message(msg)
+
+        # 异步等待窗口创建完成
+        toast_window = await toast_manager.wait_for_window(msg_id, timeout=1.0)
+
+        if not toast_window:
+            # 窗口创建失败
+            logger.error("Toast 窗口创建失败")
+            return ("", 0, 0.0)
 
         chunks = []
         full_text = ""
@@ -70,7 +84,8 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
             nonlocal full_text
             chunks.append(chunk)
             full_text = ''.join(chunks)
-            toast_manager.update_last_toast(full_text)
+            # 使用消息 ID 更新，精确匹配
+            toast_manager.update_toast(msg_id, full_text)
 
         # 流式调用 LLM
         polished_text, token_count, generation_time = await asyncio.to_thread(
@@ -78,15 +93,15 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
         )
 
         if should_stop():
-            # 被中断，关闭 toast
-            toast_manager.close_last_toast()
+            # 被中断，关闭我们创建的 toast
+            toast_manager.close_toast(msg_id)
             # 使用已生成的部分，处理方式与完成时相同
             if not full_text:
                 full_text = text
             return (TextOutput.strip_punc(full_text), token_count, generation_time)
         else:
             # 完成，启动销毁计时器（3秒）
-            toast_manager.finish_last_toast()
+            toast_manager.finish_toast(msg_id)
 
             if not polished_text:
                 polished_text = text
@@ -94,8 +109,8 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
             return (TextOutput.strip_punc(polished_text), token_count, generation_time)
 
     except Exception as e:
-        # 关闭当前的 toast
-        toast_manager.close_last_toast()
+        # 关闭我们创建的 toast（使用 msg_id）
+        toast_manager.close_toast(msg_id)
 
         # 处理 LLM 异常（显示错误通知）
         from util.llm.llm_error_handler import show_error_notification

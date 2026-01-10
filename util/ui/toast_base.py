@@ -389,7 +389,7 @@ class ToastWindowBase(ABC):
 
             # 计算新的窗口高度和宽度
             # 使用 1.2 系数确保内容完全显示
-            final_h = max(int(content_height + 200), MARKDOWN_MIN_HEIGHT)
+            final_h = max(int(content_height * 1.5), MARKDOWN_MIN_HEIGHT)
             final_w = self._calculate_actual_width()
 
             logger.debug(f"设置窗口几何尺寸前:")

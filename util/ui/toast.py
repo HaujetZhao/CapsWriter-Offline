@@ -1,7 +1,7 @@
 """
-Toast 消息管理模块
+Toast 消息通知模块
 
-提供浮动消息通知功能，支持普通和流式输出两种模式。
+提供简单的浮动消息通知功能。
 
 Usage:
     # 普通 Toast
@@ -10,13 +10,10 @@ Usage:
     # 流式 Toast（用于测试）
     toast_stream("消息内容", markdown=False)
 """
+import time
 import logging
 import threading
-import time
-import tkinter as tk
-from queue import Queue
-from dataclasses import dataclass, field
-from typing import Literal, Optional, Callable, Union, List, TYPE_CHECKING
+from typing import Union, Literal
 import sys
 import os
 
@@ -26,244 +23,23 @@ if __name__ == "__main__":
     project_root = os.path.dirname(os.path.dirname(file_dir))
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
-    from util.ui.toast_text import ToastWindowText
-    from util.ui.toast_label import ToastWindowLabel
+    from util.ui.toast_manager import ToastMessageManager, ToastMessage
     from util.ui.toast_constants import (
-        QUEUE_POLL_INTERVAL_MS,
         DEFAULT_DURATION_MS,
         DEFAULT_INITIAL_WIDTH,
         STREAM_CHAR_DELAY_S,
-        TK_SCALING_FACTOR,
     )
 else:
-    from .toast_text import ToastWindowText
-    from .toast_label import ToastWindowLabel
+    from .toast_manager import ToastMessageManager, ToastMessage
     from .toast_constants import (
-        QUEUE_POLL_INTERVAL_MS,
         DEFAULT_DURATION_MS,
         DEFAULT_INITIAL_WIDTH,
         STREAM_CHAR_DELAY_S,
-        TK_SCALING_FACTOR,
     )
 
-# 用于类型注解的前向引用
-if TYPE_CHECKING:
-    from .toast_text import ToastWindowText
-    from .toast_label import ToastWindowLabel
 
-
-# 配置日志（默认不输出，在测试时配置）
+# 配置日志
 logger = logging.getLogger(__name__)
-
-
-# ============================================================
-# 数据类
-# ============================================================
-
-@dataclass
-class ToastMessage:
-    """Toast 消息配置数据类
-    
-    Attributes:
-        text: 消息文本内容
-        font_size: 字体大小（像素）
-        font_family: 字体名称，空字符串使用系统默认
-        bg: 背景颜色（十六进制或颜色名）
-        fg: 前景色（文字颜色）
-        duration: 显示时长（毫秒）
-        initial_width: 初始宽度，0-1 为屏幕比例，>1 为像素值
-        initial_height: 初始高度，0 表示自动计算
-        streaming: 是否为流式模式
-        window_type: 窗口类型 ('text' 或 'label')
-        stop_callback: 窗口关闭时的回调函数
-        markdown: 是否启用 Markdown 渲染
-    """
-    text: str
-    font_size: int = 14
-    font_family: str = ''
-    bg: str = '#075077'
-    fg: str = 'white'
-    duration: int = DEFAULT_DURATION_MS
-    initial_width: Union[float, int] = DEFAULT_INITIAL_WIDTH
-    initial_height: int = 0
-    streaming: bool = False
-    window_type: Literal['text', 'label'] = 'text'
-    stop_callback: Optional[Callable[[], None]] = None
-    markdown: bool = False
-
-
-# ============================================================
-# Toast 消息管理器
-# ============================================================
-
-class ToastMessageManager:
-    """Toast 消息管理器（单例模式）
-    
-    在独立的线程中运行 Tkinter 主循环，管理所有 Toast 窗口的生命周期。
-    
-    Features:
-        - 单例模式，确保只有一个 Tkinter 主循环
-        - 消息队列，支持并发添加消息
-        - 活动窗口跟踪，支持流式输出更新
-    """
-    
-    _instance: Optional['ToastMessageManager'] = None
-    _lock = threading.Lock()
-
-    def __new__(cls) -> 'ToastMessageManager':
-        with cls._lock:
-            if cls._instance is None:
-                cls._instance = super().__new__(cls)
-                cls._instance._initialized = False
-            return cls._instance
-
-    def __init__(self) -> None:
-        if self._initialized:
-            return
-            
-        logger.debug("初始化 Toast 消息管理器")
-        self._initialized = True
-        self.message_queue: 'Queue[ToastMessage]' = Queue()
-        self.is_running = False
-        self.active_windows: List = []  # 运行时类型，避免循环导入
-        self.root: Optional[tk.Tk] = None
-
-        # 在子线程中启动 Tkinter
-        self.manager_thread = threading.Thread(
-            target=self._run_manager,
-            daemon=True,
-            name="ToastManagerThread"
-        )
-        self.manager_thread.start()
-
-    def _run_manager(self) -> None:
-        """在子线程中运行 Tkinter 主循环"""
-        logger.debug("启动 Tkinter 主循环线程")
-        
-        # 创建隐藏的主窗口
-        self.root = tk.Tk()
-        self.root.withdraw()
-        self.root.tk.call('tk', 'scaling', TK_SCALING_FACTOR)
-
-        # 设置窗口关闭时的行为
-        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
-
-        # 开始处理队列
-        self.is_running = True
-        self._process_queue()
-
-        # 启动 Tkinter 主循环
-        self.root.mainloop()
-
-    def _on_close(self) -> None:
-        """关闭所有窗口并退出"""
-        logger.debug("关闭 Toast 管理器")
-        self.is_running = False
-        
-        for window in self.active_windows[:]:
-            try:
-                window.window.destroy()
-            except tk.TclError:
-                pass
-        
-        self.active_windows.clear()
-        
-        if self.root:
-            self.root.quit()
-
-    def _process_queue(self) -> None:
-        """处理队列中的消息"""
-        try:
-            if not self.message_queue.empty():
-                msg = self.message_queue.get_nowait()
-                logger.debug(f"处理消息: type={msg.window_type}, streaming={msg.streaming}")
-
-                # 根据 window_type 选择窗口类
-                WindowClass = ToastWindowLabel if msg.window_type == 'label' else ToastWindowText
-                
-                toast_window = WindowClass(
-                    self.root,
-                    msg.text,
-                    msg.font_size,
-                    msg.font_family,
-                    msg.bg,
-                    msg.fg,
-                    msg.duration,
-                    msg.initial_width,
-                    msg.initial_height,
-                    streaming=msg.streaming,
-                    stop_callback=msg.stop_callback,
-                    markdown=msg.markdown
-                )
-
-                self.active_windows.append(toast_window)
-
-                # 设置窗口销毁时的回调
-                toast_window.window.bind(
-                    '<Destroy>',
-                    lambda _, w=toast_window: self._remove_window(w)
-                )
-
-            # 清理已销毁的窗口
-            self.active_windows = [
-                w for w in self.active_windows
-                if self._window_exists(w)
-            ]
-
-        except Exception as e:
-            logger.warning(f"处理队列消息时出错: {e}")
-
-        # 继续处理队列
-        if self.is_running and self.root:
-            self.root.after(QUEUE_POLL_INTERVAL_MS, self._process_queue)
-
-    def _window_exists(self, window) -> bool:
-        """检查窗口是否存在"""
-        try:
-            return window.window.winfo_exists()
-        except tk.TclError:
-            return False
-
-    def _remove_window(self, window) -> None:
-        """从活动窗口列表中移除窗口"""
-        if window in self.active_windows:
-            self.active_windows.remove(window)
-
-    def add_message(self, msg: ToastMessage) -> None:
-        """添加 ToastMessage 对象到队列
-        
-        Args:
-            msg: Toast 消息配置对象
-        """
-        logger.debug(f"添加消息到队列: streaming={msg.streaming}")
-        self.message_queue.put(msg)
-
-    def update_last_toast(self, new_text: str) -> None:
-        """更新最后一个活动的 Toast 文字
-        
-        Args:
-            new_text: 新的完整文本内容
-        """
-        if self.active_windows:
-            last_window = self.active_windows[-1]
-            last_window.update_text(new_text)
-
-    def finish_last_toast(self) -> None:
-        """完成最后一个 Toast 的流式输出"""
-        if self.active_windows:
-            last_window = self.active_windows[-1]
-            if last_window.streaming:
-                last_window.finish()
-
-    def close_last_toast(self) -> None:
-        """关闭最后一个 Toast（用于用户按 ESC）"""
-        if self.active_windows:
-            last_window = self.active_windows[-1]
-            try:
-                last_window.window.destroy()
-                self.active_windows.remove(last_window)
-            except (tk.TclError, ValueError):
-                pass
 
 
 # ============================================================
@@ -283,7 +59,7 @@ def toast(
     markdown: bool = False
 ) -> None:
     """显示浮动消息通知
-    
+
     Args:
         text: 消息文本
         font_size: 字体大小
@@ -324,7 +100,7 @@ def toast_stream(
     markdown: bool = False
 ) -> None:
     """模拟流式输入的 Toast（用于测试流式输出效果）
-    
+
     Args:
         text: 消息文本
         font_size: 字体大小
@@ -351,15 +127,15 @@ def toast_stream(
         window_type=window_type,
         markdown=markdown
     )
-    manager.add_message(msg)
+    msg_id = manager.add_message(msg)
 
     # 模拟流式输出
     def simulate_streaming():
         for i in range(len(text) + 1):
             if i > 0:
-                manager.update_last_toast(text[:i])
+                manager.update_toast(msg_id, text[:i])
             time.sleep(STREAM_CHAR_DELAY_S)
-        manager.finish_last_toast()
+        manager.finish_toast(msg_id)
 
     stream_thread = threading.Thread(
         target=simulate_streaming,
@@ -375,7 +151,6 @@ def toast_stream(
 
 if __name__ == "__main__":
     # 测试时启用日志，保存到模块所在目录
-    import os
     log_file = os.path.join(os.path.dirname(__file__), 'toast_debug.log')
     logging.basicConfig(
         level=logging.DEBUG,
@@ -386,7 +161,7 @@ if __name__ == "__main__":
         ]
     )
     logger.info(f"日志文件: {log_file}")
-    
+
     print("=" * 60)
     print("全面 Toast 测试程序")
     print("=" * 60)
@@ -424,7 +199,7 @@ def hello():
 > 这是一段引用文字"""*1
 
     # ========== Text 版本测试 ==========
-    
+
     # print("\n[测试 1] Text 版本 - 普通文本 - 非流式 (3秒)")
     # toast(plain_text, bg="#075077", fg='white', duration=3000, window_type='text', initial_width=800)
     # time.sleep(4)
@@ -441,8 +216,8 @@ def hello():
     # toast_stream(markdown_text, bg="#C62828", fg='white', duration=5000, window_type='text', initial_width=800, markdown=True)
     # time.sleep(7)
 
-    # # ========== Label 版本测试 ==========
-    
+    # ========== Label 版本测试 ==========
+
     # print("[测试 5] Label 版本 - 普通文本 - 非流式 (3秒)")
     # toast(plain_text, bg="#F57C00", fg='white', duration=3000, window_type='label', initial_width=800)
     # time.sleep(4)
