@@ -27,6 +27,7 @@ import typer
 
 from config import ClientConfig as Config, __version__
 from util.logger import setup_logger
+from util.common.lifecycle import lifecycle
 
 # 确保根目录位置正确，用相对路径加载模型
 BASE_DIR = os.path.dirname(__file__)
@@ -43,35 +44,30 @@ _state = None
 _shortcut_handler = None
 _stream_manager = None
 _processor = None  # 结果处理器引用
-_is_shutting_down = False
-_tray_exit_requested = False  # 托盘请求退出标志
 _main_task = None  # 主任务引用
 
 
 def request_exit_from_tray():
     """从托盘请求退出"""
-    global _tray_exit_requested, _main_task, _processor
+    global _main_task, _processor
     logger.info("托盘退出回调函数被调用")
 
-    # 方法1: 设置退出标志（原有逻辑）
-    _tray_exit_requested = True
-    logger.debug("托盘退出标志已设置")
+    # 1. 触发通用生命周期退出
+    lifecycle.request_shutdown(reason="Tray Icon")
 
-    # 方法2: 通知处理器退出（立即解除阻塞）
+    # 2. 通知处理器退出（立即解除阻塞）
     if _processor:
         logger.debug("正在通知处理器退出...")
         try:
             _processor.request_exit()
-            logger.info("已通知处理器退出")
         except Exception as e:
             logger.warning(f"通知处理器退出时发生错误: {e}")
 
-    # 方法3: 取消主任务（确保退出）
+    # 3. 取消主任务（确保退出）
     if _main_task and not _main_task.done():
         logger.debug("正在从托盘线程取消主任务...")
         try:
             _main_task.cancel()
-            logger.info("已请求取消主任务")
         except Exception as e:
             logger.warning(f"取消主任务时发生错误: {e}")
 
@@ -79,17 +75,8 @@ def request_exit_from_tray():
 def cleanup_client_resources():
     """
     清理客户端资源的函数
-
-    这个函数会被 atexit.register 注册，在程序退出时自动调用。
+    注册到 LifecycleManager
     """
-    global _is_shutting_down
-
-    # 防止重复清理
-    if _is_shutting_down:
-        logger.debug("清理已经在进行中，跳过重复清理")
-        return
-
-    _is_shutting_down = True
     logger.info("=" * 50)
     logger.info("开始清理客户端资源...")
 
@@ -117,11 +104,16 @@ def cleanup_client_resources():
                 # WebSocket 连接对象，检查 closed 属性
                 if not _state.websocket.closed:
                     # 需要在异步上下文中关闭
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    loop.run_until_complete(_state.websocket.close())
-                    loop.close()
-                    logger.debug("WebSocket 连接已关闭")
+                    # 注意：如果此时 loop 已关闭，这里会失败。
+                    # LifecycleManager 的 cleanup 策略很重要。
+                    try:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        loop.run_until_complete(_state.websocket.close())
+                        loop.close()
+                        logger.debug("WebSocket 连接已关闭")
+                    except Exception:
+                        pass
             elif hasattr(_state.websocket, 'close'):
                 # 其他连接对象，直接调用 close
                 _state.websocket.close()
@@ -129,37 +121,14 @@ def cleanup_client_resources():
         except Exception as e:
             logger.warning(f"关闭 WebSocket 连接时发生错误: {e}")
 
+    # 停止托盘图标
+    try:
+        from util.ui.tray import stop_tray
+        stop_tray()
+    except Exception as e:
+        logger.warning(f"停止托盘图标时发生错误: {e}")
+
     logger.info("客户端资源清理完成")
-
-
-def signal_handler(signum, frame):
-    """
-    客户端的信号处理器
-
-    处理 SIGINT (Ctrl+C) 和 SIGTERM 信号，优雅地退出程序。
-    """
-    global _loop
-    signal_name = signal.Signals(signum).name
-    logger.info(f"收到信号 {signal_name} ({signum})，准备退出...")
-
-    # 执行清理
-    cleanup_client_resources()
-
-    # 停止事件循环（这会终止 asyncio.run）
-    if _loop and _loop.is_running():
-        logger.debug("正在停止事件循环...")
-        _loop.call_soon_threadsafe(_loop.stop)
-
-    # 退出程序
-    logger.debug("程序退出")
-    sys.exit(0)
-
-
-def register_signal_handlers():
-    """注册信号处理器"""
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-    logger.debug("信号处理器已注册")
 
 
 def _check_macos_permissions() -> None:
@@ -179,7 +148,10 @@ async def main_mic() -> None:
 
     启动实时语音识别，监听快捷键开始/结束录音。
     """
-    global _state, _shortcut_handler, _stream_manager, _tray_exit_requested, _processor, _main_task
+    global _state, _shortcut_handler, _stream_manager, _processor, _main_task
+    
+    # 初始化生命周期
+    lifecycle.initialize(logger=logger, exit_on_signal=True)
 
     # 保存当前任务的引用
     _main_task = asyncio.current_task()
@@ -246,47 +218,48 @@ async def main_mic() -> None:
         global _processor
         _processor = processor  # 保存引用以便退出时调用
 
-        while True:
-            await processor.process_loop()
-            # 检查托盘是否请求退出
-            if _tray_exit_requested:
-                logger.info("检测到托盘退出请求")
+        # 主循环：只要没收到退出信号，就一直运行
+        while not lifecycle.is_shutting_down:
+            # 创建处理任务
+            process_task = asyncio.create_task(processor.process_loop())
+            # 创建等待退出任务
+            wait_shutdown = asyncio.create_task(lifecycle.wait_for_shutdown())
+
+            done, pending = await asyncio.wait(
+                [process_task, wait_shutdown],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+
+            # 如果收到退出信号
+            if wait_shutdown in done:
+                logger.info("主循环检测到退出信号")
+                process_task.cancel() # 取消正在进行的处理
                 break
+            
+            # 如果处理任务结束（无论是正常还是异常），继续下一轮
+            # 但 ResultProcessor 应该是一个无限循环，除非出错
+            if process_task in done:
+                # 检查是否有关闭请求（可能是 processor 内部触发）
+                if lifecycle.is_shutting_down:
+                    break
+                # 如果没有请求退出但任务结束了，可能是异常
+                try:
+                    await process_task
+                except Exception as e:
+                    logger.error(f"处理循环异常: {e}")
+                    # 防止死循环打印日志
+                    await asyncio.sleep(1)
+
     except asyncio.CancelledError:
-        logger.info("异步任务被取消，正在退出...")
+        logger.info("主任务被取消，正在退出...")
         raise
     except Exception as e:
         logger.error(f"接收结果时发生错误: {e}", exc_info=True)
         raise
     finally:
-        # 清理资源（在异步上下文中）
-        logger.info("正在清理客户端资源（异步上下文）...")
-
-        # 解绑快捷键
-        try:
-            if _shortcut_handler:
-                _shortcut_handler.unbind()
-                logger.debug("快捷键已解绑")
-        except Exception as e:
-            logger.warning(f"解绑快捷键时发生错误: {e}")
-
-        # 关闭音频流
-        try:
-            if _stream_manager:
-                _stream_manager.close()
-                logger.debug("音频流已关闭")
-        except Exception as e:
-            logger.warning(f"关闭音频流时发生错误: {e}")
-
-        # 关闭 WebSocket 连接
-        try:
-            if _state.websocket and not _state.websocket.closed:
-                await _state.websocket.close()
-                logger.debug("WebSocket 连接已关闭")
-        except Exception as e:
-            logger.warning(f"关闭 WebSocket 连接时发生错误: {e}")
-
-        logger.info("客户端资源清理完成（异步上下文）")
+        # 这里的 finally 主要是为了 handle 协程内的局部资源
+        # 全局资源清理交给 lifecycle
+        pass
 
 
 async def main_file(files: List[Path]) -> None:
@@ -296,12 +269,16 @@ async def main_file(files: List[Path]) -> None:
     Args:
         files: 要转录的文件列表
     """
+    # 初始化生命周期
+    lifecycle.initialize(logger=logger, exit_on_signal=True)
+
     from util.client.state import get_state, console
     from util.client.transcribe import FileTranscriber, SrtAdjuster
     from util.client.ui import TipsDisplay
     
     logger.info("=" * 50)
     logger.info("CapsWriter Offline Client 正在启动（文件转录模式）")
+    # ... (省略部分未变代码)
     logger.info(f"版本: {__version__}")
     logger.info(f"日志级别: {Config.log_level}")
     logger.info(f"待处理文件: {[str(f) for f in files]}")
@@ -312,6 +289,9 @@ async def main_file(files: List[Path]) -> None:
     srt_adjuster = SrtAdjuster()
     
     for file in files:
+        if lifecycle.is_shutting_down:
+            break
+
         logger.info(f"正在处理文件: {file}")
         
         if file.suffix in ['.txt', '.json', '.srt']:
@@ -336,41 +316,39 @@ def init_mic() -> None:
     """初始化并运行麦克风模式"""
     from util.client.state import console
 
-    # 注册信号处理器和 atexit 处理器
-    register_signal_handlers()
-    atexit.register(cleanup_client_resources)
+    # 注册清理函数
+    lifecycle.register_on_shutdown(cleanup_client_resources)
 
     try:
         asyncio.run(main_mic())
+        lifecycle.cleanup() # 正常退出清理
     except KeyboardInterrupt:
-        logger.info("收到停止信号，正在退出...")
-        console.print('再见！')
+        # 有了 lifecycle，通常这一步不会被触发，除非 signal handler 没生效
+        # 或者在非 async 阶段被中断
+        logger.info("收到停止信号...")
+        lifecycle.cleanup()
     except asyncio.CancelledError:
-        logger.info("任务已取消，正在退出...")
-        console.print('再见！')
+        logger.info("任务已取消...")
+        lifecycle.cleanup()
     except Exception as e:
         logger.error(f"运行时错误: {e}", exc_info=True)
+        lifecycle.cleanup()
         raise
 
 
 def init_file(files: List[Path]) -> None:
     """
     初始化并运行文件转录模式
-    
-    Args:
-        files: 用 CapsWriter Server 转录音视频文件，生成 srt 字幕
     """
     from util.client.state import console
     
+    lifecycle.register_on_shutdown(cleanup_client_resources)
+
     try:
         asyncio.run(main_file(files))
+        lifecycle.cleanup()
     except KeyboardInterrupt:
-        logger.info("收到停止信号，正在退出...")
-        console.print('再见！')
-        sys.exit(0)
-    except asyncio.CancelledError:
-        logger.info("任务已取消，正在退出...")
-        console.print('再见！')
+        logger.info("收到停止信号...")
         sys.exit(0)
     except Exception as e:
         logger.error(f"转录文件时发生错误: {e}", exc_info=True)

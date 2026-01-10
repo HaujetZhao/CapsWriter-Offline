@@ -41,7 +41,7 @@ class TipsDisplay:
 使用步骤：
 
 1. 运行 Server 端，它会载入语音和标点模型（共占用约 2GB 的内存）
-2. 运行 Client 端，它会打开系统默认麦克风（Ctrl+C 可重载麦克风）
+2. 运行 Client 端，它会打开系统默认麦克风（Ctrl+C 退出）
 3. 按住 `{Config.shortcut}` 键，录音开始，松开 `{Config.shortcut}` 键，录音结束，识别结果立刻被输入
 4. 将音视频文件拖动到 Client 端打开，可以转录生成字幕
 

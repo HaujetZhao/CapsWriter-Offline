@@ -293,6 +293,17 @@ def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = No
         _tray_instance.start()
 
 
+def stop_tray() -> None:
+    """停止托盘图标"""
+    global _tray_instance
+    if _tray_instance and _tray_instance.icon:
+        try:
+            _tray_instance.icon.stop()
+        except Exception:
+            pass
+    _tray_instance = None
+
+
 if __name__ == "__main__":
     enable_min_to_tray()
     print("程序运行中... 你可以双击托盘图标隐藏我。")

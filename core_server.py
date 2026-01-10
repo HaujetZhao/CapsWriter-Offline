@@ -13,49 +13,28 @@ from util.server.server_ws_send import ws_send
 from util.server.server_init_recognizer import init_recognizer
 from util.tools.empty_working_set import empty_current_working_set
 from util.logger import setup_logger
+from util.common.lifecycle import lifecycle
 
 BASE_DIR = os.path.dirname(__file__); os.chdir(BASE_DIR)    # 确保 os.getcwd() 位置正确，用相对路径加载模型
 
 # 初始化日志系统
 logger = setup_logger('server', level=Config.log_level)
 
-# 全局变量，用于跟踪进程状态
+# 全局变量，用于跟踪识别进程
 _recognize_process = None
-_is_shutting_down = False
-_main_loop = None
-_shutdown_event = None
 
 
 def request_exit_from_tray():
     """从托盘请求退出"""
-    global _main_loop, _shutdown_event
     logger.info("托盘请求退出...")
-    if _main_loop and _shutdown_event:
-        try:
-            _main_loop.call_soon_threadsafe(_shutdown_event.set)
-        except RuntimeError as e:
-            logger.warning(f"无法设置退出事件: {e}")
-    else:
-        logger.warning("主循环或退出事件未初始化，尝试强制退出")
-        cleanup_resources()
-        os._exit(0)
+    lifecycle.request_shutdown(reason="Tray Icon")
 
 
 def cleanup_resources():
     """
     清理服务端资源的函数
-
-    这个函数会被 atexit.register 注册，在程序退出时自动调用。
-    也可以手动调用来执行清理操作。
+    注册到 LifecycleManager 中
     """
-    global _is_shutting_down
-
-    # 防止重复清理
-    if _is_shutting_down:
-        logger.debug("清理已经在进行中，跳过重复清理")
-        return
-
-    _is_shutting_down = True
     logger.info("=" * 50)
     logger.info("开始清理服务端资源...")
 
@@ -68,12 +47,18 @@ def cleanup_resources():
             for ws_id, ws in list(sockets.items()):
                 try:
                     if not ws.closed:
-                        # 在新的事件循环中关闭连接
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        loop.run_until_complete(ws.close())
-                        loop.close()
-                        logger.debug(f"已关闭连接: {ws_id}")
+                        # 在新的事件循环中关闭连接 (同步清理场景)
+                        # 注意：如果是在 async loop 运行中调用的 cleanup，这里可能会有风险
+                        # 但 LifecycleManager 的 cleanup 可能在 atexit 或 explicitly called
+                        # 最好检查 loop 状态
+                        try:
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            loop.run_until_complete(ws.close())
+                            loop.close()
+                            logger.debug(f"已关闭连接: {ws_id}")
+                        except Exception:
+                            logger.debug(f"无法优雅关闭连接 {ws_id} (可能 Loop 已关闭)")
                 except Exception as e:
                     logger.warning(f"关闭连接 {ws_id} 时发生错误: {e}")
             logger.debug("所有 WebSocket 连接已关闭")
@@ -104,36 +89,15 @@ def cleanup_resources():
     elif _recognize_process:
         logger.info("识别进程已退出")
 
+    # 4. 打印调试信息（如果有卡顿）
+    # 可以在这里有条件地调用 shutdown_diagnostics.dump_active_stacks()
+    
+    # 5. 停止托盘图标 (防止主线程退出后托盘线程挂起)
+    from util.ui.tray import stop_tray
+    stop_tray()
+
     logger.info("服务端资源清理完成")
     console.print('[green4]再见！')
-
-
-def signal_handler(signum, frame):
-    """
-    信号处理器
-
-    处理 SIGINT (Ctrl+C) 和 SIGTERM 信号，优雅地退出程序。
-    """
-    signal_name = signal.Signals(signum).name
-    print(f"\n[DEBUG] 信号处理器被触发: {signal_name} ({signum})", flush=True)
-    logger.info(f"收到信号 {signal_name} ({signum})，准备退出...")
-
-    global _main_loop, _shutdown_event
-    if _main_loop and _shutdown_event and _main_loop.is_running():
-        logger.info("正在触发异步关闭事件...")
-        _main_loop.call_soon_threadsafe(_shutdown_event.set)
-    else:
-        # 如果循环没运行，直接强制退出
-        logger.info("主循环未运行，直接退出")
-        cleanup_resources()
-        os._exit(0)
-
-
-def register_signal_handlers():
-    """注册信号处理器"""
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-    logger.debug("信号处理器已注册")
 
 
 def setup_tray():
@@ -158,45 +122,40 @@ def print_banner():
 def start_recognizer_process():
     """启动识别子进程并等待模型加载完成"""
     global _recognize_process
-
-    # 跨进程列表，用于保存 socket 的 id，用于让识别进程查看连接是否中断
     Cosmic.sockets_id = Manager().list()
-
-    # 负责识别的子进程
     _recognize_process = Process(target=init_recognizer,
                                 args=(Cosmic.queue_in,
                                       Cosmic.queue_out,
                                       Cosmic.sockets_id),
-                                daemon=False)  # 改为非守护进程，可以优雅退出
+                                daemon=False)
     _recognize_process.start()
     logger.info("识别子进程已启动")
-    Cosmic.queue_out.get()  # 等待模型加载完成
+    try:
+        Cosmic.queue_out.get()
+    except KeyboardInterrupt:
+        logger.warning("在加载模型时收到停止信号")
+        _recognize_process.terminate()
+        raise
     logger.info("模型加载完成，开始服务")
     console.rule('[green3]开始服务')
     console.line()
-
     return _recognize_process
 
 
 async def run_websocket_server():
     """运行 WebSocket 服务器"""
-    global _main_loop, _shutdown_event
-
-    # 获取当前运行的循环和创建退出事件
-    _main_loop = asyncio.get_running_loop()
+    loop = asyncio.get_running_loop()
     
-    # 设置默认执行器为 Daemon 模式，解决 queue.get 阻塞无法退出的问题
-    from util.tools.daemon_executor import SimpleDaemonExecutor
-    _main_loop.set_default_executor(SimpleDaemonExecutor())
-    
-    _shutdown_event = asyncio.Event()
+    # 1. 初始化生命周期管理器 & 设置 Daemon Executor
+    lifecycle.initialize(loop, logger=logger, exit_on_signal=False)
+    from util.concurrency.daemon_executor import SimpleDaemonExecutor
+    loop.set_default_executor(SimpleDaemonExecutor())
 
     # 清空物理内存工作集
     if system() == 'Windows':
         empty_current_working_set()
 
-    # 启动 WebSocket 服务器
-    # 使用 async with 管理服务器生命周期
+    # 2. 启动服务器
     logger.info(f"WebSocket 服务器正在启动，监听地址: {Config.addr}:{Config.port}")
     async with websockets.serve(ws_recv,
                                 Config.addr,
@@ -204,12 +163,11 @@ async def run_websocket_server():
                                 subprotocols=["binary"],
                                 max_size=None):
         
-        # 启动发送协程
         send_task = asyncio.create_task(ws_send())
-        # 创建等待退出事件的任务
-        wait_shutdown_task = asyncio.create_task(_shutdown_event.wait())
+        
+        # 3. 等待退出信号
+        wait_shutdown_task = asyncio.create_task(lifecycle.wait_for_shutdown())
 
-        # 等待发送任务结束（异常）或收到退出信号
         done, pending = await asyncio.wait(
             [send_task, wait_shutdown_task],
             return_when=asyncio.FIRST_COMPLETED
@@ -218,7 +176,7 @@ async def run_websocket_server():
         if wait_shutdown_task in done:
             logger.info("收到退出信号，正在关闭服务...")
         
-        # 取消所有待处理的任务
+        # 4. 取消所有相关任务
         for task in pending:
             task.cancel()
             try:
@@ -226,7 +184,6 @@ async def run_websocket_server():
             except asyncio.CancelledError:
                 pass
         
-        # 确保发送任务如果出错也能被捕获
         if send_task in done and not send_task.cancelled():
             try:
                 await send_task
@@ -236,43 +193,34 @@ async def run_websocket_server():
 
 def init():
     """初始化并启动服务"""
-    # 注册信号处理器
-    register_signal_handlers()
-    # 注册 atexit 处理器（作为后备，如果信号处理器没被调用）
-    atexit.register(cleanup_resources)
+    lifecycle.register_on_shutdown(cleanup_resources)
 
     logger.info("=" * 50)
     logger.info("CapsWriter Offline Server 正在启动")
     logger.info(f"版本: {__version__}")
     logger.info(f"日志级别: {Config.log_level}")
 
-    # 1. 启用托盘图标（传入退出函数）
     setup_tray()
-
-    # 2. 打印启动信息
     print_banner()
 
-    # 3. 启动识别子进程
-    recognize_process = start_recognizer_process()
-
     try:
-        # 4. 运行 WebSocket 服务器
+        recognize_process = start_recognizer_process()
         asyncio.run(run_websocket_server())
-        # 正常退出后的清理
-        cleanup_resources()
+        # 正常退出后的显式清理
+        lifecycle.cleanup()
 
-    except KeyboardInterrupt:           # Ctrl-C 停止或托盘退出
+    except KeyboardInterrupt:
         logger.warning("收到停止信号，正在停止服务...")
         console.print('\n[yellow]正在停止服务...')
-        cleanup_resources()
-    except OSError as e:                # 端口占用
+        lifecycle.cleanup()
+    except OSError as e:
         logger.error(f"OSError 错误: {e}")
         console.print(f'出错了：{e}', style='bright_red'); console.input('...')
-        cleanup_resources()
+        lifecycle.cleanup()
     except Exception as e:
         logger.error(f"未处理的异常: {e}", exc_info=True)
         print(e)
-        cleanup_resources()
+        lifecycle.cleanup()
         raise
      
         
