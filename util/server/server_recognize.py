@@ -192,6 +192,17 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         result.text = format_text(result.text, punc_model)
         result.text_accu = format_text(result.text_accu, punc_model)
         
+        # 如果模型不支持时间戳，用简单拼接结果回退
+        if not result.tokens and result.text:
+            result.text_accu = result.text
+            # 生成粗略的字级时间戳（均匀分布）
+            chars = list(result.text_accu.replace(' ', ''))
+            if chars and result.duration > 0:
+                time_per_char = result.duration / len(chars)
+                result.tokens = chars
+                result.timestamps = [i * time_per_char for i in range(len(chars))]
+                logger.warning(f"模型无时间戳，使用粗略估计: {len(chars)} 字符, {result.duration:.2f}s")
+        
         result = _results.pop(task.task_id)
         result.is_final = True
         

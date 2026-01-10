@@ -101,7 +101,7 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
 
         # 检查退出信号
         if task is None:
-            logger.info("收到退出信号，识别子进程停止")
+            logger.info("收到退出信号，识别子进程正在停止...")
             break
 
         if task.socket_id not in sockets_id:    # 检查任务所属的连接是否存活
@@ -111,5 +111,5 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
         result = recognize(recognizer, punc_model, task)   # 执行识别
         queue_out.put(result)      # 返回结果
 
-
-
+    # 清理完成
+    logger.info("识别子进程已退出")

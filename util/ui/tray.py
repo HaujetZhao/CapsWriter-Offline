@@ -24,6 +24,20 @@ from PIL import Image, ImageDraw
 import pystray
 from pystray import MenuItem as item
 
+from util.logger import get_logger
+
+# 日志记录器（延迟初始化，因为可能被服务端或客户端导入）
+_logger = None
+
+def _get_logger():
+    global _logger
+    if _logger is None:
+        try:
+            _logger = get_logger('tray')
+        except:
+            pass
+    return _logger
+
 # Windows API 常量
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
@@ -168,6 +182,12 @@ class _TraySystem:
 
     def on_exit(self, icon, item) -> None:
         """托盘退出处理"""
+        import signal
+        
+        log = _get_logger()
+        if log:
+            log.info(f"托盘退出: 用户点击退出菜单，发送 SIGINT 信号")
+        
         self.should_exit = True
         self.icon.visible = False
         self.icon.stop()
@@ -176,7 +196,9 @@ class _TraySystem:
             _enable_close_button(self.hwnd)
             user32.ShowWindow(self.hwnd, SW_RESTORE)
         
-        os._exit(0)
+        # 发送 SIGINT 信号让主进程优雅退出
+        # 这样主进程的 finally 块会执行，清理子进程
+        os.kill(os.getpid(), signal.SIGINT)
 
     def start(self) -> None:
         """启动托盘系统"""
