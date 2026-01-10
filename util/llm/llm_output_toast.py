@@ -7,7 +7,7 @@ import asyncio
 import logging
 
 from util.client.processing.output import TextOutput
-from util.llm.llm_stop_monitor import reset, should_stop, on_stop_pressed
+from util.llm.llm_stop_monitor import reset, should_stop, create_stop_callback
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,11 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
 
     reset()  # 重置停止标志
 
+    # 为这个任务创建独立的停止事件
+    task_stop_event = create_stop_callback()
+
     toast_manager = ToastMessageManager()
+    msg_id = None  # 初始化为 None，避免异常处理时未定义
 
     # 从角色配置获取 toast 参数
     if role_config:
@@ -62,7 +66,7 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
             streaming=True,
             window_type='text',  # 使用 text 版本（支持流式输出）
             markdown=True,  # 启用 Markdown 渲染
-            stop_callback=lambda: on_stop_pressed()  # 传递停止函数
+            stop_callback=lambda: task_stop_event.set()  # 仅停止这个任务
         )
 
         # 添加消息并获取唯一标识符
@@ -72,8 +76,10 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
         toast_window = await toast_manager.wait_for_window(msg_id, timeout=1.0)
 
         if not toast_window:
-            # 窗口创建失败
+            # 窗口创建失败，清理消息
             logger.error("Toast 窗口创建失败")
+            if msg_id:
+                toast_manager.close_toast(msg_id)
             return ("", 0, 0.0)
 
         chunks = []
@@ -110,7 +116,8 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
 
     except Exception as e:
         # 关闭我们创建的 toast（使用 msg_id）
-        toast_manager.close_toast(msg_id)
+        if msg_id:
+            toast_manager.close_toast(msg_id)
 
         # 处理 LLM 异常（显示错误通知）
         from util.llm.llm_error_handler import show_error_notification

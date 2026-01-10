@@ -19,9 +19,10 @@ from .toast_constants import (
     MIN_WINDOW_HEIGHT,
     LABEL_HEIGHT_PADDING,
 )
+from .toast_logger import get_toast_logger
 
-# 配置日志
-logger = logging.getLogger(__name__)
+# 配置日志（智能检测主程序配置）
+logger = get_toast_logger(__name__)
 
 
 class ToastWindowLabel(ToastWindowBase):
@@ -197,13 +198,11 @@ class ToastWindowLabel(ToastWindowBase):
                     curr_x = self.window.winfo_x()
                     curr_y = self.window.winfo_y()
                     self.window.geometry(f"{current_w}x{int(needed_h)}+{curr_x}+{curr_y}")
-                    logger.debug(f"窗口高度调整: {current_h} -> {needed_h}")
 
                 self.last_char_count = current_char_count
             except tk.TclError:
                 # 窗口已被销毁
                 self.streaming = False
-                logger.debug("窗口已销毁，停止更新")
 
     def _destroy_content_widget(self) -> None:
         """销毁 Label 组件"""

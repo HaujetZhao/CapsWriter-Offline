@@ -22,9 +22,10 @@ from .toast_constants import (
     SCROLL_STEP,
     DESTROY_DELAY_MS,
 )
+from .toast_logger import get_toast_logger
 
-# 配置日志
-logger = logging.getLogger(__name__)
+# 配置日志（智能检测主程序配置）
+logger = get_toast_logger(__name__)
 
 # DPI 感知设置（只调用一次，避免重复调用）
 try:
@@ -106,8 +107,6 @@ class ToastWindowBase(ABC):
             stop_callback: 窗口关闭时的回调函数
             markdown_enabled: 是否启用 Markdown 渲染
         """
-        logger.debug(f"创建 Toast 窗口: streaming={streaming}, markdown={markdown_enabled}")
-        
         # 保存基本属性
         self.parent_root = parent_root
         self.stop_callback = stop_callback
@@ -313,11 +312,37 @@ class ToastWindowBase(ABC):
     # Markdown 渲染
     # --------------------------------------------------------
 
+    def _calculate_height_coefficient(self, content_height: int) -> float:
+        """根据内容高度计算边距系数
+
+        使用指数衰减曲线：f(x) = 0.5 * e^(-0.003x) + 1.1
+        当内容高度较小时，需要更大的边距系数以确保内容完全显示。
+        当内容高度较大时，系数逐渐接近极限值 1.1。
+
+        Args:
+            content_height: 内容高度（像素）
+
+        Returns:
+            边距系数，范围 (1.1, 1.6]
+            - x=50: f(50) ≈ 1.6
+            - x=300: f(300) ≈ 1.3
+            - x=1500: f(1500) ≈ 1.15
+            - x→∞: f(x) → 1.1
+        """
+        import math
+
+        if content_height <= 50:
+            return 1.6
+
+        # 指数衰减曲线：f(x) = 0.5 * e^(-0.003x) + 1.1
+        coefficient = 0.5 * math.exp(-0.003 * content_height) + 1.1
+
+        # 确保系数在合理范围内
+        return max(coefficient, 1.1)
+
     def _switch_to_markdown(self) -> None:
         """将内容组件切换为 Markdown 渲染"""
         try:
-            logger.debug(f"切换到 Markdown 渲染，内容长度: {len(self.full_text)}")
-            
             # 保存当前位置
             cx, cy = self.window.winfo_x(), self.window.winfo_y()
 
@@ -352,13 +377,6 @@ class ToastWindowBase(ABC):
             self.window.update()
             self.window.update_idletasks()
 
-            # 测量 fit_height() 前的高度
-            height_before = self.md_label.winfo_height()
-            reqheight_before = self.md_label.winfo_reqheight()
-            logger.debug(f"fit_height() 之前:")
-            logger.debug(f"  winfo_height(): {height_before}")
-            logger.debug(f"  winfo_reqheight(): {reqheight_before}")
-
             # 使用 fit_height() 方法获取真实的内容高度
             # 这会自动调整标签高度以适应所有内容
             self.md_label.fit_height()
@@ -368,33 +386,15 @@ class ToastWindowBase(ABC):
             # 测量 fit_height() 后的高度
             height_after = self.md_label.winfo_height()
             reqheight_after = self.md_label.winfo_reqheight()
-            logger.debug(f"fit_height() 之后:")
-            logger.debug(f"  winfo_height(): {height_after}")
-            logger.debug(f"  winfo_reqheight(): {reqheight_after}")
 
             # 使用较大的高度值（reqheight 可能更准确）
             content_height = max(height_after, reqheight_after)
-            logger.debug(f"  使用 content_height: {content_height}")
-
-            # 获取内部渲染组件的信息（用于调试）
-            try:
-                children = self.md_label.winfo_children()
-                logger.debug(f"  children 数量: {len(children)}")
-                if children:
-                    internal_widget = children[0]
-                    logger.debug(f"  internal_widget 类型: {type(internal_widget).__name__}")
-                    logger.debug(f"  internal_widget.winfo_height(): {internal_widget.winfo_height()}")
-            except Exception as e:
-                logger.debug(f"  获取内部组件信息失败: {e}")
 
             # 计算新的窗口高度和宽度
-            # 使用 1.2 系数确保内容完全显示
-            final_h = max(int(content_height * 1.5), MARKDOWN_MIN_HEIGHT)
+            # 使用动态系数确保内容完全显示
+            margin_coefficient = self._calculate_height_coefficient(content_height)
+            final_h = max(int(content_height * margin_coefficient), MARKDOWN_MIN_HEIGHT)
             final_w = self._calculate_actual_width()
-
-            logger.debug(f"设置窗口几何尺寸前:")
-            logger.debug(f"  HTMLLabel.winfo_height(): {self.md_label.winfo_height()}")
-            logger.debug(f"  HTMLLabel.winfo_reqheight(): {self.md_label.winfo_reqheight()}")
 
             self.window.geometry(f"{final_w}x{int(final_h)}+{cx}+{cy}")
 
@@ -402,11 +402,7 @@ class ToastWindowBase(ABC):
             self.window.update()
             self.window.update_idletasks()
 
-            logger.debug(f"设置窗口几何尺寸后:")
-            logger.debug(f"  HTMLLabel.winfo_height(): {self.md_label.winfo_height()}")
-            logger.debug(f"  HTMLLabel.winfo_reqheight(): {self.md_label.winfo_reqheight()}")
-
-            logger.debug(f"最终窗口尺寸: 宽={final_w}, 高={final_h} (content_height={content_height}, 系数=1.2)")
+            logger.info(f"Markdown 窗口: {final_w}x{final_h} (内容: {content_height}px, 系数: {margin_coefficient:.2f})")
 
         except Exception as e:
             logger.error(f"Markdown 转换失败: {e}")
@@ -436,12 +432,11 @@ class ToastWindowBase(ABC):
 
     def finish(self) -> None:
         """完成流式输出
-        
+
         标记流式输出结束，如果启用了 Markdown 则转换渲染，
         然后启动自动销毁计时器。
         """
         if self.streaming:
-            logger.debug("流式输出完成")
             self.streaming = False
 
             # 如果启用了 Markdown，转换渲染

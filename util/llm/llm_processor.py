@@ -15,7 +15,8 @@ from util.llm.llm_interfaces import IContextManager
 from util.llm.llm_client_pool import ClientPool
 from util.llm.llm_exceptions import (
     APIException,
-    wrap_openai_error, OpenAIErrorWrapper
+    wrap_openai_error, OpenAIErrorWrapper,
+    TimeoutErrorWrapper
 )
 from util.logger import get_logger
 
@@ -88,6 +89,16 @@ class LLMProcessor:
         except Exception as e:
             # 捕获 OpenAI SDK 原生异常并包装
             import openai
+
+            # 处理 httpx 超时异常（在流式读取时发生）
+            if 'httpx' in str(type(e).__module__):
+                error_type = type(e).__name__
+                if 'Timeout' in error_type or 'timeout' in error_type:
+                    # httpx.ReadTimeout 或 httpx.TimeoutException
+                    wrapped_error = TimeoutErrorWrapper(e, role_config.provider)
+                    logger.error(f"LLM API 请求超时: {wrapped_error}")
+                    raise wrapped_error from e
+
             if isinstance(e, (
                 openai.AuthenticationError,
                 openai.RateLimitError,

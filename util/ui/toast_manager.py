@@ -26,6 +26,7 @@ if __name__ == "__main__":
         DEFAULT_INITIAL_WIDTH,
         TK_SCALING_FACTOR,
     )
+    from util.ui.toast_logger import get_toast_logger
 else:
     from .toast_text import ToastWindowText
     from .toast_label import ToastWindowLabel
@@ -35,14 +36,15 @@ else:
         DEFAULT_INITIAL_WIDTH,
         TK_SCALING_FACTOR,
     )
+    from .toast_logger import get_toast_logger
 
 # 用于类型注解的前向引用
 if TYPE_CHECKING:
     from .toast_base import ToastWindowBase
 
 
-# 配置日志
-logger = logging.getLogger(__name__)
+# 配置日志（智能检测主程序配置）
+logger = get_toast_logger(__name__)
 
 
 # ============================================================
@@ -111,7 +113,6 @@ class ToastMessageManager:
         if self._initialized:
             return
 
-        logger.debug("初始化 Toast 消息管理器")
         self._initialized = True
         self.message_queue: 'Queue[ToastMessage]' = Queue()
         self.is_running = False
@@ -128,8 +129,6 @@ class ToastMessageManager:
 
     def _run_manager(self) -> None:
         """在子线程中运行 Tkinter 主循环"""
-        logger.debug("启动 Tkinter 主循环线程")
-
         # 创建隐藏的主窗口
         self.root = tk.Tk()
         self.root.withdraw()
@@ -147,7 +146,6 @@ class ToastMessageManager:
 
     def _on_close(self) -> None:
         """关闭所有窗口并退出"""
-        logger.debug("关闭 Toast 管理器")
         self.is_running = False
 
         for window in self.active_windows[:]:
@@ -167,7 +165,6 @@ class ToastMessageManager:
             if not self.message_queue.empty():
                 msg = self.message_queue.get_nowait()
                 msg_id = getattr(msg, '_id', 'unknown')
-                logger.debug(f"处理消息: id={msg_id[:8]}, type={msg.window_type}, streaming={msg.streaming}")
 
                 # 根据 window_type 选择窗口类
                 WindowClass = ToastWindowLabel if msg.window_type == 'label' else ToastWindowText
@@ -234,7 +231,6 @@ class ToastMessageManager:
         import uuid
         msg_id = str(uuid.uuid4())
         msg._id = msg_id  # 添加唯一标识符
-        logger.debug(f"添加消息到队列: id={msg_id[:8]}, streaming={msg.streaming}")
         self.message_queue.put(msg)
         return msg_id
 

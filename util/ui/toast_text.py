@@ -21,9 +21,10 @@ from .toast_constants import (
     HEIGHT_PADDING,
     TEXT_WRAP_MODE,
 )
+from .toast_logger import get_toast_logger
 
-# 配置日志
-logger = logging.getLogger(__name__)
+# 配置日志（智能检测主程序配置）
+logger = get_toast_logger(__name__)
 
 
 class ToastWindowText(ToastWindowBase):
@@ -140,7 +141,6 @@ class ToastWindowText(ToastWindowBase):
             # 现在计算实际行数
             result = self.text_area.count('1.0', 'end', 'displaylines')
             actual_lines = result[0] if result else 1
-            logger.debug(f"非流式模式 - 实际行数: {actual_lines}")
             self.text_area.config(height=actual_lines)
 
         # 设置初始窗口位置（此时已经知道正确的行数）
@@ -251,13 +251,11 @@ class ToastWindowText(ToastWindowBase):
                     curr_x = self.window.winfo_x()
                     curr_y = self.window.winfo_y()
                     self.window.geometry(f"{current_w}x{int(needed_h)}+{curr_x}+{curr_y}")
-                    logger.debug(f"窗口高度调整: {current_h} -> {needed_h}")
 
                 self.last_char_count = current_char_count
             except tk.TclError:
                 # 窗口已被销毁，停止流式输出
                 self.streaming = False
-                logger.debug("窗口已销毁，停止流式输出")
 
     def _destroy_content_widget(self) -> None:
         """销毁 Text 组件"""

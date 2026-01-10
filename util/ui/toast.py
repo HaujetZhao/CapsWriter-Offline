@@ -29,6 +29,7 @@ if __name__ == "__main__":
         DEFAULT_INITIAL_WIDTH,
         STREAM_CHAR_DELAY_S,
     )
+    from util.ui.toast_logger import get_toast_logger
 else:
     from .toast_manager import ToastMessageManager, ToastMessage
     from .toast_constants import (
@@ -36,10 +37,11 @@ else:
         DEFAULT_INITIAL_WIDTH,
         STREAM_CHAR_DELAY_S,
     )
+    from .toast_logger import get_toast_logger
 
 
-# 配置日志
-logger = logging.getLogger(__name__)
+# 配置日志（智能检测主程序配置）
+logger = get_toast_logger(__name__)
 
 
 # ============================================================
@@ -152,14 +154,19 @@ def toast_stream(
 if __name__ == "__main__":
     # 测试时启用日志，保存到模块所在目录
     log_file = os.path.join(os.path.dirname(__file__), 'toast_debug.log')
+
+    # 配置根日志（因为独立运行）
+    from util.ui.toast_logger import configure_toast_logging
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
         handlers=[
             logging.FileHandler(log_file, encoding='utf-8', mode='w'),
             # logging.StreamHandler()  # 同时输出到控制台
-        ]
+        ],
+        force=True  # 强制重新配置
     )
+
     logger.info(f"日志文件: {log_file}")
 
     print("=" * 60)
