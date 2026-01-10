@@ -109,42 +109,36 @@ class ToastWindowText(ToastWindowBase):
             self.text_area.insert(tk.END, text)
             self.text_area.config(state=tk.DISABLED)
             self.last_char_count = len(text)
-            
-            # 如果是非流式模式，需要先设置窗口宽度，再计算实际行数
-            if not streaming:
-                self._adjust_height_for_content()
 
         # 强制更新布局
         self.window.update_idletasks()
 
-        # 设置初始窗口位置
+        # 如果是非流式模式，需要先设置窗口宽度，再计算实际行数
+        if not streaming and text:
+            # 先设置窗口宽度（临时使用单行高度）
+            calculated_width = self._calculate_actual_width()
+            screen_width = self.window.winfo_screenwidth()
+            screen_height = self.window.winfo_screenheight()
+            temp_x = (screen_width - calculated_width) // 2
+            temp_y = screen_height // 2
+            self.window.geometry(f'{calculated_width}x100+{temp_x}+{temp_y}')
+
+            # 强制更新，让 Text 组件按照正确宽度重新计算换行
+            self.window.update_idletasks()
+
+            # 现在计算实际行数
+            result = self.text_area.count('1.0', 'end', 'displaylines')
+            actual_lines = result[0] if result else 1
+            logger.debug(f"非流式模式 - 实际行数: {actual_lines}")
+            self.text_area.config(height=actual_lines)
+
+        # 设置初始窗口位置（此时已经知道正确的行数）
         self._set_window_position(initial=True)
         
         # 如果是非流式模式且启用了 Markdown，立即转换
         if not streaming and markdown:
             self.window.update()
             self._switch_to_markdown()
-
-    def _adjust_height_for_content(self) -> None:
-        """根据内容调整窗口高度（非流式模式使用）"""
-        # 使用基类的宽度计算方法
-        calculated_width = self._calculate_actual_width()
-        screen_height = self.window.winfo_screenheight()
-
-        # 设置临时窗口大小（只设置宽度，高度暂时设为100）
-        screen_width = self.window.winfo_screenwidth()
-        x = (screen_width - calculated_width) // 2
-        y = (screen_height - 100) // 2
-        self.window.geometry(f'{calculated_width}x100+{x}+{y}')
-
-        # 强制更新，让 Text 组件按照新宽度重新计算换行
-        self.window.update_idletasks()
-
-        # 现在计算实际行数
-        result = self.text_area.count('1.0', 'end', 'displaylines')
-        actual_lines = result[0] if result else 1
-        logger.debug(f"非流式模式 - 实际行数: {actual_lines}")
-        self.text_area.config(height=actual_lines)
 
     def _set_window_position(self, initial: bool = False) -> None:
         """设置窗口位置
@@ -237,6 +231,9 @@ class ToastWindowText(ToastWindowBase):
                 needed_h = (current_lines * self.line_height) + HEIGHT_PADDING
                 current_h = self.window.winfo_height()
                 current_w = self.window.winfo_width()
+
+                # 更新 Text 组件的高度，使其能显示所有行
+                self.text_area.config(height=current_lines)
 
                 # 如果需要增长高度
                 if needed_h > current_h:
