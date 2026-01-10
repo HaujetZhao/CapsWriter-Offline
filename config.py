@@ -80,8 +80,8 @@ class ModelDownloadLinks:
     # SenseVoice 模型（多语言支持）
     sensevoice = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2"
 
-    # Paraformer 模型（暂无官方下载链接）
-    paraformer = ""
+    # Paraformer 模型（HuggingFace下载链接）
+    paraformer = "https://huggingface.co/Haujet/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-onnx"
 
     # FireRed 模型（大模型，速度慢，不推荐用于实时语音输入）
     firered = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-fire-red-asr-large-zh_en-2025-02-16.tar.bz2"
