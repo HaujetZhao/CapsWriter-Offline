@@ -24,19 +24,27 @@ from PIL import Image, ImageDraw
 import pystray
 from pystray import MenuItem as item
 
-from util.logger import get_logger
-
-# 日志记录器（延迟初始化，因为可能被服务端或客户端导入）
+# 日志记录器（由主程序传入）
 _logger = None
 
-def _get_logger():
+# 退出回调函数（由主程序传入）
+_exit_callback = None
+
+def _set_logger(logger):
+    """设置日志记录器"""
     global _logger
-    if _logger is None:
-        try:
-            _logger = get_logger('tray')
-        except:
-            pass
+    _logger = logger
+
+def _get_logger():
     return _logger
+
+def _set_exit_callback(callback):
+    """设置退出回调函数"""
+    global _exit_callback
+    _exit_callback = callback
+
+def _get_exit_callback():
+    return _exit_callback
 
 # Windows API 常量
 user32 = ctypes.windll.user32
@@ -182,23 +190,55 @@ class _TraySystem:
 
     def on_exit(self, icon, item) -> None:
         """托盘退出处理"""
-        import signal
-        
         log = _get_logger()
+        exit_callback = _get_exit_callback()
+
         if log:
-            log.info(f"托盘退出: 用户点击退出菜单，发送 SIGINT 信号")
-        
+            log.info("托盘退出: 用户点击退出菜单，准备清理资源并退出")
+
+        # 1. 设置退出标志，停止监控循环
         self.should_exit = True
-        self.icon.visible = False
-        self.icon.stop()
-        
+        if log:
+            log.debug("已设置托盘退出标志")
+
+        # 2. 恢复窗口关闭按钮并显示窗口
         if self.hwnd:
             _enable_close_button(self.hwnd)
             user32.ShowWindow(self.hwnd, SW_RESTORE)
-        
-        # 发送 SIGINT 信号让主进程优雅退出
-        # 这样主进程的 finally 块会执行，清理子进程
-        os.kill(os.getpid(), signal.SIGINT)
+            if log:
+                log.debug("已恢复窗口显示")
+
+        # 3. 调用退出回调函数，请求主程序退出
+        if exit_callback:
+            try:
+                if log:
+                    log.debug("正在调用退出回调函数...")
+                exit_callback()
+                if log:
+                    log.info("退出回调函数已调用")
+            except Exception as e:
+                if log:
+                    log.error(f"调用退出回调函数时发生错误: {e}")
+
+        # 4. 等待主进程退出（最多 5 秒）
+        import time
+        if log:
+            log.debug("等待主进程清理并退出...")
+        for _ in range(50):  # 等待最多 5 秒
+            if not threading.main_thread().is_alive():
+                break
+            time.sleep(0.1)
+
+        # 5. 停止托盘图标
+        try:
+            if log:
+                log.debug("正在停止托盘图标线程...")
+            self.icon.stop()
+            if log:
+                log.debug("托盘图标线程已停止")
+        except Exception as e:
+            if log:
+                log.warning(f"停止托盘图标时发生错误: {e}")
 
     def start(self) -> None:
         """启动托盘系统"""
@@ -214,17 +254,27 @@ class _TraySystem:
         self.toggle_window()
 
 
-def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = None) -> None:
+def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = None, logger=None, exit_callback=None) -> None:
     """
     启用最小化到托盘功能
-    
+
     如果检测不到控制台窗口（如 .pyw 运行），则不执行任何操作。
-    
+
     Args:
         name: 托盘图标显示的名称，默认使用程序名称
         icon_path: 图标文件路径，默认动态生成
+        logger: 日志记录器，如果传入则使用主程序的统一日志记录器
+        exit_callback: 退出回调函数，当用户点击托盘退出菜单时调用
     """
     global _tray_instance
+
+    # 设置日志记录器
+    if logger is not None:
+        _set_logger(logger)
+
+    # 设置退出回调函数
+    if exit_callback is not None:
+        _set_exit_callback(exit_callback)
 
     # DPI 感知设置
     try:

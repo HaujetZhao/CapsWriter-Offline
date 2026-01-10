@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import TYPE_CHECKING, Optional
 
@@ -51,7 +52,7 @@ class ResultProcessor:
     def __init__(self, state: 'ClientState'):
         """
         初始化结果处理器
-        
+
         Args:
             state: 客户端状态实例
         """
@@ -59,6 +60,20 @@ class ResultProcessor:
         self._ws_manager = WebSocketManager(state)
         self._hotword_manager = HotwordManager()
         self._text_output = TextOutput()
+        self._exit_event = asyncio.Event()
+        self._loop = asyncio.get_running_loop()  # 保存事件循环引用
+
+    def request_exit(self):
+        """请求退出处理循环（线程安全）"""
+        logger.info("收到退出请求，设置退出事件")
+
+        # 线程安全地设置事件
+        if self._loop.is_running():
+            self._loop.call_soon_threadsafe(self._exit_event.set)
+            logger.debug("已通过 call_soon_threadsafe 设置退出事件")
+        else:
+            self._exit_event.set()
+            logger.debug("已直接设置退出事件")
     
     def _format_llm_result(self, llm_result) -> str:
         """格式化 LLM 结果输出"""
@@ -100,9 +115,9 @@ class ResultProcessor:
             # 获取所有当前按下的键
             pressed_keys = keyboard._pressed_events
             
-            if pressed_keys:
-                key_names = list(pressed_keys.keys())
-                logger.debug(f"当前按下的键: {key_names}")
+            # if pressed_keys:
+            key_names = list(pressed_keys.keys())
+            logger.debug(f"当前按下的键: {key_names}")
                 
         except Exception as e:
             logger.debug(f"检测按键状态失败: {e}")
@@ -112,66 +127,130 @@ class ResultProcessor:
         if not await self._ws_manager.connect():
             logger.warning("WebSocket 连接检查失败")
             return
-        
+
         console.print('[green]连接成功\n')
         logger.info("WebSocket 连接成功")
-        
+
         try:
             while True:
-                await self._process_one_message()
-                
+                # 检查退出事件
+                if self._exit_event.is_set():
+                    logger.info("检测到退出事件，停止处理循环")
+                    break
+
+                # 创建一个任务来接收消息
+                recv_task = asyncio.create_task(self.state.websocket.recv())
+                logger.debug("已创建接收消息任务")
+
+                # 创建一个任务来等待退出事件
+                exit_wait_task = asyncio.create_task(self._exit_event.wait())
+                logger.debug("已创建退出等待任务")
+
+                # 等待任意一个任务完成
+                done, pending = await asyncio.wait(
+                    [recv_task, exit_wait_task],
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                logger.debug(f"任务完成: done={len(done)}, pending={len(pending)}")
+
+                # 取消未完成的任务
+                for task in pending:
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+
+                # 检查是否是退出请求
+                if exit_wait_task in done:
+                    logger.info("收到退出请求，停止处理循环")
+                    # 取消接收任务
+                    if recv_task not in done and not recv_task.done():
+                        recv_task.cancel()
+                        try:
+                            await recv_task
+                        except asyncio.CancelledError:
+                            pass
+                    break
+
+                # 如果是接收任务完成，处理消息
+                if recv_task in done:
+                    try:
+                        message = recv_task.result()
+                        # 再次检查退出标志
+                        from core_client import _tray_exit_requested
+                        if _tray_exit_requested:
+                            logger.info("处理消息前检测到退出请求")
+                            break
+                        logger.debug("开始处理消息")
+                        await self._handle_message(message)
+                        logger.debug("消息处理完成")
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as e:
+                        logger.error(f"处理消息时发生错误: {e}", exc_info=True)
+                        raise
+
         except ConnectionClosedError:
             console.print('[red]连接断开\n')
             logger.error("WebSocket 连接断开")
         except ConnectionClosedOK:
             console.print('[yellow]连接已正常关闭\n')
             logger.info("WebSocket 连接已正常关闭")
+        except asyncio.CancelledError:
+            logger.info("处理循环被取消")
+            raise
         except Exception as e:
             logger.error(f"接收结果时发生错误: {e}", exc_info=True)
             print(e)
         finally:
             self._cleanup()
-    
-    async def _process_one_message(self) -> None:
-        """处理单条消息"""
-        # 接收消息
-        message = await self.state.websocket.recv()
+
+    async def _handle_message(self, message: str) -> None:
+        """处理接收到的消息"""
+        import json
+        from core_client import _tray_exit_requested
+
+        # 再次检查退出标志
+        if _tray_exit_requested:
+            return
+
         message = json.loads(message)
-        
+
         # 使用 text 字段（简单拼接结果，用于语音输入）
         text = message['text']
         delay = message['time_complete'] - message['time_submit']
-        
+
         logger.debug(
             f"接收到识别结果，文本: {text[:50]}{'...' if len(text) > 50 else ''}, "
             f"时延: {delay:.2f}s"
         )
-        
+
         # 如果非最终结果，继续等待
         if not message['is_final']:
             return
-        
+
         # 热词替换
         text = self._hotword_manager.substitute(text)
         text = TextOutput.strip_punc(text)
-        
+
         logger.debug(f"热词替换后: {text[:50]}{'...' if len(text) > 50 else ''}")
-        
+
         # 控制台输出
         console.print(f'    转录时延：{delay:.2f}s')
         console.print(f'    识别结果：[green]{text}')
-        
+
         # 窗口兼容性检测
         window_info = get_active_window_info()
         paste = Config.paste
-        
+
         if window_info:
             window_title = window_info.get('title', '')
             compatibility_apps = ['weixin', '微信', 'wechat', 'WeChat']
             if window_title in compatibility_apps:
                 paste = True
                 logger.debug(f"检测到兼容性应用: {window_title}，使用粘贴模式")
-        
+
         # LLM 处理和输出
         llm_result = None
         if Config.llm_enabled:
@@ -184,12 +263,12 @@ class ResultProcessor:
             )
         else:
             await self._text_output.output(text, paste=paste)
-        
+
         # 保存录音与写入 md 文件
         file_audio = None
         if Config.save_audio:
             from util.client.diary.diary_writer import DiaryWriter
-            
+
             # 重命名音频文件
             file_path = self.state.pop_audio_file(message['task_id'])
             if file_path:
@@ -198,12 +277,12 @@ class ResultProcessor:
                 file_manager.file_path = file_path
                 file_audio = file_manager.rename(text, message['time_start'])
                 logger.debug(f"保存录音文件: {file_audio}")
-            
+
             # 写入日记
             diary_writer = DiaryWriter()
             diary_writer.write(text, message['time_start'], file_audio)
             logger.debug("写入 MD 文件")
-        
+
         # LLM 结果显示和保存
         if Config.llm_enabled and llm_result and llm_result.processed:
             console.print(self._format_llm_result(llm_result))
@@ -216,10 +295,10 @@ class ResultProcessor:
                 file_audio
             )
             logger.debug("写入 LLM MD 文件")
-        
+
         # 检测修饰键状态（调试用）
         self._log_modifier_key_state()
-        
+
         console.line()
     
     def _cleanup(self) -> None:

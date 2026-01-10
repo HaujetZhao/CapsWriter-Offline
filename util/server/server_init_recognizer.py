@@ -2,9 +2,10 @@ import time
 import sherpa_onnx
 from multiprocessing import Queue
 import signal
+import atexit
 from platform import system
 from config import ServerConfig as Config
-from config import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoArgs
+from util.model_config import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoArgs
 from util.server.server_check_model import check_model
 from util.server.server_cosmic import console
 from util.server.server_recognize import recognize
@@ -14,16 +15,53 @@ from util.logger import get_logger
 # 获取日志记录器
 logger = get_logger('server')
 
+# 全局变量，用于跟踪资源状态
+_resources_initialized = False
+
+
+def cleanup_recognizer_resources():
+    """清理识别器资源"""
+    global _resources_initialized
+
+    if not _resources_initialized:
+        return
+
+    logger.debug("识别子进程资源清理完成")
+
+
+def signal_handler(signum, frame):
+    """
+    识别子进程的信号处理器
+
+    优雅地退出识别进程。
+    """
+    signal_name = signal.Signals(signum).name
+    logger.info(f"识别子进程收到信号 {signal_name} ({signum})，准备退出...")
+
+    # 清理资源
+    cleanup_recognizer_resources()
+
+    # 退出进程
+    logger.debug("识别子进程退出")
+    exit(0)
+
 
 
 
 
 def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
+    global _resources_initialized
+
     logger.info("识别子进程启动")
     logger.debug(f"系统平台: {system()}")
 
-    # Ctrl-C 退出
-    signal.signal(signal.SIGINT, lambda signum, frame: exit())
+    # 注册信号处理器
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    logger.debug("识别子进程信号处理器已注册")
+
+    # 注册 atexit 处理器
+    atexit.register(cleanup_recognizer_resources)
 
     # 导入模块
     with console.status("载入模块中…", spinner="bouncingBall", spinner_style="yellow"):
@@ -90,6 +128,9 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
 
     queue_out.put(True)  # 通知主进程加载完了
     logger.info("识别器初始化完成，开始处理任务")
+
+    # 标记资源已初始化
+    _resources_initialized = True
 
     while True:
         # 从队列中获取任务消息

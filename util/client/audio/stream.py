@@ -54,6 +54,7 @@ class AudioStreamManager:
         """
         self.state = state
         self._channels = 1
+        self._running = False  # 标志是否应该运行
     
     def _audio_callback(
         self,
@@ -89,8 +90,12 @@ class AudioStreamManager:
         if not threading.main_thread().is_alive():
             return
         
-        logger.info("音频流已结束，正在尝试重启...")
-        self.reopen()
+        # 只有在应该运行且不是手动停止的情况下才重启
+        if self._running:
+            logger.info("音频流意外结束，正在尝试重启...")
+            self.reopen()
+        else:
+            logger.debug("音频流已正常结束")
     
     def open(self) -> Optional[sd.InputStream]:
         """
@@ -136,6 +141,7 @@ class AudioStreamManager:
             stream.start()
             
             self.state.stream = stream
+            self._running = True
             logger.debug(
                 f"音频流已启动: 采样率={self.SAMPLE_RATE}, "
                 f"块大小={int(self.BLOCK_DURATION * self.SAMPLE_RATE)}"
@@ -148,6 +154,7 @@ class AudioStreamManager:
     
     def close(self) -> None:
         """关闭音频流"""
+        self._running = False  # 标记为停止
         if self.state.stream is not None:
             try:
                 self.state.stream.close()

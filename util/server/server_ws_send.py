@@ -18,12 +18,18 @@ async def ws_send():
     queue_out = Cosmic.queue_out
     sockets = Cosmic.sockets
 
+    import queue
+
     logger.info("WebSocket 发送任务已启动")
 
     while True:
         try:
             # 获取识别结果（从多进程队列）
-            result: Result = await to_thread(queue_out.get)
+            # 使用 timeout=1，每秒检查一次是否被取消
+            try:
+                result: Result = await to_thread(queue_out.get, True, 1)
+            except queue.Empty:
+                continue
 
             # 得到退出的通知
             if result is None:

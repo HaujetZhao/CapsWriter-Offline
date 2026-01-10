@@ -8,7 +8,8 @@
 import sys
 from pathlib import Path
 
-from config import ModelPaths, ServerConfig as Config, ModelDownloadLinks
+from config import ServerConfig as Config
+from util.model_config import ModelPaths, ModelDownloadLinks
 from util.server.server_cosmic import console
 from util.logger import get_logger
 
@@ -75,7 +76,9 @@ def check_model() -> None:
     - 'paraformer'
 
         ''', style='bright_red')
-        input('按回车退出')
+        # 只在交互式终端中等待用户输入
+        if sys.stdin.isatty():
+            input('按回车退出')
         sys.exit(1)
 
     # 检查所有必需的文件
@@ -111,7 +114,9 @@ def check_model() -> None:
 
         logger.error(f"模型文件检查失败，共 {len(missing_files)} 个文件缺失")
         console.print(error_msg)
-        input()
+        # 只在交互式终端中等待用户输入
+        if sys.stdin.isatty():
+            input()
         sys.exit(1)
 
     # 所有检查通过
