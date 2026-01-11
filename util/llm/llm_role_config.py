@@ -30,11 +30,11 @@ class RoleConfig:
     forget_duration: int = 0                     # 遗忘时长（秒，0 表示不遗忘）
 
     # 功能配置
-    enable_hotwords: bool = False                # 是否启用热词
     enable_thinking: bool = False                # 是否启用思考（仅 Ollama）
     enable_history: bool = False                 # 是否保留对话历史
-    enable_read_selection: bool = False          # 是否启用获取选中文字（通过 Ctrl+C）
+    enable_hotwords: bool = False                # 是否启用热词
     enable_rectify_history: bool = False         # 是否启用历史修正 RAG
+    enable_read_selection: bool = False          # 是否启用获取选中文字（通过 Ctrl+C）
     selection_max_length: int = 1000             # 选中文字最大长度
 
     # 输出配置

@@ -4,7 +4,7 @@
 """
 
 from .toast import toast, toast_stream, ToastMessage, ToastMessageManager
-from .tray import enable_min_to_tray
+from .tray import enable_min_to_tray, enable_min_to_tray_with_rectify
 
 __all__ = [
     'toast',
@@ -12,4 +12,5 @@ __all__ = [
     'ToastMessage',
     'ToastMessageManager',
     'enable_min_to_tray',
+    'enable_min_to_tray_with_rectify',
 ]

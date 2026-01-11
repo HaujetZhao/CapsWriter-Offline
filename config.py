@@ -47,9 +47,10 @@ class ClientConfig:
 
     trash_punc = '，。,.'        # 识别结果要消除的末尾标点
 
-    hot_enabled = True          # 是否启用热词替换（统一 RAG 匹配）
-    hot_rag_threshold = 0.8     # RAG 相似度阈值
-    hot_rule = True             # 是否启用自定义规则替换
+    hot = True           # 是否启用热词替换（统一 RAG 匹配）
+    hot_thresh = 0.85    # RAG 替换阈值（高阈值，用于实际替换）
+    hot_similar = 0.65   # RAG 相似列表阈值（低阈值，用于 LLM 上下文）
+    hot_rule = True      # 是否启用自定义规则替换
 
     llm_enabled = True           # 是否启用 LLM 润色功能，需要配置 LLM/ 目录下的角色文件
     llm_stop_key = 'esc'        # 中断 LLM 输出的快捷键

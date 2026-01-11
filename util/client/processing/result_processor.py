@@ -16,7 +16,7 @@ from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 from config import ClientConfig as Config
 from util.client.state import console
 from util.client.websocket_manager import WebSocketManager
-from util.client.processing.hotword import HotwordManager
+from util.client.processing.hotword import get_hotword_manager
 from util.client.processing.output import TextOutput
 from util.tools.window_detector import get_active_window_info
 from util.logger import get_logger
@@ -59,7 +59,7 @@ class ResultProcessor:
         """
         self.state = state
         self._ws_manager = WebSocketManager(state)
-        self._hotword_manager = HotwordManager()
+        self._hotword_manager = get_hotword_manager()
         self._text_output = TextOutput()
         self._exit_event = asyncio.Event()
         self._loop = asyncio.get_running_loop()  # 保存事件循环引用
@@ -218,6 +218,7 @@ class ResultProcessor:
 
         # 使用 text 字段（简单拼接结果，用于语音输入）
         text = message['text']
+        original_text = text  # 保存原始识别结果
         delay = message['time_complete'] - message['time_submit']
 
         logger.debug(
@@ -230,18 +231,47 @@ class ResultProcessor:
             return
 
         # 热词替换
-        text = self._hotword_manager.substitute(text)
+        correction_result = self._hotword_manager.substitute(text)
+        text = correction_result.text
         text = TextOutput.strip_punc(text)
+
+        # 保存最近一次识别结果（供用户手动添加纠错记录到 hot-rectify.txt）
+        self.state.last_recognition_text = text
 
         logger.debug(f"热词替换后: {text[:50]}{'...' if len(text) > 50 else ''}")
 
         # 控制台输出
         console.print(f'    转录时延：{delay:.2f}s')
-        console.print(f'    识别结果：[green]{text}')
+
+        # 先显示原始识别结果
+        original_text_stripped = TextOutput.strip_punc(original_text)
+        console.print(f'    识别结果：[green]{original_text_stripped}')
+
+        # 如果发生了热词替换，显示替换后的结果
+        if original_text_stripped != text:
+            console.print(f'    热词替换：[cyan]{text}')
+
+        # 显示潜在热词列表（排除完全匹配的）
+        matched_hotwords = correction_result.matched_hotwords
+        if matched_hotwords:
+            # 过滤出完全匹配的热词（分数为 1.0）
+            exact_matches = [hw for hw, score in matched_hotwords if score >= 1.0]
+            # 过滤出潜在匹配的热词（分数小于 1.0）
+            potential_matches = [(hw, score) for hw, score in matched_hotwords if score < 1.0]
+
+            if exact_matches:
+                console.print(f'    完全匹配：[green4]{", ".join(exact_matches)}')
+
+            if potential_matches:
+                # 格式化潜在匹配列表，显示分数
+                potential_str = ", ".join([f"{hw}({score:.2f})" for hw, score in potential_matches[:5]])
+                if len(potential_matches) > 5:
+                    potential_str += f" ... (共{len(potential_matches)}个)"
+                console.print(f'    潜在热词：[yellow]{potential_str}')
 
         # 窗口兼容性检测
-        window_info = get_active_window_info()
         paste = Config.paste
+        window_info = get_active_window_info()
 
         if window_info:
             window_title = window_info.get('title', '')
@@ -257,8 +287,8 @@ class ResultProcessor:
             llm_result = await llm_process_text(
                 text,
                 return_result=True,
-                window_info=window_info,
-                paste=paste
+                paste=paste,
+                matched_hotwords=correction_result.matched_hotwords
             )
         else:
             await self._text_output.output(text, paste=paste)

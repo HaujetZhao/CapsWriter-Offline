@@ -10,46 +10,59 @@ from __future__ import annotations
 import threading
 import time
 from pathlib import Path
-from typing import Dict, Callable, Optional
+from typing import Dict, Callable, Optional, TYPE_CHECKING, Any, Tuple
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from util.client.state import console
-from util.hotword import corrector_rule as hot_sub_rule
-from util.hotword.corrector_phoneme import PhonemeCorrector
+from util.hotword.hot_rule import CorrectorRule
+from util.hotword.hot_phoneme import PhonemeCorrector, CorrectionResult
+from util.hotword.hot_rectification import RectificationRAG
 from config import ClientConfig as Config
 from util.logger import get_logger
 
 # 日志记录器
 logger = get_logger('client')
 
+# 全局单例
+_manager: Optional[HotwordManager] = None
+
 # 热词文件路径
 HOTWORD_FILES = {
     'hot': Path('hot.txt'),
     'rule': Path('hot-rule.txt'),
+    'rectify': Path('hot-rectify.txt'),
 }
 
 
 class HotwordManager:
     """
     热词管理器
-    
+
     负责热词的加载、替换和动态更新。
     使用统一的 hot.txt 进行 RAG 音素匹配。
     """
-    
+
     def __init__(self):
         """初始化热词管理器"""
         self._observer: Optional[Observer] = None
-        # 使用配置中的阈值初始化拼音纠错器
-        self.corrector = PhonemeCorrector(threshold=Config.hot_rag_threshold)
+        # 使用配置中的双阈值初始化音素纠错器
+        self.corrector = PhonemeCorrector(
+            threshold=Config.hot_thresh,      # 替换阈值（高）
+            similar_threshold=Config.hot_similar  # 相似列表阈值（低）
+        )
+        # 初始化规则纠错器
+        self.rule_corrector = CorrectorRule()
+        # 初始化纠错历史 RAG
+        self.rectify_rag = RectificationRAG('hot-rectify.txt')
     
     def load_all(self) -> None:
         """加载所有热词文件"""
         logger.info("正在加载热词...")
         self._load_hot()
         self._load_rule()
+        self._load_rectify()
         console.line()
         logger.info("热词加载完成")
     
@@ -59,11 +72,11 @@ class HotwordManager:
         if not path.exists():
             with open(path, 'w', encoding='utf-8') as f:
                 f.write('# 在此放置热词，每行一个，井号开头为注释\n')
-        
+
         with open(path, 'r', encoding='utf-8') as f:
             num = self.corrector.update_hotwords(f.read())
-            
-        console.print(f'已载入 [green4]{num:5}[/] 条热词')
+
+        console.print(f'热词 [cyan]hot.txt[/] 已更新，载入 [green4]{num:5}[/] 条热词')
         logger.debug(f"载入 {num} 条热词")
     
     def _load_rule(self) -> None:
@@ -72,42 +85,90 @@ class HotwordManager:
         if not path.exists():
             with open(path, 'w', encoding='utf-8') as f:
                 f.write('# 在此文件放置自定义规则\n毫安时 = mAh\n赫兹 = Hz')
-        
+
         with open(path, 'r', encoding='utf-8') as f:
-            num = hot_sub_rule.更新热词词典(f.read())
-        console.print(f'已载入 [green4]{num:5}[/] 条自定义替换规则')
+            num = self.rule_corrector.update_rules(f.read())
+        console.print(f'热词 [cyan]hot-rule.txt[/] 已更新，载入 [green4]{num:5}[/] 条自定义替换规则')
         logger.debug(f"载入 {num} 条自定义替换规则")
+
+    def _load_rectify(self) -> None:
+        """加载纠错历史"""
+        self.rectify_rag.load_history()
+        if self.rectify_rag.records:
+            console.print(f'热词 [cyan]hot-rectify.txt[/] 已更新，载入 [green4]{len(self.rectify_rag.records)}[/] 条纠错规则')
+            logger.debug(f"载入 {len(self.rectify_rag.records)} 条 LLM 纠错历史")
     
-    def substitute(self, text: str) -> str:
+    def substitute(self, text: str) -> CorrectionResult:
         """
         执行热词替换
-        
+
         Args:
             text: 原始文本
-            
+
         Returns:
-            替换后的文本
+            CorrectionResult(纠错后的文本, 匹配的热词列表)
+            matched_hotwords 使用相似列表阈值（低阈值），供 LLM 上下文使用
         """
+        logger.debug(f"[热词替换] 原始文本: {text}")
+        matched_hotwords = []
+
         # 1. 热词 RAG 纠错
-        if Config.hot_enabled:
-            text = self.corrector.correct(text)
-            
+        if Config.hot:
+            logger.debug(f"[热词替换] 开始 RAG 音素匹配 (替换阈值={Config.hot_thresh}, 相似阈值={Config.hot_similar})")
+            result = self.corrector.correct(text)
+            if result.text != text:
+                logger.debug(f"[热词替换] RAG 匹配成功: '{text}' => '{result.text}', 匹配热词: {result.matched_hotwords}")
+            else:
+                logger.debug(f"[热词替换] RAG 未匹配到热词（低于替换阈值 {Config.hot_thresh}）")
+            text = result.text
+            matched_hotwords = result.matched_hotwords
+
+            # 获取相似热词列表（使用低阈值）
+            if matched_hotwords:
+                logger.debug(f"[热词替换] 相似热词列表: {matched_hotwords}")
+        else:
+            logger.debug(f"[热词替换] RAG 已禁用，跳过")
+
         # 2. 自定义规则替换
         if Config.hot_rule:
-            text = hot_sub_rule.热词替换(text)
-        
-        return text
-    
-    def start_file_watcher(self) -> Observer:
+            before_rule = text
+            text = self.rule_corrector.correct(text)
+            if before_rule != text:
+                logger.debug(f"[热词替换] 自定义规则替换: '{before_rule}' => '{text}'")
+            else:
+                logger.debug(f"[热词替换] 自定义规则未匹配")
+        else:
+            logger.debug(f"[热词替换] 自定义规则已禁用，跳过")
+
+        logger.debug(f"[热词替换] 最终结果: {text}, 匹配热词: {matched_hotwords}")
+        return CorrectionResult(text=text, matched_hotwords=matched_hotwords)
+
+    def get_matched_hotwords(self, text: str) -> list:
         """
-        启动文件监视
-        
+        获取匹配的热词列表（供 LLM 调用）
+
+        Args:
+            text: 原始文本
+
+        Returns:
+            [(hotword, score), ...] 匹配的热词及其分数
+        """
+        result = self.corrector.correct(text)
+        return result.matched_hotwords
+    
+    def start_file_watcher(self) -> Any:
+        """
+        启动文件监视（监视根目录，过滤热词文件）
+
         Returns:
             文件监视器实例
         """
         self._observer = Observer()
         handler = _HotwordFileHandler(self)
-        self._observer.schedule(handler, '.', recursive=False)
+
+        # 监听根目录（watchdog 需要监听目录，不能直接监听文件）
+        self._observer.schedule(handler, path='.', recursive=False)
+
         self._observer.start()
         logger.debug("热词文件监视已启动")
         return self._observer
@@ -123,63 +184,96 @@ class HotwordManager:
 
 class _HotwordFileHandler(FileSystemEventHandler):
     """热词文件变化处理器"""
-    
+
     _debounce_delay = 3
-    
+
     def __init__(self, manager: HotwordManager):
         super().__init__()
         self.manager = manager
         self._last_event = None
         self._timer = None
         self._lock = threading.Lock()
-        
-        self._updates: Dict[Path, Callable] = {
-            HOTWORD_FILES['hot']: manager._load_hot,
-            HOTWORD_FILES['rule']: manager._load_rule,
+
+        # 文件映射：文件路径 -> (加载函数, 文件标签)
+        self._file_handlers: Dict[Path, Tuple[Callable, str]] = {
+            HOTWORD_FILES['hot']: (manager._load_hot, '热词'),
+            HOTWORD_FILES['rule']: (manager._load_rule, '自定义规则'),
+            HOTWORD_FILES['rectify']: (manager._load_rectify, '纠错历史'),
         }
-    
+
     def on_modified(self, event):
         """文件修改时触发"""
         event_path = Path(event.src_path)
-        if event_path not in self._updates:
+        logger.debug(f"[watchdog] 检测到文件变化: {event_path}")
+
+        # 忽略目录事件
+        if event.is_directory:
+            logger.debug(f"[watchdog] 忽略目录事件: {event_path}")
             return
-        
+
+        # 只处理热词文件（通过文件名匹配，兼容相对路径）
+        if event_path.name not in [p.name for p in HOTWORD_FILES.values()]:
+            logger.debug(f"[watchdog] 非热词文件，忽略: {event_path.name}")
+            return
+
+        logger.debug(f"[watchdog] 热词文件变化，准备处理: {event_path.name}")
+
         current_time = time.time()
-        
+
         with self._lock:
             self._last_event = (event_path, current_time)
-            
+
             if self._timer is None or not self._timer.is_alive():
                 self._timer = threading.Thread(target=self._debounced_worker, daemon=True)
                 self._timer.start()
-    
+
     def _debounced_worker(self):
         """防抖工作线程"""
         while True:
             time.sleep(self._debounce_delay)
-            
+
             with self._lock:
                 if self._last_event is None:
                     break
-                
+
                 event_path, event_time = self._last_event
                 current_time = time.time()
-                
+
                 if current_time - event_time < self._debounce_delay:
                     continue
-                
+
                 self._last_event = None
-            
+
             time.sleep(0.2)
-            console.print('[green4]检测到配置文件更新，[/]', end='')
-            
-            try:
-                self._updates[event_path]()
-                console.line()
-                logger.info(f"热词文件已重新加载: {event_path.name}")
-            except Exception as e:
-                console.print(f'更新热词失败：{e}', style='bright_red')
-                logger.error(f"更新热词失败: {e}", exc_info=True)
-            
+
+            # 通过文件名查找对应的处理器
+            handler_info = None
+            for file_path, info in self._file_handlers.items():
+                if file_path.name == event_path.name:
+                    handler_info = info
+                    break
+
+            if handler_info:
+                handler, file_label = handler_info
+
+            if handler:
+                try:
+                    handler()  # 只调用发生变化的文件的加载函数
+                    console.line()
+                    logger.info(f"热词文件已重新加载: {event_path.name}")
+                except Exception as e:
+                    console.print(f'更新失败：{e}', style='bright_red')
+                    logger.error(f"更新热词失败: {e}", exc_info=True)
+
             break
 
+
+# ======================================================================
+# --- 全局单例访问函数 ---
+
+def get_hotword_manager() -> HotwordManager:
+    """获取热词管理器单例实例"""
+    global _manager
+    if _manager is None:
+        _manager = HotwordManager()
+    return _manager

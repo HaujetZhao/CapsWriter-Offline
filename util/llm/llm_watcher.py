@@ -31,22 +31,16 @@ class LLMFileWatcher(FileSystemEventHandler):
 
     def __init__(
         self,
-        on_hotwords_reload: Callable[[], None],
-        on_rectify_reload: Callable[[], None],
         on_roles_reload: Callable[[], None],
         get_roles: Callable[[], Dict[str, Any]],
     ):
         """初始化文件监控器
-        
+
         Args:
-            on_hotwords_reload: 热词重载回调
-            on_rectify_reload: 纠错历史重载回调
             on_roles_reload: 角色配置重载回调
             get_roles: 获取当前角色列表的回调
         """
         # 回调函数
-        self._on_hotwords_reload = on_hotwords_reload
-        self._on_rectify_reload = on_rectify_reload
         self._on_roles_reload = on_roles_reload
         self._get_roles = get_roles
         
@@ -60,26 +54,12 @@ class LLMFileWatcher(FileSystemEventHandler):
         self._timer: Optional[threading.Thread] = None
         self._lock = threading.Lock()
         self._debounce_delay = WatcherConstants.DEBOUNCE_DELAY
-        
+
         # 需要监控的配置文件及其处理函数
-        self._watched_files = {
-            'hot.txt': self._handle_hotwords_change,
-            'hot-llm-rectify.txt': self._handle_rectify_change,
-        }
-        
+        # 注意：hot-rectify.txt 由热词 watchdog 统一管理，不在 LLM watcher 中处理
+        self._watched_files = {}
+
         logger.debug("LLMFileWatcher 初始化完成")
-
-    def _handle_hotwords_change(self):
-        """处理热词文件变化"""
-        logger.info("检测到 hot-llm.txt 更新，正在重载...")
-        print(f"\n[LLM 监控] 检测到 hot-llm.txt 更新，正在重载...")
-        self._on_hotwords_reload()
-
-    def _handle_rectify_change(self):
-        """处理纠错历史文件变化"""
-        logger.info("检测到 hot-llm-rectify.txt 更新，正在重载...")
-        print(f"\n[LLM 监控] 检测到 hot-llm-rectify.txt 更新，正在重载...")
-        self._on_rectify_reload()
 
     def _is_llm_py_file(self, file_path: str) -> bool:
         """检查是否是 LLM 目录下的有效 .py 文件"""

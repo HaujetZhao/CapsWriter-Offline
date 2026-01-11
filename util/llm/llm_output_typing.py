@@ -14,13 +14,14 @@ from util.llm.llm_clipboard import paste_text
 from util.llm.llm_stop_monitor import reset, should_stop
 
 
-async def handle_typing_mode(text: str, paste: bool = None) -> tuple:
+async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=None) -> tuple:
     """
     打字输出模式
 
     Args:
         text: 待润色的文本
         paste: 是否使用 paste 方式（None 表示使用 Config.paste）
+        matched_hotwords: [(hotword, score), ...] 来自 hot_phoneme 的检索结果
 
     Returns:
         (润色后的文本, 输出token数, 生成时间秒)
@@ -34,7 +35,7 @@ async def handle_typing_mode(text: str, paste: bool = None) -> tuple:
         if paste:
             # paste 方式：等完成后再处理
             polished_text, token_count, generation_time = await asyncio.to_thread(
-                polish_text, text, None, should_stop
+                polish_text, text, matched_hotwords, None, should_stop
             )
             if should_stop():
                 return ("", 0, 0.0)  # 被中断
@@ -55,7 +56,7 @@ async def handle_typing_mode(text: str, paste: bool = None) -> tuple:
 
             # 流式调用 LLM，实时输出
             polished_text, token_count, generation_time = await asyncio.to_thread(
-                polish_text, text, stream_write_chunk, should_stop
+                polish_text, text, matched_hotwords, stream_write_chunk, should_stop
             )
 
             if should_stop():

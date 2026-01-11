@@ -9,8 +9,7 @@ LLM 处理器 - 协调器
 
 from typing import Dict, Tuple, Optional
 from util.llm.llm_role_loader import RoleLoader
-from util.llm.llm_rag_adapter import HotwordsRAG
-from util.hotword.rag_llm_rectify import LLMRectifyRAG
+from util.hotword.hot_rectification import RectificationRAG
 from util.llm.llm_context import ContextManager
 from util.llm.llm_watcher import LLMFileWatcher
 from util.llm.llm_role_config import RoleConfig
@@ -18,7 +17,9 @@ from util.llm.llm_client_pool import ClientPool
 from util.llm.llm_message_builder import MessageBuilder
 from util.llm.llm_role_detector import RoleDetector
 from util.llm.llm_processor import LLMProcessor
+from util.llm.llm_get_selection import get_selected_text, record_selection_usage
 from util.logger import get_logger
+from util.client.processing.hotword import get_hotword_manager
 
 logger = get_logger('client')
 
@@ -32,16 +33,16 @@ class LLMHandler:
     def __init__(self, hotwords_file: str = 'hot.txt'):
         logger.info("初始化 LLM 处理器")
 
+        # 获取热词管理器单例
+        self.hotword_manager = get_hotword_manager()
+
         # 角色管理
         self.role_loader = RoleLoader()
         self.roles = self.role_loader.get_roles()
         logger.info(f"已加载角色: {list(self.roles.keys())}")
 
-        # 热词 RAG
-        self.rag = HotwordsRAG(hotwords_file)
-        
-        # 纠错历史 RAG (new)
-        self.rectify_rag = LLMRectifyRAG('hot-llm-rectify.txt')
+        # 从热词管理器获取纠错历史 RAG
+        self.rectify_rag = self.hotword_manager.rectify_rag
 
         # 上下文管理器池
         self.context_managers: Dict[str, ContextManager] = {}
@@ -51,7 +52,7 @@ class LLMHandler:
         self.client_pool = ClientPool()
 
         # 消息构建器
-        self.message_builder = MessageBuilder(rag=self.rag, rectify_rag=self.rectify_rag)
+        self.message_builder = MessageBuilder(rectify_rag=self.rectify_rag)
 
         # 角色检测器
         self.role_detector = RoleDetector(self.role_loader)
@@ -105,11 +106,12 @@ class LLMHandler:
         """
         return self.role_detector.detect(text)
 
-    def process(self, text: str, callback=None, should_stop_check=None) -> tuple[str, int, float]:
+    def process(self, text: str, matched_hotwords=None, callback=None, should_stop_check=None) -> tuple[str, int, float]:
         """处理输入文本
 
         Args:
             text: 输入文本
+            matched_hotwords: [(hotword, score), ...] 来自 hot_phoneme 的检索结果
             callback: 流式输出的回调函数
             should_stop_check: 检查是否应该停止的函数（返回 True 表示停止）
 
@@ -134,8 +136,19 @@ class LLMHandler:
         else:
             logger.debug(f"角色 '{role_name}' 未启用历史")
 
+        # 获取选中文字（如果启用）
+        selection_text = get_selected_text(role_config)
+        if selection_text:
+            logger.debug(f"角色 '{role_name}' 获取到选中文字: {selection_text[:50]}...")
+        else:
+            logger.debug(f"角色 '{role_name}' 未获取到选中文字")
+
         # 构建消息
-        messages = self.message_builder.build_messages(role_config, content, context_manager)
+        messages = self.message_builder.build_messages(
+            role_config, content, context_manager,
+            hotwords=matched_hotwords,
+            selection_text=selection_text
+        )
         logger.debug(f"构建消息完成，消息数量: {len(messages)}, 总token数: {sum(len(m.get('content', '')) for m in messages)}")
 
         # 使用 LLM 处理引擎执行请求
@@ -146,6 +159,9 @@ class LLMHandler:
             should_stop_check=should_stop_check,
             context_manager=context_manager
         )
+
+        # 记录选中文字的使用（用于下一轮判断是否重复）
+        record_selection_usage(role_config, selection_text)
 
         return result
 
@@ -165,8 +181,6 @@ def get_handler() -> LLMHandler:
         _handler = LLMHandler()
         # 创建 Watcher，传入回调函数实现解耦
         _watcher = LLMFileWatcher(
-            on_hotwords_reload=lambda: _handler.rag.load_hotwords(),
-            on_rectify_reload=lambda: _handler.rectify_rag.load_history(),
             on_roles_reload=lambda: _handler.reload_roles(),
             get_roles=lambda: _handler.roles,
         )
@@ -187,11 +201,12 @@ def init_llm_system():
             logger.error(f"LLM 系统初始化失败: {e}", exc_info=True)
 
 
-def polish_text(text: str, callback=None, should_stop_check=None) -> tuple[str, int, float]:
+def polish_text(text: str, matched_hotwords=None, callback=None, should_stop_check=None) -> tuple[str, int, float]:
     """润色文本（便捷函数）
 
     Args:
         text: 待润色的文本
+        matched_hotwords: [(hotword, score), ...] 来自 hot_phoneme 的检索结果
         callback: 流式输出的回调函数
         should_stop_check: 检查是否应该停止的函数
 
@@ -199,7 +214,7 @@ def polish_text(text: str, callback=None, should_stop_check=None) -> tuple[str, 
         (润色后的文本, 输出token数, 生成时间秒)
     """
     handler = get_handler()
-    return handler.process(text, callback, should_stop_check)
+    return handler.process(text, matched_hotwords, callback, should_stop_check)
 
 
 # ======================================================================

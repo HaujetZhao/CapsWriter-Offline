@@ -27,10 +27,10 @@
 - **转录 (Transcription)**: 拖入文件 -> `ffmpeg` 提取音频 -> 发送 Server -> 接收带时间戳结果 -> 生成 `.srt`。
 
 ### 3. LLM Agent & 智能修正
-- **实时监控 (Hot Reload)**: Client 启动文件监视器，实时响应 `hot.txt`、`hot-llm-rectify.txt` 和 `LLM/*.py` 的修改。
+- **实时监控 (Hot Reload)**: Client 启动文件监视器，实时响应 `hot.txt`、`hot-rectify.txt` 和 `LLM/*.py` 的修改。
 - **Trigger**: 检测识别结果前缀（如“翻译”），匹配 `LLM/` 下定义的角色。
 - **Context 组装**（根据角色配置决定是否启用）:
-    1.  **历史纠错**: RAG 检索 `hot-llm-rectify.txt` 历史修正库（`enable_rectify_history`）。
+    1.  **历史纠错**: RAG 检索 `hot-rectify.txt` 历史修正库（`enable_rectify_history`）。
     2.  **潜在热词**: RAG 检索 `hot.txt`（`enable_hotwords`）。
     3.  **选中文字**: 模拟 Ctrl+C 获取的鼠标选中文本（`enable_read_selection`）。
     4.  **用户指令**: 当前语音输入内容。
@@ -42,7 +42,7 @@
 
 ## 关键路径 (Key Paths)
 - **配置**: `config.py` (根目录).
-- **热词**: `hot.txt` (统一 RAG 音素匹配), `hot-rule.txt` (规则替换), `hot-llm-rectify.txt` (历史修正 RAG).
+- **热词**: `hot.txt` (统一 RAG 音素匹配), `hot-rule.txt` (规则替换), `hot-rectify.txt` (历史修正 RAG).
 - **LLM角色**: `LLM/*.py` (根目录, 定义 Role/Prompt/Model).
 - **逻辑核心**: `util/` (含 `client`, `server`, `llm`, `hotword` 等子模块).
 - **日志**: `log/client.log` & `log/server.log` (排查问题唯一入口).

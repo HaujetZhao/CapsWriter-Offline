@@ -38,10 +38,10 @@ console = Console(highlight=False, soft_wrap=False, theme=_theme)
 class ClientState:
     """
     客户端运行状态
-    
+
     管理客户端运行过程中的所有共享状态，包括事件循环、消息队列、
     WebSocket 连接、音频流和录音状态等。
-    
+
     Attributes:
         loop: asyncio 事件循环
         queue_in: 音频数据输入队列
@@ -51,22 +51,26 @@ class ClientState:
         recording: 是否正在录音
         recording_start_time: 录音开始时间戳
         audio_files: 任务ID到音频文件路径的映射
+        last_recognition_text: 最近一次识别的最终文本（热词替换后），供"添加纠错记录"使用
     """
-    
+
     loop: Optional[asyncio.AbstractEventLoop] = None
     queue_in: Optional[asyncio.Queue] = None
     queue_out: Optional[asyncio.Queue] = None
     websocket: Optional['WebSocketClientProtocol'] = None
     stream: Optional['sd.InputStream'] = None
-    
+
     # 组件引用 (用于清理)
     shortcut_handler: Any = None
     stream_manager: Any = None
     processor: Any = None
-    
+
     recording: bool = False
     recording_start_time: float = 0.0
     audio_files: Dict[str, Path] = field(default_factory=dict)
+
+    # 最近一次识别结果（用于手动添加纠错记录）
+    last_recognition_text: Optional[str] = None
     
     def initialize(self) -> None:
         """

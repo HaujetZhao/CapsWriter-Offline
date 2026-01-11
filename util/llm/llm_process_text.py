@@ -13,7 +13,6 @@ from util.client.processing.output import TextOutput
 from util.llm.llm_clipboard import copy_to_clipboard
 from util.llm.llm_output_typing import handle_typing_mode, output_text
 from util.llm.llm_output_toast import handle_toast_mode
-from util.tools.window_detector import get_active_window_info
 
 
 @dataclass
@@ -28,7 +27,7 @@ class LLMResult:
     generation_time: float = 0.0   # 生成时间（秒，从第一个 token 开始）
 
 
-async def llm_process_text(text: str, return_result: bool = False, window_info: dict = None, paste: bool = None) -> Optional[LLMResult]:
+async def llm_process_text(text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
     """
     异步处理并输出 LLM 润色后的结果
     根据 output_mode 选择不同的处理方式
@@ -36,8 +35,8 @@ async def llm_process_text(text: str, return_result: bool = False, window_info: 
     Args:
         text: 待润色的文本
         return_result: 是否返回润色后的文本（用于控制台显示）
-        window_info: 前台窗口信息（可选，用于兼容性处理）
         paste: 是否使用 paste 方式（None 表示使用 Config.paste）
+        matched_hotwords: [(hotword, score), ...] 来自 hot_phoneme 的检索结果
 
     Returns:
         如果 return_result=True，返回 LLMResult 对象；否则返回 None
@@ -45,10 +44,6 @@ async def llm_process_text(text: str, return_result: bool = False, window_info: 
     from util.llm.llm_handler import get_handler
 
     start_time = time.time()
-
-    # 获取前台窗口信息（如果未提供）
-    if window_info is None:
-        window_info = get_active_window_info()
 
     # 获取当前角色的输出模式
     handler = get_handler()
@@ -93,9 +88,9 @@ async def llm_process_text(text: str, return_result: bool = False, window_info: 
 
     # 根据输出模式处理
     if output_mode == 'toast':
-        result, token_count, generation_time = await handle_toast_mode(text, role_config)
+        result, token_count, generation_time = await handle_toast_mode(text, role_config, matched_hotwords)
     else:  # typing
-        result, token_count, generation_time = await handle_typing_mode(text, paste)
+        result, token_count, generation_time = await handle_typing_mode(text, paste, matched_hotwords)
 
     # 计算润色耗时
     polish_time = time.time() - start_time

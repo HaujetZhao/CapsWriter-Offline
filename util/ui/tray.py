@@ -293,6 +293,46 @@ def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = No
         _tray_instance.start()
 
 
+def enable_min_to_tray_with_rectify(name: Optional[str] = None, icon_path: Optional[str] = None, logger=None, exit_callback=None, more_options: list = None) -> None:
+    """
+    启用最小化到托盘功能（带"添加纠错记录"菜单）
+
+    这是 enable_min_to_tray 的增强版本，自动添加"添加纠错记录"菜单项。
+
+    Args:
+        name: 托盘图标显示的名称，默认使用程序名称
+        icon_path: 图标文件路径，默认动态生成
+        logger: 日志记录器，如果传入则使用主程序的统一日志记录器
+        exit_callback: 退出回调函数，当用户点击托盘退出菜单时调用
+        more_options: 额外菜单项列表，格式为 [(名称, 回调函数), ...]
+    """
+    # 导入纠错菜单处理器
+    try:
+        from util.ui.rectify_menu_handler import on_add_rectify_record
+
+        # 构建菜单项列表
+        if more_options is None:
+            more_options = []
+
+        # 添加"添加纠错记录"菜单项
+        more_options = [
+            ('添加纠错记录', on_add_rectify_record),
+            *more_options  # 保留原有的其他选项
+        ]
+
+        log = _get_logger()
+        if log:
+            log.debug("已添加'添加纠错记录'菜单项")
+
+    except ImportError as e:
+        log = _get_logger()
+        if log:
+            log.warning(f"无法导入纠错菜单处理器: {e}，将使用标准托盘菜单")
+
+    # 调用标准函数
+    enable_min_to_tray(name, icon_path, logger, exit_callback, more_options)
+
+
 def stop_tray() -> None:
     """停止托盘图标"""
     global _tray_instance

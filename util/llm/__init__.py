@@ -17,8 +17,7 @@ from .llm_context import ContextManager
 from .llm_message_builder import MessageBuilder
 from .llm_client_pool import ClientPool
 
-# RAG 和剪贴板/选中文字
-from .llm_rag_adapter import HotwordsRAG
+# 剪贴板/选中文字
 from .llm_clipboard import copy_to_clipboard
 from .llm_get_selection import (
     get_selected_text,
@@ -51,7 +50,6 @@ __all__ = [
     # 组件
     'MessageBuilder',
     'ClientPool',
-    'HotwordsRAG',
 
     # 剪贴板/选中文字
     'get_selected_text',

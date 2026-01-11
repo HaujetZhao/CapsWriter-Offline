@@ -4,10 +4,10 @@ from platform import system
 from util.client.state import get_state
 from util.logger import get_logger
 from config import ClientConfig as Config
-from util.ui.tray import enable_min_to_tray
+from util.ui.tray import enable_min_to_tray_with_rectify
 from util.client.cleanup import request_exit_from_tray
 from util.client.ui import TipsDisplay
-from util.client.processing import HotwordManager
+from util.client.processing.hotword import get_hotword_manager
 from util.llm.llm_handler import init_llm_system
 from util.client.audio import AudioStreamManager
 from util.client.input import ShortcutHandler
@@ -39,21 +39,21 @@ def setup_client_components(base_dir):
                 logger.info("用户请求重启音频服务")
 
         icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
-        enable_min_to_tray(
-            'CapsWriter Client', 
-            icon_path, 
-            logger=logger, 
+        enable_min_to_tray_with_rectify(
+            'CapsWriter Client',
+            icon_path,
+            logger=logger,
             exit_callback=request_exit_from_tray,
             more_options=[('重启音频服务', restart_audio)]
         )
-        logger.info("托盘图标已启用")
+        logger.info("托盘图标已启用（带纠错记录菜单）")
 
     # 2. UI 提示
     TipsDisplay.show_mic_tips()
 
     # 3. 热词
     logger.info("正在加载热词...")
-    hotword_manager = HotwordManager()
+    hotword_manager = get_hotword_manager()
     hotword_manager.load_all()
     hotword_manager.start_file_watcher()
 

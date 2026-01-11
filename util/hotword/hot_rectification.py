@@ -202,15 +202,21 @@ class RectifyRecord:
         return f"RectifyRecord('{self.wrong}' => '{self.right}', fragments={self.fragments})"
 
 
-class LLMRectifyRAG:
+class RectificationRAG:
     """
-    LLM 纠错历史检索器
-    
-    加载 'hot-llm-rectify.txt'，通过 RAG 检索相似的差异片段，
+    纠错历史 RAG 检索器
+
+    加载 'hot-rectify.txt'，通过 RAG 检索相似的差异片段，
     返回对应的完整纠错记录作为 Prompt 上下文。
+
+    文件格式：用 --- 分隔的多行内容
+    每一段中：
+    - 第一行：原始文本（错误文本）
+    - 第二行：修正文本（正确文本）
+    忽略以 # 开头的注释和空行
     """
-    
-    def __init__(self, rectify_file: str = 'hot-llm-rectify.txt', threshold: float = 0.6):
+
+    def __init__(self, rectify_file: str = 'hot-rectify.txt', threshold: float = 0.6):
         """
         初始化
         
@@ -226,52 +232,66 @@ class LLMRectifyRAG:
         self.load_history()
         
     def load_history(self):
-        """加载纠错历史"""
+        """加载纠错历史
+
+        格式：用 --- 分隔的多行内容
+        每一段中：
+        - 第一行：原始文本（错误文本）
+        - 第二行：修正文本（正确文本）
+        忽略以 # 开头的注释和空行
+        """
         if not self.rectify_file.exists():
             with open(self.rectify_file, 'w', encoding='utf-8') as f:
                 f.write('# 纠错历史文件\n')
-                f.write('# 格式：错句 => 正句\n')
+                f.write('# 格式：用 --- 分隔的多行内容\n')
+                f.write('# 每一段第一行是原始文本，第二行是修正文本\n')
                 f.write('# 例如：\n')
-                f.write('# 原锯子 => 原句子\n')
-                f.write('# caps riter => CapsWriter\n')
+                f.write('# 原锯子\n')
+                f.write('# 原句子\n')
+                f.write('# ---\n')
+                f.write('# caps riter\n')
+                f.write('# CapsWriter\n')
             return
 
         try:
             with open(self.rectify_file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-                
+                content = f.read()
+
             new_records = []
-            
+
+            # 按分隔符切分
+            blocks = content.split('---')
+
             start_time = time.time()
-            for line in lines:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                    
-                # 支持 => 和 -> 两种分隔符
-                parts = line.split('=>')
-                if len(parts) != 2:
-                    parts = line.split('->')
-                    if len(parts) != 2:
-                        continue
-                        
-                wrong = parts[0].strip()
-                right = parts[1].strip()
-                
-                if wrong and right:
-                    # 提取差异片段
-                    fragments = extract_diff_fragments(wrong, right)
-                    if not fragments:
-                        # 如果提取不到差异（可能整句都不同），用整个错句
-                        fragments = [wrong]
-                    
-                    record = RectifyRecord(wrong, right, fragments)
-                    new_records.append(record)
-                    logger.debug(f"加载纠错: '{wrong}' => '{right}', 检索词: {fragments}")
-            
+            for block in blocks:
+                lines = block.strip().split('\n')
+
+                # 过滤注释和空行，提取有效内容
+                valid_lines = []
+                for line in lines:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        valid_lines.append(line)
+
+                # 每段需要至少两行：原始文本和修正文本
+                if len(valid_lines) >= 2:
+                    wrong = valid_lines[0]
+                    right = valid_lines[1]
+
+                    if wrong and right:
+                        # 提取差异片段
+                        fragments = extract_diff_fragments(wrong, right)
+                        if not fragments:
+                            # 如果提取不到差异（可能整句都不同），用整个错句
+                            fragments = [wrong]
+
+                        record = RectifyRecord(wrong, right, fragments)
+                        new_records.append(record)
+                        logger.debug(f"加载纠错: '{wrong}' => '{right}', 检索词: {fragments}")
+
             with self._lock:
                 self.records = new_records
-                
+
             count = len(new_records)
             if count > 0:
                 total_fragments = sum(len(r.fragments) for r in new_records)
@@ -345,23 +365,32 @@ class LLMRectifyRAG:
     def format_prompt(self, text: str, top_k: int = 5) -> str:
         """
         生成提示词
-        
+
         Args:
             text: 输入文本
             top_k: 最大结果数
-            
+
         Returns:
             包含纠错历史的提示词段落，无匹配则返回空字符串
         """
+        logger.debug(f"纠错 RAG format_prompt 调用: text='{text}', top_k={top_k}, 已加载记录数={len(self.records) if self.records else 0}")
+
+        if not self.records:
+            logger.debug(f"纠错 RAG: 没有已加载的纠错记录")
+            return ""
+
         results = self.search(text, top_k=top_k)
         if not results:
+            logger.debug(f"纠错 RAG: 未检索到相关纠错历史")
             return ""
-            
+
         lines = ["参考以下历史纠错："]
         for wrong, right, score in results:
             lines.append(f"- {wrong} => {right}")
-            
-        return "\n".join(lines)
+
+        result = "\n".join(lines)
+        logger.debug(f"纠错 RAG: 生成提示词:\n{result}")
+        return result
 
 
 if __name__ == "__main__":
@@ -385,7 +414,7 @@ if __name__ == "__main__":
         print(f"  '{wrong}' => '{right}'")
         print(f"    检索词: {fragments}")
     
-    print("\n--- LLMRectifyRAG 完整测试 ---")
+    print("\n--- RectificationRAG 完整测试 ---")
     
     # 创建临时文件
     test_file = Path("test_rectify.txt")
@@ -404,7 +433,7 @@ pythn => Python
 """)
         
     try:
-        rag = LLMRectifyRAG(str(test_file), threshold=0.5)
+        rag = RectificationRAG(str(test_file), threshold=0.5)
         
         print("\n=== 单字修改测试（验证扩展） ===")
         
@@ -428,7 +457,7 @@ pythn => Python
         
         print("\n=== Prompt 生成 ===")
         print(rag.format_prompt("康灰在东方菜富用caps riter"))
-        
+
     finally:
         if test_file.exists():
             test_file.unlink()

@@ -12,13 +12,14 @@ from util.llm.llm_stop_monitor import reset, should_stop, create_stop_callback
 logger = logging.getLogger(__name__)
 
 
-async def handle_toast_mode(text: str, role_config = None) -> tuple:
+async def handle_toast_mode(text: str, role_config = None, matched_hotwords=None) -> tuple:
     """
     Toast 浮动窗口模式
 
     Args:
         text: 待润色的文本
         role_config: 角色配置
+        matched_hotwords: [(hotword, score), ...] 来自 hot_phoneme 的检索结果
 
     Returns:
         (润色后的文本, 输出token数, 生成时间秒)
@@ -95,7 +96,7 @@ async def handle_toast_mode(text: str, role_config = None) -> tuple:
 
         # 流式调用 LLM
         polished_text, token_count, generation_time = await asyncio.to_thread(
-            polish_text, text, stream_toast_chunk, should_stop
+            polish_text, text, matched_hotwords, stream_toast_chunk, should_stop
         )
 
         if should_stop():
