@@ -1,3 +1,4 @@
+import time
 import os
 import asyncio
 import signal
@@ -42,9 +43,12 @@ class LifecycleManager:
         # 默认 Logger (Console), init 时可覆盖
         self.logger = logging.getLogger('lifecycle')
         self._exit_on_signal = False
+        self._last_sigint_time = 0.0
         
         # 注册 atexit 作为最后一道防线
         atexit.register(self._atexit_handler)
+
+    # ... (initialize method unchanged) ...
 
     def initialize(self, 
                    loop: asyncio.AbstractEventLoop = None, 
@@ -74,6 +78,8 @@ class LifecycleManager:
         self._register_signals()
         self.logger.debug("LifecycleManager 初始化完成")
 
+    # ... (register_signals unchanged) ...
+
     def _register_signals(self):
         """注册 SIGINT 和 SIGTERM 信号处理器"""
         try:
@@ -86,6 +92,19 @@ class LifecycleManager:
     def _signal_handler(self, signum, frame):
         """信号回调"""
         signal_name = signal.Signals(signum).name
+        
+        # 防手抖逻辑 (仅对 SIGINT/Ctrl+C 有效)
+        if signum == signal.SIGINT:
+            current_time = time.time()
+            if current_time - self._last_sigint_time > 1.0:
+                self._last_sigint_time = current_time
+                print(f"\n收到 {signal_name}，1秒内再次按下将会退出...")
+                # 同时也记录日志，但不用 info 级别以免刷屏，用 debug
+                self.logger.debug(f"收到 {signal_name}, 等待确认...")
+                return
+            else:
+                print(f"确认退出...")
+
         self.logger.info(f"LifecycleManager 收到信号: {signal_name} ({signum})")
         self.request_shutdown(reason=f"Signal {signal_name}")
         

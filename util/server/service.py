@@ -24,23 +24,25 @@ def start_recognizer_process():
     logger.info("识别子进程已启动")
 
     # 轮询等待模型加载，同时响应退出请求
-    try:
-        while not lifecycle.is_shutting_down:
-            try:
-                Cosmic.queue_out.get(timeout=0.1)
-                break
-            except queue.Empty:
+    import errno
+    while not lifecycle.is_shutting_down:
+        try:
+            Cosmic.queue_out.get(timeout=0.1)
+            break
+        except queue.Empty:
+            continue
+        except (InterruptedError, OSError) as e:
+            # 处理被信号中断的情况 (Errno 4 Interrupted function call)
+            # 这通常发生在 Anti-Shake 触发时 (第一次 Ctrl+C)
+            if isinstance(e, InterruptedError) or e.errno == errno.EINTR:
                 continue
-    except KeyboardInterrupt:
-        logger.warning("在加载模型时收到停止信号")
-        recognize_process.terminate()
-        raise
+            raise
 
     if lifecycle.is_shutting_down:
         logger.warning("在加载模型时收到退出请求")
         recognize_process.terminate()
-        # 模拟中断以触发 cleanup
-        raise KeyboardInterrupt
+        # 不再抛出异常，而是优雅返回，由外层 lifecycle 状态决定流程
+        return recognize_process
 
     logger.info("模型加载完成，开始服务")
     console.rule('[green3]开始服务')

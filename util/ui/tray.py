@@ -145,7 +145,7 @@ def _create_icon(icon_path: Optional[str] = None) -> Image.Image:
 class _TraySystem:
     """托盘系统内部类"""
     
-    def __init__(self, name: Optional[str] = None, icon_path: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, icon_path: Optional[str] = None, more_options: list = None):
         self.hwnd = _get_console_hwnd()
         self.should_exit = False
         self.title = name if name else (os.path.basename(sys.argv[0]) or "Console App")
@@ -155,17 +155,23 @@ class _TraySystem:
             _disable_close_button(self.hwnd)
 
         # 定义菜单
-        menu = (
+        menu_items = [
             item(f"{self.title}", lambda: None, enabled=False),
             item('显示/隐藏', self.toggle_window, default=True),
-            item('退出程序', self.on_exit),
-        )
+        ]
+
+        # 添加额外选项
+        if more_options:
+            for opt_name, opt_func in more_options:
+                menu_items.append(item(opt_name, opt_func))
+
+        menu_items.append(item('退出程序', self.on_exit))
 
         self.icon = pystray.Icon(
             "console_tray",
             _create_icon(icon_path),
             title=f"{self.title}",
-            menu=menu
+            menu=tuple(menu_items)
         )
 
     def toggle_window(self) -> None:
@@ -247,7 +253,7 @@ class _TraySystem:
         self.toggle_window()
 
 
-def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = None, logger=None, exit_callback=None) -> None:
+def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = None, logger=None, exit_callback=None, more_options: list = None) -> None:
     """
     启用最小化到托盘功能
 
@@ -258,6 +264,7 @@ def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = No
         icon_path: 图标文件路径，默认动态生成
         logger: 日志记录器，如果传入则使用主程序的统一日志记录器
         exit_callback: 退出回调函数，当用户点击托盘退出菜单时调用
+        more_options: 额外菜单项列表，格式为 [(名称, 回调函数), ...]
     """
     global _tray_instance
 
@@ -282,7 +289,7 @@ def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = No
         if not _get_console_hwnd():
             return  # 没有控制台窗口
 
-        _tray_instance = _TraySystem(name, icon_path)
+        _tray_instance = _TraySystem(name, icon_path, more_options)
         _tray_instance.start()
 
 

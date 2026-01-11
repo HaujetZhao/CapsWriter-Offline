@@ -30,8 +30,22 @@ def setup_client_components(base_dir):
 
     # 1. 托盘
     if Config.enable_tray:
+        def restart_audio():
+            """重启音频服务回调"""
+            if state.stream_manager:
+                state.stream_manager.reopen()
+                from util.client.ui import TipsDisplay
+                # 可以加个提示
+                logger.info("用户请求重启音频服务")
+
         icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
-        enable_min_to_tray('CapsWriter Client', icon_path, logger=logger, exit_callback=request_exit_from_tray)
+        enable_min_to_tray(
+            'CapsWriter Client', 
+            icon_path, 
+            logger=logger, 
+            exit_callback=request_exit_from_tray,
+            more_options=[('重启音频服务', restart_audio)]
+        )
         logger.info("托盘图标已启用")
 
     # 2. UI 提示
