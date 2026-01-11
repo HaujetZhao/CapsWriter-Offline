@@ -17,6 +17,11 @@ class ClientConfig:
     addr = '127.0.0.1'          # Server 地址
     port = '6016'               # Server 端口
 
+    # Quicker 配置
+    QUICKER_HOST = "127.0.0.1"  # Quicker 本地服务默认主机地址
+    QUICKER_PORT = 668          # Quicker 本地服务默认端口
+    QUICKER_PASSWORD = ""       # 如果 Quicker 设置了验证码/密码，请在这里填写
+
     shortcut     = 'caps lock'  # 控制录音的快捷键，默认是 CapsLock
     hold_mode    = True         # 长按模式，按下录音，松开停止，像对讲机一样用。
                                 # 改为 False，则关闭长按模式，也就是单击模式

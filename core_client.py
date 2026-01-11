@@ -24,6 +24,7 @@ from util.client_hot_update import update_hot_all, observe_hot
 
 from util.client_transcribe import transcribe_check, transcribe_send, transcribe_recv
 from util.client_adjust_srt import adjust_srt
+from util.client_quicker import 设置Quicker配置
 
 from util.empty_working_set import empty_current_working_set
 
@@ -48,6 +49,13 @@ async def main_mic():
     Cosmic.queue_out = asyncio.Queue()
 
     show_mic_tips()
+
+    # 配置 Quicker
+    await 设置Quicker配置(
+        ip=Config.QUICKER_HOST,
+        port=Config.QUICKER_PORT,
+        password=Config.QUICKER_PASSWORD
+    )
 
     # 更新热词
     update_hot_all()

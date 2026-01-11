@@ -11,6 +11,8 @@ from util.client_rename_audio import rename_audio
 from util.client_strip_punc import strip_punc
 from util.client_write_md import write_md
 from util.client_type_result import type_result
+from util.client_quicker import 触发Quicker操作
+from util.hot_sub_rule import Quicker词典
 
 
 async def recv_result():
@@ -35,8 +37,12 @@ async def recv_result():
             # 热词替换
             text = hot_sub(text)
 
-            # 打字
-            await type_result(text)
+            # 触发 Quicker 操作
+            if text in Quicker词典:
+                await 触发Quicker操作(Quicker词典[text])
+            else:
+                # 打字
+                await type_result(text)
 
             if Config.save_audio:
                 # 重命名录音文件
