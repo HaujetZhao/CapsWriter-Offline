@@ -66,7 +66,7 @@ class RoleConfigDefaults:
 
     # 功能开关
     DEFAULT_ENABLE_HOTWORDS = False
-    DEFAULT_ENABLE_RECTIFY_RAG = False
+    DEFAULT_enable_rectify = False
     DEFAULT_ENABLE_THINKING = False
     DEFAULT_ENABLE_HISTORY = False
     DEFAULT_ENABLE_READ_SELECTION = False

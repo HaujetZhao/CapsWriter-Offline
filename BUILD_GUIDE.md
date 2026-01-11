@@ -34,10 +34,9 @@ dist/CapsWriter-Offline/
 │   ├── FunASR-nano/
 │   └── Punct-CT-Transformer/
 │
-├── hot-en.txt                # 英文热词
-├── hot-zh.txt                # 中文热词
-├── hot-rule.txt              # 规则热词
-├── keywords.txt              # 关键词
+├── hot-en.txt                # 热词 - 基于音素 RAG 匹配度替换 - 支持中英
+├── hot-rule.txt              # 正则表达式规则
+├── hot-rectify.txt           # 修改记录 - 通过音素 RAG 提取最相关的修改记录提供给 LLM 处理
 └── readme.md
 ```
 

@@ -1,9 +1,9 @@
 """
-翻译助手角色
+Python 编程助手角色
 """
 
 # ==================== 基本信息 ====================
-name = '翻译'                           # 角色名称（留空表示默认）
+name = '命令'                           # 角色名称（留空表示默认）
 match = True                            # 是否启用前缀匹配
 process = True                          # 是否启用 LLM 处理
 
@@ -18,12 +18,12 @@ max_context_length = 4096               # 最大上下文长度（token 数）
 forget_duration = 0                     # 遗忘时长（秒，0 表示不遗忘）
 
 # ==================== 功能配置 ====================
-enable_thinking: bool = False                # 是否启用思考（仅 Ollama 支持）
-enable_history: bool = False                 # 是否保留对话历史
-enable_hotwords: bool = False                # 是否读取潜在热词列表
-enable_rectify: bool = False                 # 是否读取潜在纠错记录
-enable_read_selection: bool = True          # 是否读取鼠标所选文字（通过 Ctrl+C）
-selection_max_length: int = 2048             # 选中文字最大长度
+enable_hotwords = True                  # 是否启用热词
+enable_rectify = True               # 是否启用纠错 RAG（从 hot-rectify.txt 检索纠错历史）
+enable_thinking = False                 # 是否启用思考（仅 Ollama）
+enable_history = True                   # 是否保留对话历史
+enable_read_selection = True            # 是否启用获取选中文字（通过 Ctrl+C）
+selection_max_length = 1024             # 选中文字最大长度
 
 # ==================== 输出配置 ====================
 output_mode = 'toast'                   # 输出方式：'typing' 直接打字, 'toast' 浮动窗口
@@ -49,11 +49,12 @@ extra_options = {}                      # 额外的 API 参数（JSON 格式）
 
 # ==================== System Prompt ====================
 system_prompt = '''
-你是一个翻译助手，将用户输入的文本翻译成英文。
+你是一个 Python 编程助手，根据用户的需求生成 Python 代码。
 
 要求：
-- 只输出翻译结果，不要解释
-- 保持原文的语气和风格
-- 专业术语要准确翻译
+- 只输出代码，不要解释
+- 代码要简洁、高效、可运行
+- 使用 Python 3 语法
+- 包含必要的 import 语句
 - 不要添加任何额外说明
 '''

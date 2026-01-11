@@ -84,10 +84,10 @@ class MessageBuilder:
 
         # 缓存角色配置属性（避免重复 getattr）
         enable_hotwords = getattr(role_config, 'enable_hotwords', False)
-        enable_rectify_rag = getattr(role_config, 'enable_rectify_rag', False)
+        enable_rectify = getattr(role_config, 'enable_rectify', False)
 
         logger.debug(f"[消息构建] enable_hotwords={enable_hotwords}, hotwords数量={len(hotwords) if hotwords else 0}")
-        logger.debug(f"[消息构建] enable_rectify_rag={enable_rectify_rag}")
+        logger.debug(f"[消息构建] enable_rectify={enable_rectify}")
 
         # 添加 RAG 热词列表（根据角色配置）
         if enable_hotwords and hotwords:
@@ -97,7 +97,7 @@ class MessageBuilder:
                 logger.debug(f"[消息构建] 已添加热词列表")
 
         # 添加纠错历史（根据角色配置）
-        if enable_rectify_rag:
+        if enable_rectify:
             logger.debug(f"[消息构建] 开始调用 rectify_rag.format_prompt")
             rectify_rag = self._get_rectify_rag()
             if rectify_rag:
@@ -110,7 +110,7 @@ class MessageBuilder:
             else:
                 logger.debug(f"[消息构建] rectify_rag 为 None")
         else:
-            logger.debug(f"[消息构建] 跳过纠错历史: enable_rectify_rag={enable_rectify_rag}")
+            logger.debug(f"[消息构建] 跳过纠错历史: enable_rectify={enable_rectify}")
 
         # 添加选中文字（根据角色配置）
         if selection_text:

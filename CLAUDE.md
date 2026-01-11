@@ -30,7 +30,7 @@
 - **实时监控 (Hot Reload)**: Client 启动文件监视器，实时响应 `hot.txt`、`hot-rectify.txt` 和 `LLM/*.py` 的修改。
 - **Trigger**: 检测识别结果前缀（如“翻译”），匹配 `LLM/` 下定义的角色。
 - **Context 组装**（根据角色配置决定是否启用）:
-    1.  **历史纠错**: RAG 检索 `hot-rectify.txt` 历史修正库（`enable_rectify_rag`）。
+    1.  **历史纠错**: RAG 检索 `hot-rectify.txt` 历史修正库（`enable_rectify`）。
     2.  **潜在热词**: RAG 检索 `hot.txt`（`enable_hotwords`）。
     3.  **选中文字**: 模拟 Ctrl+C 获取的鼠标选中文本（`enable_read_selection`）。
     4.  **用户指令**: 当前语音输入内容。
@@ -57,4 +57,4 @@
 - **语言**: 中文 (Chinese)，总结、Plan、WalkThrough、注释都要用中文。
 - **路径链接**: 总结时文件必须显示为相对路径链接（精确到行，便于点击跳转）。
 - **系统**: Windows 10, PowerShell (命令行分隔符 `;`).
-- **环境**: 运行前确保 `conda activate capswriter`.
+- **环境**: 运行前确保 `conda activate capswriter`，或用 `D:\anaconda3\envs\capswriter\python.exe` 执行，新建测试脚本要手动指定 console utf-8 输出

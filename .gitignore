@@ -170,3 +170,6 @@ log/
 .claude
 .vscode
 .agent
+
+LLM/大助理.py
+LLM/高级翻译.py

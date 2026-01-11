@@ -40,7 +40,7 @@ class RoleLoader:
             'api_key': Defaults.DEFAULT_API_KEY,
             'model': Defaults.DEFAULT_MODEL,
             'enable_hotwords': Defaults.DEFAULT_ENABLE_HOTWORDS,
-            'enable_rectify_rag': Defaults.DEFAULT_ENABLE_RECTIFY_RAG,
+            'enable_rectify': Defaults.DEFAULT_enable_rectify,
             'enable_thinking': Defaults.DEFAULT_ENABLE_THINKING,
             'enable_history': Defaults.DEFAULT_ENABLE_HISTORY,
             'max_context_length': Defaults.DEFAULT_MAX_CONTEXT_LENGTH,

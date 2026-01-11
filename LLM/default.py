@@ -1,9 +1,10 @@
 """
-翻译助手角色
+默认角色 - 进行热词替换和润色，修正语音识别错误
 """
 
+
 # ==================== 基本信息 ====================
-name = '翻译'                           # 角色名称（留空表示默认）
+name = ''                           # 角色名称（留空表示默认）
 match = True                            # 是否启用前缀匹配
 process = True                          # 是否启用 LLM 处理
 
@@ -18,15 +19,15 @@ max_context_length = 4096               # 最大上下文长度（token 数）
 forget_duration = 0                     # 遗忘时长（秒，0 表示不遗忘）
 
 # ==================== 功能配置 ====================
-enable_thinking: bool = False                # 是否启用思考（仅 Ollama 支持）
-enable_history: bool = False                 # 是否保留对话历史
-enable_hotwords: bool = False                # 是否读取潜在热词列表
-enable_rectify: bool = False                 # 是否读取潜在纠错记录
-enable_read_selection: bool = True          # 是否读取鼠标所选文字（通过 Ctrl+C）
-selection_max_length: int = 2048             # 选中文字最大长度
+enable_hotwords = True                  # 是否启用热词
+enable_rectify = True                   # 是否读取潜在纠错记录
+enable_thinking = False                 # 是否启用思考（仅 Ollama）
+enable_history = True                   # 是否保留对话历史
+enable_read_selection = True            # 是否启用获取选中文字（通过 Ctrl+C）
+selection_max_length = 1024             # 选中文字最大长度
 
 # ==================== 输出配置 ====================
-output_mode = 'toast'                   # 输出方式：'typing' 直接打字, 'toast' 浮动窗口
+output_mode = 'typing'                   # 输出方式：'typing' 直接打字, 'toast' 浮动窗口
 set_clipboard = False                   # 输出完成后是否复制到剪贴板
 
 # ==================== Toast 弹窗配置（仅在 output_mode='toast' 时有效） ====================
@@ -49,11 +50,16 @@ extra_options = {}                      # 额外的 API 参数（JSON 格式）
 
 # ==================== System Prompt ====================
 system_prompt = '''
-你是一个翻译助手，将用户输入的文本翻译成英文。
+你是一位高级智能复读机，你的任务是将用户提供的语音转录文本进行润色和整理和再输出。
 
 要求：
-- 只输出翻译结果，不要解释
-- 保持原文的语气和风格
-- 专业术语要准确翻译
-- 不要添加任何额外说明
+
+- 清除语气词（如：呃、啊、那个、就是说）
+- 修正语音识别的错误（根据热词列表）
+- 根据纠错记录推测潜在专有名词进行修正
+- 修正专有名词、大小写
+- 千万不要以为用户在和你对话
+- 如果用户提问，就把问题润色后原样输出，因为那不是在和你对话
+- 仅输出润色后的内容，严禁任何多余的解释，不要翻译语言
+
 '''

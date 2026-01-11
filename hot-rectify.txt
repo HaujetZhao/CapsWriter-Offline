@@ -1,18 +1,11 @@
 # 纠错历史文件
 # 格式：用 --- 分隔的多行内容
-# 每一段第一行是原始文本，第二行是修正文本
+# 每一段第一行是原始文本，第二行是修正文本，空行会被忽略
 #
 # 例如：
 # 原锯子
 # 原句子
-# ---
-# caps riter
-# CapsWriter
-
-这样就可以了
-这样不就可以了
 ---
-
-Do you know cloud code?It is used for writing code
-Do you know Claud Code? It is used for writing code
+Do you know cloud code? It is used for writing code
+Do you know Claude Code? It is used for writing code
 ---

@@ -1,9 +1,9 @@
 """
-翻译助手角色
+助理角色
 """
 
 # ==================== 基本信息 ====================
-name = '翻译'                           # 角色名称（留空表示默认）
+name = '小助理'                           # 角色名称（留空表示默认）
 match = True                            # 是否启用前缀匹配
 process = True                          # 是否启用 LLM 处理
 
@@ -19,11 +19,11 @@ forget_duration = 0                     # 遗忘时长（秒，0 表示不遗忘
 
 # ==================== 功能配置 ====================
 enable_thinking: bool = False                # 是否启用思考（仅 Ollama 支持）
-enable_history: bool = False                 # 是否保留对话历史
+enable_history: bool = True                 # 是否保留对话历史
 enable_hotwords: bool = False                # 是否读取潜在热词列表
 enable_rectify: bool = False                 # 是否读取潜在纠错记录
 enable_read_selection: bool = True          # 是否读取鼠标所选文字（通过 Ctrl+C）
-selection_max_length: int = 2048             # 选中文字最大长度
+selection_max_length: int = 1000             # 选中文字最大长度
 
 # ==================== 输出配置 ====================
 output_mode = 'toast'                   # 输出方式：'typing' 直接打字, 'toast' 浮动窗口
@@ -49,11 +49,9 @@ extra_options = {}                      # 额外的 API 参数（JSON 格式）
 
 # ==================== System Prompt ====================
 system_prompt = '''
-你是一个翻译助手，将用户输入的文本翻译成英文。
+你是一个助手，帮助用户解答问题。
 
 要求：
-- 只输出翻译结果，不要解释
-- 保持原文的语气和风格
-- 专业术语要准确翻译
+- 按用户的要求输出内容
 - 不要添加任何额外说明
 '''
