@@ -20,6 +20,7 @@ from util.client.processing.hotword import HotwordManager
 from util.client.processing.output import TextOutput
 from util.tools.window_detector import get_active_window_info
 from util.logger import get_logger
+from util.common.lifecycle import lifecycle
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
@@ -178,8 +179,7 @@ class ResultProcessor:
                     try:
                         message = recv_task.result()
                         # 再次检查退出标志
-                        from core_client import _tray_exit_requested
-                        if _tray_exit_requested:
+                        if lifecycle.is_shutting_down:
                             logger.info("处理消息前检测到退出请求")
                             break
                         logger.debug("开始处理消息")
@@ -209,10 +209,9 @@ class ResultProcessor:
     async def _handle_message(self, message: str) -> None:
         """处理接收到的消息"""
         import json
-        from core_client import _tray_exit_requested
-
+        
         # 再次检查退出标志
-        if _tray_exit_requested:
+        if lifecycle.is_shutting_down:
             return
 
         message = json.loads(message)
