@@ -187,6 +187,9 @@ class ResultProcessor:
                         logger.debug("消息处理完成")
                     except asyncio.CancelledError:
                         raise
+                    except ConnectionClosedError:
+                        logger.warning("WebSocket 连接已关闭")
+                        break
                     except Exception as e:
                         logger.error(f"处理消息时发生错误: {e}", exc_info=True)
                         raise
