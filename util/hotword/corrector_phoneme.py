@@ -24,7 +24,13 @@ class MatchResult(NamedTuple):
     hotword: str
 
 
-class PinyinCorrector:
+class CorrectionResult(NamedTuple):
+    """纠错结果，包含纠错后的文本和匹配的热词列表"""
+    text: str                           # 纠错后的文本
+    matched_hotwords: List[Tuple[str, float]]  # [(热词, 分数), ...]
+
+
+class PhonemeCorrector:
     """
     拼音纠错器
 
@@ -67,10 +73,10 @@ class PinyinCorrector:
         with self._lock:
             self.hotwords = new_hotwords
             
-        logger.debug(f"PinyinCorrector 已更新 {len(new_hotwords)} 个热词，耗时 {time.time() - start_time:.3f}s")
+        logger.debug(f"PhonemeCorrector 已更新 {len(new_hotwords)} 个热词，耗时 {time.time() - start_time:.3f}s")
         return len(new_hotwords)
 
-    def correct(self, text: str) -> str:
+    def correct(self, text: str) -> CorrectionResult:
         """
         执行纠错替换
 
@@ -78,15 +84,16 @@ class PinyinCorrector:
             text: 原始文本
 
         Returns:
-            纠错后的文本
+            CorrectionResult(text=纠错后的文本, matched_hotwords=匹配的热词列表)
+            matched_hotwords 可直接传给 LLMHotwordRAG.search() 的 precomputed_results 参数
         """
         if not text or not self.hotwords:
-            return text
+            return CorrectionResult(text=text, matched_hotwords=[])
 
         # 1. 获取输入文本的音素序列和字符索引映射
         input_phonemes, char_indices = get_phoneme_info(text)
         if not input_phonemes:
-            return text
+            return CorrectionResult(text=text, matched_hotwords=[])
 
         # 2. 寻找所有可能的匹配
         matches: List[MatchResult] = []
@@ -117,7 +124,10 @@ class PinyinCorrector:
                     matches.append(MatchResult(char_start, char_end, score, hw))
 
         if not matches:
-            return text
+            return CorrectionResult(text=text, matched_hotwords=[])
+        
+        # 收集所有匹配的热词（用于 LLM 上下文）
+        all_matched_hotwords = [(m.hotword, m.score) for m in matches]
 
         # 3. 解决重叠匹配
         # 策略：分数优先，其次长度优先
@@ -152,34 +162,60 @@ class PinyinCorrector:
             logger.info(f"拼音纠错: '{original_segment}' -> '{m.hotword}' (相似度: {m.score:.2f})")
             result_text = result_text[:m.start] + m.hotword + result_text[m.end:]
             
-        return result_text
+        return CorrectionResult(text=result_text, matched_hotwords=all_matched_hotwords)
 
 
 if __name__ == "__main__":
-    from util.logger import setup_logger
-    setup_logger('client')
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
     
-    print("\n--- PinyinCorrector 测试 ---")
-    corrector = PinyinCorrector()
+    print("\n--- PhonemeCorrector 测试 ---")
+    corrector = PhonemeCorrector(threshold=0.7)
     
     hotwords = """
+    # 中文热词
     撒贝宁
     康辉
     周涛
     乐清
+    东方财富
+    科大讯飞
+    
+    # 英文热词
+    CapsWriter
+    Python
+    Microsoft
+    iPhone
+    7-Zip
     """
     corrector.update_hotwords(hotwords)
     
-    test_cases = [
-        ("我非常喜欢撒贝你说的新闻", "撒贝宁"),
-        ("康灰是央视著名主持人", "康辉"),
-        ("今天天气真不错", "今天天气真不错"),
-        ("在月清这个地方", "乐清"),
+    print("\n=== 中文测试 ===")
+    test_cases_zh = [
+        "我非常喜欢撒贝你说的新闻",
+        "康灰是央视著名主持人",
+        "今天天气真不错",
+        "在月清这个地方",
+        "东方菜富股票上涨了",
+        "科大迅飞的语音识别",
     ]
+    for text in test_cases_zh:
+        result = corrector.correct(text)
+        print(f"  '{text}' -> '{result.text}'")
+        if result.matched_hotwords:
+            print(f"    匹配热词: {result.matched_hotwords}")
     
-    for input_text, expected in test_cases:
-        output = corrector.correct(input_text)
-        print(f"\n输入: {input_text}")
-        print(f"输出: {output}")
-        # 部分匹配可能不是全词匹配，这里仅打印结果供观察
+    print("\n=== 英文测试 ===")
+    test_cases_en = [
+        "use caps riter to type",
+        "download pythn code",
+        "install micro soft office",
+        "my i fone is broken",
+        "compress with 7 zip",
+    ]
+    for text in test_cases_en:
+        result = corrector.correct(text)
+        print(f"  '{text}' -> '{result.text}'")
+        if result.matched_hotwords:
+            print(f"    匹配热词: {result.matched_hotwords}")
 

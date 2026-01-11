@@ -16,8 +16,8 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from util.client.state import console
-from util.hotword import corrector_en as hot_sub_en, corrector_rule as hot_sub_rule, keywords as hot_kwds
-from util.hotword.corrector_pinyin import PinyinCorrector
+from util.hotword import corrector_rule as hot_sub_rule
+from util.hotword.corrector_phoneme import PhonemeCorrector
 from config import ClientConfig as Config
 from util.logger import get_logger
 
@@ -26,11 +26,8 @@ logger = get_logger('client')
 
 # 热词文件路径
 HOTWORD_FILES = {
-    'zh': Path('hot-zh.txt'),
-    'en': Path('hot-en.txt'),
+    'hot': Path('hot.txt'),
     'rule': Path('hot-rule.txt'),
-    'kwds': Path('keywords.txt'),
-    'llm': Path('hot-llm.txt'),
 }
 
 
@@ -39,50 +36,35 @@ class HotwordManager:
     热词管理器
     
     负责热词的加载、替换和动态更新。
+    使用统一的 hot.txt 进行 RAG 音素匹配。
     """
     
     def __init__(self):
         """初始化热词管理器"""
         self._observer: Optional[Observer] = None
-        # 初始化拼音纠错器 (阈值可调，建议 0.6~0.8)
-        self.corrector = PinyinCorrector(threshold=0.6)
+        # 使用配置中的阈值初始化拼音纠错器
+        self.corrector = PhonemeCorrector(threshold=Config.hot_rag_threshold)
     
     def load_all(self) -> None:
         """加载所有热词文件"""
         logger.info("正在加载热词...")
-        self._load_zh()
-        self._load_en()
+        self._load_hot()
         self._load_rule()
-        self._load_kwds()
-        self._load_llm()
         console.line()
         logger.info("热词加载完成")
     
-    def _load_zh(self) -> None:
-        """加载中文热词"""
-        path = HOTWORD_FILES['zh']
+    def _load_hot(self) -> None:
+        """加载热词（统一文件）"""
+        path = HOTWORD_FILES['hot']
         if not path.exists():
             with open(path, 'w', encoding='utf-8') as f:
-                f.write('# 在此文件放置中文热词，每行一个，开头带井号表示注释，会被省略')
+                f.write('# 在此放置热词，每行一个，井号开头为注释\n')
         
         with open(path, 'r', encoding='utf-8') as f:
-            # 使用新的拼音纠错器加载热词
             num = self.corrector.update_hotwords(f.read())
             
-        console.print(f'已载入 [green4]{num:5}[/] 条中文热词')
-        logger.debug(f"载入 {num} 条中文热词")
-    
-    def _load_en(self) -> None:
-        """加载英文热词"""
-        path = HOTWORD_FILES['en']
-        if not path.exists():
-            with open(path, 'w', encoding='utf-8') as f:
-                f.write('# 在此文件放置英文热词 \n# Put English hot words here, one per line.')
-        
-        with open(path, 'r', encoding='utf-8') as f:
-            num = hot_sub_en.更新热词词典(f.read())
-        console.print(f'已载入 [green4]{num:5}[/] 条英文热词')
-        logger.debug(f"载入 {num} 条英文热词")
+        console.print(f'已载入 [green4]{num:5}[/] 条热词')
+        logger.debug(f"载入 {num} 条热词")
     
     def _load_rule(self) -> None:
         """加载自定义规则"""
@@ -96,39 +78,6 @@ class HotwordManager:
         console.print(f'已载入 [green4]{num:5}[/] 条自定义替换规则')
         logger.debug(f"载入 {num} 条自定义替换规则")
     
-    def _load_kwds(self) -> None:
-        """加载日记关键词"""
-        if not Config.hot_kwd:
-            hot_kwds.do_updata_kwd("")
-            return
-
-        path = HOTWORD_FILES['kwds']
-        if not path.exists():
-            with open(path, 'w', encoding='utf-8') as f:
-                f.write('# 在此文件放置日记关键词\n重要\n健康\n学习')
-        
-        with open(path, 'r', encoding='utf-8') as f:
-            num = hot_kwds.do_updata_kwd(f.read())
-        console.print(f'已载入 [green4]{num:5}[/] 条日记关键词')
-        logger.debug(f"载入 {num} 条日记关键词")
-    
-    def _load_llm(self) -> None:
-        """加载 LLM 热词"""
-        path = HOTWORD_FILES['llm']
-        if not path.exists():
-            with open(path, 'w', encoding='utf-8') as f:
-                f.write('# 在此文件放置 LLM 热词')
-        
-        with open(path, 'r', encoding='utf-8') as f:
-            lines = [
-                line.strip()
-                for line in f
-                if line.strip() and not line.strip().startswith('#')
-            ]
-            num = len(lines)
-        console.print(f'已载入 [green4]{num:5}[/] 条 LLM 热词')
-        logger.debug(f"载入 {num} 条 LLM 热词")
-    
     def substitute(self, text: str) -> str:
         """
         执行热词替换
@@ -139,22 +88,13 @@ class HotwordManager:
         Returns:
             替换后的文本
         """
-        original = text
-        
-        # 1. 中文热词纠错 (RAG)
-        if Config.hot_zh:
+        # 1. 热词 RAG 纠错
+        if Config.hot_enabled:
             text = self.corrector.correct(text)
             
-        # 2. 英文热词替换 (Legacy)
-        if Config.hot_en:
-            text = hot_sub_en.热词替换(text)
-            
-        # 3. 自定义规则替换 (Legacy)
+        # 2. 自定义规则替换
         if Config.hot_rule:
             text = hot_sub_rule.热词替换(text)
-        
-        if text != original:
-            pass # 日志已经在 corrector 中打印了
         
         return text
     
@@ -184,7 +124,7 @@ class HotwordManager:
 class _HotwordFileHandler(FileSystemEventHandler):
     """热词文件变化处理器"""
     
-    _debounce_delay = 5
+    _debounce_delay = 3
     
     def __init__(self, manager: HotwordManager):
         super().__init__()
@@ -194,11 +134,8 @@ class _HotwordFileHandler(FileSystemEventHandler):
         self._lock = threading.Lock()
         
         self._updates: Dict[Path, Callable] = {
-            HOTWORD_FILES['zh']: manager._load_zh,
-            HOTWORD_FILES['en']: manager._load_en,
+            HOTWORD_FILES['hot']: manager._load_hot,
             HOTWORD_FILES['rule']: manager._load_rule,
-            HOTWORD_FILES['kwds']: manager._load_kwds,
-            HOTWORD_FILES['llm']: manager._load_llm,
         }
     
     def on_modified(self, event):
@@ -245,3 +182,4 @@ class _HotwordFileHandler(FileSystemEventHandler):
                 logger.error(f"更新热词失败: {e}", exc_info=True)
             
             break
+

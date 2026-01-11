@@ -2,37 +2,44 @@
 """
 LLM 热词 RAG 检索
 
-基于音素的热词检索，参考 FunASR 的 phoneme_tokenizer 实现
+基于音素的热词检索，支持中英文混合匹配：
+- 中文：音素级匹配（声母+韵母+声调）
+- 英文：字符级匹配
+
+使用 FastRAG 进行高性能检索。
 """
 
 from pathlib import Path
 from typing import List, Tuple, Optional
 from threading import Lock
-import logging
 
-# Updated imports
-from .algo_phoneme import get_phoneme_seq
-from .algo_calc import fuzzy_substring_distance
+from util.hotword.algo_phoneme import get_phoneme_seq
+from util.hotword.rag_fast import FastRAG
+from util.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger('client')
 
 
 class LLMHotwordRAG:
     """LLM 热词检索器"""
 
-    def __init__(self, hotwords_file: str = 'hot_llm.txt', verbose: bool = False):
+    def __init__(self, hotwords_file: str = 'hot_llm.txt', threshold: float = 0.6, verbose: bool = False):
         """
         初始化热词检索器
-
+        
         Args:
             hotwords_file: 热词文件路径
-            verbose: 是否打印初始化信息
+            threshold: 默认相似度阈值
+            verbose: 是否打印调试信息
         """
         self.hotwords_file = Path(hotwords_file)
+        self.default_threshold = threshold
         self.verbose = verbose
         self.hotwords = []
-        self.hotword_phonemes = {}
-
+        
+        # 使用 FastRAG (Numba 加速的 DP 算法)
+        self.rag = FastRAG(threshold=threshold)
+        
         self.load_hotwords()
 
     def load_hotwords(self):
@@ -43,7 +50,6 @@ class LLMHotwordRAG:
 
         try:
             with open(self.hotwords_file, 'r', encoding='utf-8') as f:
-                # 读取非空行、非注释行
                 lines = [
                     line.strip()
                     for line in f
@@ -51,68 +57,75 @@ class LLMHotwordRAG:
                 ]
 
             self.hotwords = lines
-            logger.debug(f"已加载 {len(self.hotwords)} 个热词")
+            logger.info(f"已加载 {len(self.hotwords)} 个热词，构建检索索引...")
 
-            # 预计算音素序列
             if self.hotwords:
                 import time
                 start = time.time()
-
-                self.hotword_phonemes = {}
+                
+                # 构建热词映射 {word: phonemes}
+                hotword_map = {}
                 for hw in self.hotwords:
-                    if hw:
-                        self.hotword_phonemes[hw] = get_phoneme_seq(hw)
-
-                logger.debug(f"预计算音素完成，耗时 {time.time() - start:.2f} 秒")
+                    phonemes = get_phoneme_seq(hw)
+                    if phonemes:
+                        hotword_map[hw] = phonemes
+                
+                # 添加到 RAG
+                self.rag.add_hotwords(hotword_map)
+                
+                logger.info(f"索引构建完成，耗时 {time.time() - start:.3f} 秒")
 
         except Exception as e:
             logger.error(f"热词加载失败: {e}")
 
-    def search(self, text: str, top_k: int = 10, threshold: float = 0.4) -> List[Tuple[str, float]]:
+    def search(
+        self, 
+        text: str, 
+        top_k: int = 10, 
+        threshold: float = None,
+        precomputed_results: List[Tuple[str, float]] = None
+    ) -> List[Tuple[str, float]]:
         """
         检索相关热词
-
+        
         Args:
             text: 输入文本
             top_k: 返回前 K 个结果
-            threshold: 相似度阈值 (0-1)
-
+            threshold: 相似度阈值，None 则使用默认值
+            precomputed_results: 预计算的检索结果（来自 corrector_phoneme）
+                                 如果提供，则直接使用，不再重新检索
+        
         Returns:
             [(hotword, score), ...] 按分数降序排列
         """
+        # 如果有预计算结果，直接使用
+        if precomputed_results is not None:
+            # 过滤阈值
+            th = threshold if threshold is not None else self.default_threshold
+            filtered = [(hw, score) for hw, score in precomputed_results if score >= th]
+            filtered.sort(key=lambda x: x[1], reverse=True)
+            
+            if filtered and self.verbose:
+                logger.debug(f"使用预计算结果: {[(hw, f'{s:.2f}') for hw, s in filtered[:top_k]]}")
+            
+            return filtered[:top_k]
+        
+        # 否则自行检索
         if not self.hotwords:
-            logger.debug("热词列表为空")
             return []
-
+            
         text_seq = get_phoneme_seq(text)
         if not text_seq:
-            logger.debug("文本音素序列为空")
             return []
 
-        logger.debug(f"热词检索: 输入='{text}', 音素={text_seq}, 热词数={len(self.hotwords)}")
+        th = threshold if threshold is not None else self.default_threshold
+        result = self.rag.search(text_seq, top_k=top_k)
+        
+        # 过滤阈值
+        result = [(hw, score) for hw, score in result if score >= th]
 
-        scored_hotwords = []
-
-        for hw, hw_seq in self.hotword_phonemes.items():
-            if not hw_seq:
-                continue
-
-            # 计算编辑距离
-            min_dist = fuzzy_substring_distance(text_seq, hw_seq)
-            denom = len(hw_seq) if len(hw_seq) > 0 else 1
-            score = 1.0 - (min_dist / denom)
-
-            if score >= threshold:
-                scored_hotwords.append((hw, round(score, 3)))
-
-        # 按分数降序排序
-        scored_hotwords.sort(key=lambda x: x[1], reverse=True)
-        result = scored_hotwords[:top_k]
-
-        if result:
-            logger.debug(f"热词匹配结果: {[(hw, f'{s:.3f}') for hw, s in result]}")
-        else:
-            logger.debug(f"未匹配到热词（阈值={threshold}）")
+        if result and self.verbose:
+            logger.debug(f"热词匹配: {text} -> {[(hw, f'{s:.2f}') for hw, s in result]}")
 
         return result
 
@@ -136,7 +149,7 @@ class LLMHotwordRAG:
 
 
 if __name__ == "__main__":
-    # Setup logging to console
+    import logging
     logging.basicConfig(level=logging.DEBUG)
     
     print("\n--- LLMHotwordRAG 测试 ---")
@@ -144,26 +157,53 @@ if __name__ == "__main__":
     # 创建临时热词文件
     test_file = Path("test_hot_llm.txt")
     with open(test_file, "w", encoding="utf-8") as f:
-        f.write("# comment\nPython\nJava\nC++\nCapsWriter\n")
+        f.write("""# 英文热词
+Python
+CapsWriter
+Microsoft
+Claude
+iPhone
+7-Zip
+
+# 中文热词
+撒贝宁
+康辉
+东方财富
+科大讯飞
+""")
         
     try:
-        rag = LLMHotwordRAG(str(test_file))
+        rag = LLMHotwordRAG(str(test_file), threshold=0.5)
         
-        # Test search
-        print("\nSearching 'Pythn':")
-        res = rag.search("Pythn")
-        print(res)
+        print("\n=== 英文测试 ===")
+        test_cases_en = [
+            "I use pythn for coding",
+            "you can use caps riter to type",
+            "download micro soft office",
+            "let cloud do these things",
+            "compress with 7 zip",
+        ]
+        for text in test_cases_en:
+            res = rag.search(text)
+            print(f"  '{text}'")
+            print(f"    -> {res}")
         
-        print("\nSearching 'CapsRiter':")
-        res = rag.search("CapsRiter")
-        print(res)
+        print("\n=== 中文测试 ===")
+        test_cases_zh = [
+            "撒贝你主持春晚",
+            "康灰是央视主持人",
+            "东方菜富股票涨了",
+            "科大迅飞做语音识别",
+        ]
+        for text in test_cases_zh:
+            res = rag.search(text)
+            print(f"  '{text}'")
+            print(f"    -> {res}")
         
-        # Test format
-        print("\nPrompt:")
-        print(rag.format_hotwords_prompt(res))
+        print("\n=== 完整 Prompt 示例 ===")
+        result = rag.search("我用caps riter写科大迅飞的pythn代码")
+        print(rag.format_hotwords_prompt(result))
         
     finally:
         if test_file.exists():
             test_file.unlink()
-
-

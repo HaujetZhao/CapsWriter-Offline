@@ -10,10 +10,9 @@ from __future__ import annotations
 import time
 from os import makedirs
 from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
 from util.client.state import console
-from util.hotword.keywords import kwd_list
 from util.logger import get_logger
 
 # 日志记录器
@@ -40,7 +39,6 @@ class DiaryWriter:
     
     负责将识别结果写入 Markdown 日记文件：
     - 根据日期创建文件夹结构
-    - 根据关键词分类写入不同文件
     - 链接音频文件
     """
     
@@ -79,41 +77,32 @@ class DiaryWriter:
         folder_path = self.base_path / time_year / time_month
         makedirs(folder_path, exist_ok=True)
         
-        # 找出所有匹配的关键词
-        md_list: List[Tuple[str, Path]] = [
-            (kwd, folder_path / f'{kwd + "-" if kwd else ""}{time_day}.md')
-            for kwd in kwd_list
-            if text.startswith(kwd)
-        ]
+        # 按日期归档
+        file_md = folder_path / f'{time_day}.md'
         
-        written_files = []
+        # 确保 md 文件存在
+        if not file_md.exists():
+            self._create_md(file_md)
         
-        for kwd, file_md in md_list:
-            # 确保 md 文件存在
-            if not file_md.exists():
-                self._create_md(file_md)
-            
-            # 构建日记条目
-            if file_audio:
-                try:
-                    path_rel = file_audio.relative_to(file_md.parent).as_posix()
-                    path_rel = path_rel.replace(" ", "%20")
-                except ValueError:
-                    path_rel = file_audio.as_posix().replace(" ", "%20")
+        # 构建日记条目
+        if file_audio:
+            try:
+                path_rel = file_audio.relative_to(file_md.parent).as_posix()
+                path_rel = path_rel.replace(" ", "%20")
+            except ValueError:
+                path_rel = file_audio.as_posix().replace(" ", "%20")
+        else:
+            path_rel = ""
+        
+        # 写入 md
+        with open(file_md, 'a', encoding='utf-8') as f:
+            if path_rel:
+                f.write(f'[{time_hms}]({path_rel}) {text}\n\n')
             else:
-                path_rel = ""
-            
-            text_clean = text[len(kwd):].lstrip("，。,.")
-            
-            # 写入 md
-            with open(file_md, 'a', encoding='utf-8') as f:
-                if path_rel:
-                    f.write(f'[{time_hms}]({path_rel}) {text_clean}\n\n')
-                else:
-                    f.write(f'{time_hms} {text_clean}\n\n')
-            
-            written_files.append(file_md)
-            logger.debug(f"写入日记: {file_md.name}, 关键词: '{kwd}'")
+                f.write(f'{time_hms} {text}\n\n')
+        
+        logger.debug(f"写入日记: {file_md.name}")
+        return [file_md]
         
         return written_files
     

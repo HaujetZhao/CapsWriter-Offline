@@ -19,7 +19,7 @@
     - **拼接算法**: 优先使用 **Token 时间戳去重** (`util/server/text_merge.py`)，无时间戳则降级为 **模糊文本匹配**。
 - **Client 后处理**:
     - **触发**: 用户**松开按键** -> Server 返回 IsFinal 结果。
-    - **热词 (RAG)**: 基于 **音素 (Phoneme)** 的模糊检索，匹配 `hot-zh.txt`。
+    - **热词 (RAG)**: 基于 **音素 (Phoneme)** 的模糊检索，匹配 `hot.txt`（统一中英文热词）。
     - **上屏**: 模拟键盘输入或写入剪贴板 ("松开即出")。
 
 ### 2. 客户端模式 (Client Modes)
@@ -27,24 +27,22 @@
 - **转录 (Transcription)**: 拖入文件 -> `ffmpeg` 提取音频 -> 发送 Server -> 接收带时间戳结果 -> 生成 `.srt`。
 
 ### 3. LLM Agent & 智能修正
-- **实时监控 (Hot Reload)**: Client 启动文件监视器，实时响应 `features/hot-*.txt` 和 `LLM/*.py` 的修改。
+- **实时监控 (Hot Reload)**: Client 启动文件监视器，实时响应 `hot.txt`、`hot-llm-rectify.txt` 和 `LLM/*.py` 的修改。
 - **Trigger**: 检测识别结果前缀（如“翻译”），匹配 `LLM/` 下定义的角色。
-- **Context 组装**:
-    1.  **历史纠错**: RAG 检索历史修正库。
-    2.  **潜在热词**: RAG 检索 `hot_llm.txt`。
-    3.  **选中文字**: 模拟 Ctrl+C 获取的鼠标选中文本。
+- **Context 组装**（根据角色配置决定是否启用）:
+    1.  **历史纠错**: RAG 检索 `hot-llm-rectify.txt` 历史修正库（`enable_rectify_history`）。
+    2.  **潜在热词**: RAG 检索 `hot.txt`（`enable_hotwords`）。
+    3.  **选中文字**: 模拟 Ctrl+C 获取的鼠标选中文本（`enable_read_selection`）。
     4.  **用户指令**: 当前语音输入内容。
 - **UI**: 结果流式显示在 **Toast** (Tkinter 无边框置顶窗)，支持 Markdown 渲染。
 
 ### 4. 历史归档 (Diary)
-- **双重写入**: 
-    1.  **时间轴**: `年份/月份/日期.md`。
-    2.  **关键词**: `日期-关键词.md` (Note: 关键词日记功能未来将移除)。
+- **按日期归档**: `年份/月份/日期.md`。
 - **音频**: 原始录音存入 `年份/月份/assets/`，Markdown 中自动生成 HTML 音频控件链接。
 
 ## 关键路径 (Key Paths)
 - **配置**: `config.py` (根目录).
-- **热词**: `hot-zh.txt` (拼音匹配), `hot-en.txt` (文本替换), `hot-rule.txt` (规则).
+- **热词**: `hot.txt` (统一 RAG 音素匹配), `hot-rule.txt` (规则替换), `hot-llm-rectify.txt` (历史修正 RAG).
 - **LLM角色**: `LLM/*.py` (根目录, 定义 Role/Prompt/Model).
 - **逻辑核心**: `util/` (含 `client`, `server`, `llm`, `hotword` 等子模块).
 - **日志**: `log/client.log` & `log/server.log` (排查问题唯一入口).

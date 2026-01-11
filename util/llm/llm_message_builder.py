@@ -4,7 +4,9 @@ import logging
 from typing import List, Dict, Optional, Any
 
 from util.llm.llm_role_config import RoleConfig
-from util.llm.llm_context import ContextManager
+from util.llm.llm_constants import estimate_tokens
+from util.logger import get_logger
+
 # Type hinting only
 try:
     from util.llm.llm_rag_adapter import HotwordsRAG
@@ -16,7 +18,7 @@ try:
 except ImportError:
     LLMRectifyRAG = Any
 
-logger = logging.getLogger(__name__)
+logger = get_logger('client')
 
 class MessageBuilder:
     def __init__(
@@ -54,15 +56,14 @@ class MessageBuilder:
         # 3. User Content Construction
         user_content_parts = []
         
-        # Add RAG Hotwords
-        if self.rag and getattr(role_config, 'enable_hotwords', True):
+        # Add RAG Hotwords (根据角色配置)
+        if self.rag and getattr(role_config, 'enable_hotwords', False):
             hotwords_prompt = self.rag.format_prompt(user_content)
             if hotwords_prompt:
                  user_content_parts.append(hotwords_prompt)
                  
-        # Add Rectify History
-        # Assuming RoleConfig might not have enable_rectify yet, defaulting to True if rag exists
-        if self.rectify_rag:
+        # Add Rectify History (根据角色配置)
+        if self.rectify_rag and getattr(role_config, 'enable_rectify_history', False):
             rectify_prompt = self.rectify_rag.format_prompt(user_content)
             if rectify_prompt:
                 user_content_parts.append(rectify_prompt)
@@ -86,9 +87,8 @@ class MessageBuilder:
 
         messages.append(final_user_msg)
         
-        # Debug Print
-        if logger.isEnabledFor(logging.DEBUG):
-             self._debug_print_messages(role_config.role_name, role_config, messages)
+        # Debug Print - 打印完整的 context JSON
+        self._debug_print_messages(role_config.name, role_config, messages)
              
         return messages
 
@@ -102,7 +102,7 @@ class MessageBuilder:
         try:
             # 计算上下文统计信息
             total_tokens = sum(
-                ContextManager._estimate_tokens(None, msg['content'])
+                estimate_tokens(msg['content'])
                 for msg in messages
             )
             history_count = len([m for m in messages if m['role'] in ['user', 'assistant']])

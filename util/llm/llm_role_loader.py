@@ -28,34 +28,37 @@ class RoleLoader:
         Returns:
             角色名称
         """
+        from util.llm.llm_constants import RoleConfigDefaults as Defaults
+        
+        # 配置变量名到默认值的映射，使用常量类避免重复定义
         config_vars = {
-            'name': '',
-            'match': True,
-            'process': False,
-            'provider': 'ollama',
-            'api_url': '',
-            'api_key': '',
-            'model': '',
-            'enable_hotwords': False,
-            'enable_thinking': False,
-            'enable_history': False,
-            'max_context_length': 4096,
-            'forget_duration': 600,
-            'set_clipboard': False,
-            'enable_read_selection': False,
-            'selection_max_length': 1000,
-            'output_mode': 'typing',
-            'toast_initial_width': 0.5,
-            'toast_initial_height': 0,
-            'toast_font_family': '',
-            'toast_font_size': 14,
-            'toast_font_color': 'white',
-            'toast_bg_color': '#075077',
-            'toast_duration': 3000,
-            'temperature': 0.7,
-            'top_p': 0.9,
-            'max_tokens': 1024,
-            'stop': '',
+            'name': Defaults.DEFAULT_NAME,
+            'match': Defaults.DEFAULT_MATCH,
+            'process': Defaults.DEFAULT_PROCESS,
+            'provider': Defaults.DEFAULT_PROVIDER,
+            'api_url': Defaults.DEFAULT_API_URL,
+            'api_key': Defaults.DEFAULT_API_KEY,
+            'model': Defaults.DEFAULT_MODEL,
+            'enable_hotwords': Defaults.DEFAULT_ENABLE_HOTWORDS,
+            'enable_thinking': Defaults.DEFAULT_ENABLE_THINKING,
+            'enable_history': Defaults.DEFAULT_ENABLE_HISTORY,
+            'max_context_length': Defaults.DEFAULT_MAX_CONTEXT_LENGTH,
+            'forget_duration': Defaults.DEFAULT_FORGET_DURATION,
+            'set_clipboard': Defaults.DEFAULT_SET_CLIPBOARD,
+            'enable_read_selection': Defaults.DEFAULT_ENABLE_READ_SELECTION,
+            'selection_max_length': Defaults.DEFAULT_SELECTION_MAX_LENGTH,
+            'output_mode': Defaults.DEFAULT_OUTPUT_MODE,
+            'toast_initial_width': Defaults.DEFAULT_TOAST_INITIAL_WIDTH,
+            'toast_initial_height': Defaults.DEFAULT_TOAST_INITIAL_HEIGHT,
+            'toast_font_family': Defaults.DEFAULT_TOAST_FONT_FAMILY,
+            'toast_font_size': Defaults.DEFAULT_TOAST_FONT_SIZE,
+            'toast_font_color': Defaults.DEFAULT_TOAST_FONT_COLOR,
+            'toast_bg_color': Defaults.DEFAULT_TOAST_BG_COLOR,
+            'toast_duration': Defaults.DEFAULT_TOAST_DURATION,
+            'temperature': Defaults.DEFAULT_TEMPERATURE,
+            'top_p': Defaults.DEFAULT_TOP_P,
+            'max_tokens': Defaults.DEFAULT_MAX_TOKENS,
+            'stop': Defaults.DEFAULT_STOP,
             'extra_options': {},
             'system_prompt': '',
         }
@@ -74,9 +77,7 @@ class RoleLoader:
         role_config = RoleConfig(**config)
 
         # 空字符串和「默认」都表示默认角色
-        role_name = role_config.name or '默认'
-        if role_name == '默认':
-            role_name = '默认'
+        role_name = role_config.name or Defaults.DEFAULT_ROLE_NAME
 
         self.roles_registry[role_name] = role_config
 

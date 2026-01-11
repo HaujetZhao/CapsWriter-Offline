@@ -110,11 +110,11 @@ class LLMProcessor:
                 logger.error(f"LLM API 调用失败: {wrapped_error}")
                 raise wrapped_error from e
 
-            # 其他未预期的异常
+            # 其他未预期的异常，包装为 APIException 并抛出
             import traceback
-            logger.error(f"LLM 处理失败: {e}\n{traceback.format_exc()}")
-            # 返回空结果而不是抛出异常，保持向后兼容
-            return ("", 0, 0.0)
+            error_msg = f"LLM 处理失败: {e}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            raise APIException(error_msg, role_config.provider) from e
 
     def _build_request_params(
         self,
@@ -226,6 +226,9 @@ class LLMProcessor:
             logger.debug(f"API 未返回 token 数，使用估算值: {total_tokens}")
 
         logger.debug(f"LLM 响应完成，接收 {chunk_count} 个 chunks, 输出tokens: {total_tokens}, 响应长度: {len(full_response)}, 生成时间: {generation_time:.3f}秒")
+        # 记录响应内容（截断过长内容）
+        preview_len = min(len(full_response), 500)
+        logger.debug(f"LLM 响应内容: {full_response[:preview_len]}{'...' if len(full_response) > preview_len else ''}")
 
         # 更新历史
         if role_config.enable_history and context_manager:

@@ -152,6 +152,9 @@ models/*.py
 # 日志与按年归档的文件夹（如 2026/01/...）
 20*/
 
+# 日志文件夹（包含 server_*.log 和 client_*.log）
+log/
+
 # 音频文件
 *.mp3
 *.wav
@@ -166,3 +169,4 @@ models/*.py
 # 本地配置文件
 .claude
 .vscode
+.agent

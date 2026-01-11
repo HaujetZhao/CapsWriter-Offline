@@ -53,10 +53,7 @@ def cleanup_client_resources():
             if state.loop and state.loop.is_running():
                 # 使用 run_coroutine_threadsafe 确保在信号处理/多线程上下文中安全调度
                 asyncio.run_coroutine_threadsafe(state.websocket.close(), state.loop)
-            else:
-                # 如果没有运行的 loop，无法优雅关闭 async websocket
-                 # 显式关闭 coroutine 以避免 Warning (虽然此时已无法发送关闭帧)
-                state.websocket.close().close() 
+            # 如果没有运行的 loop，websocket 将在状态 reset 时被清理
         except AttributeError:
              pass # 已经关闭或没有 closed 属性
         except Exception as e:

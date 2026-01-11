@@ -29,7 +29,7 @@ logger = get_logger('client')
 class LLMHandler:
     """LLM 润色处理器（协调器）"""
 
-    def __init__(self, hotwords_file: str = 'hot-llm.txt'):
+    def __init__(self, hotwords_file: str = 'hot.txt'):
         logger.info("初始化 LLM 处理器")
 
         # 角色管理
@@ -105,7 +105,7 @@ class LLMHandler:
         """
         return self.role_detector.detect(text)
 
-    def process(self, text: str, callback=None, should_stop_check=None) -> tuple:
+    def process(self, text: str, callback=None, should_stop_check=None) -> tuple[str, int, float]:
         """处理输入文本
 
         Args:
@@ -163,10 +163,14 @@ def get_handler() -> LLMHandler:
 
     if _handler is None:
         _handler = LLMHandler()
-        _watcher = LLMFileWatcher(_handler)
+        # 创建 Watcher，传入回调函数实现解耦
+        _watcher = LLMFileWatcher(
+            on_hotwords_reload=lambda: _handler.rag.load_hotwords(),
+            on_rectify_reload=lambda: _handler.rectify_rag.load_history(),
+            on_roles_reload=lambda: _handler.reload_roles(),
+            get_roles=lambda: _handler.roles,
+        )
         _watcher.start()
-        # 加载热词到 RAG
-        _handler.rag.load_hotwords()
 
     return _handler
 
@@ -183,7 +187,7 @@ def init_llm_system():
             logger.error(f"LLM 系统初始化失败: {e}", exc_info=True)
 
 
-def polish_text(text: str, callback=None, should_stop_check=None) -> tuple:
+def polish_text(text: str, callback=None, should_stop_check=None) -> tuple[str, int, float]:
     """润色文本（便捷函数）
 
     Args:
@@ -192,7 +196,7 @@ def polish_text(text: str, callback=None, should_stop_check=None) -> tuple:
         should_stop_check: 检查是否应该停止的函数
 
     Returns:
-        (润色后的文本, 输出token数)
+        (润色后的文本, 输出token数, 生成时间秒)
     """
     handler = get_handler()
     return handler.process(text, callback, should_stop_check)

@@ -47,13 +47,9 @@ class ClientConfig:
 
     trash_punc = '，。,.'        # 识别结果要消除的末尾标点
 
-    hot_zh = True               # 是否启用中文热词替换，中文热词存储在 hot_zh.txt 文件里
-    多音字 = True                  # True 表示多音字匹配
-    声调  = False                 # False 表示忽略声调区别，这样「黄章」就能匹配「慌张」
-
-    hot_en   = True             # 是否启用英文热词替换，英文热词存储在 hot_en.txt 文件里
-    hot_rule = True             # 是否启用自定义规则替换，自定义规则存储在 hot_rule.txt 文件里
-    hot_kwd  = True             # 是否启用关键词日记功能，自定义关键词存储在 keyword.txt 文件里
+    hot_enabled = True          # 是否启用热词替换（统一 RAG 匹配）
+    hot_rag_threshold = 0.8     # RAG 相似度阈值
+    hot_rule = True             # 是否启用自定义规则替换
 
     llm_enabled = True           # 是否启用 LLM 润色功能，需要配置 LLM/ 目录下的角色文件
     llm_stop_key = 'esc'        # 中断 LLM 输出的快捷键
