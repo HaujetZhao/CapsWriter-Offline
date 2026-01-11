@@ -1,3 +1,4 @@
+# coding: utf-8
 from pypinyin import pinyin
 from time import time
 
@@ -20,9 +21,6 @@ res = 热词替换('我有个同学叫李佳一')
 print(res)
 
 '''
-
-
-
 
 __all__ = ['更新热词词典', '热词替换', '多音字', '声调']
 
@@ -71,7 +69,7 @@ def 更新热词词典(热词文本: str):
         热词拼音 = pinyin(热词, 风格, 多音字)     # 得到拼音
 
         if len(热词拼音) != len(热词): 
-            print(f'\x9b31m    热词「{热词}」得到的拼音数量与字数不符，抛弃\x9b0m')
+            # print(f'\x9b31m    热词「{热词}」得到的拼音数量与字数不符，抛弃\x9b0m')
             continue
 
         拼音列表 = [[], ]
@@ -134,33 +132,37 @@ def 热词替换(句子):
 
     句子：       被查找和替换的句子
     '''
-    所有匹配 = 匹配热词(句子)
-    for 匹配项 in 所有匹配:
-        热词, 拼音序列 = 匹配项  # 从字典中找到可以替换的热词和对应的拼音
-        
-        句子索引表 = 获取拼音索引(句子)
-        替换区间 = []
-        for i, item in enumerate(句子索引表):
-            for j, 音 in enumerate(拼音序列):
-                if i+j >= len(句子索引表): break
-                if 音 != 句子索引表[i+j]['pinyin']: break
-            else:
-                替换区间.append([句子索引表[i]['index'], 句子索引表[i+j]['index']])
+    try:
+        所有匹配 = 匹配热词(句子)
+        for 匹配项 in 所有匹配:
+            热词, 拼音序列 = 匹配项  # 从字典中找到可以替换的热词和对应的拼音
+            
+            句子索引表 = 获取拼音索引(句子)
+            替换区间 = []
+            for i, item in enumerate(句子索引表):
+                for j, 音 in enumerate(拼音序列):
+                    if i+j >= len(句子索引表): break
+                    if 音 != 句子索引表[i+j]['pinyin']: break
+                else:
+                    替换区间.append([句子索引表[i]['index'], 句子索引表[i+j]['index']])
 
-        for 区间 in 替换区间:
-            句子 = 句子[:区间[0]] + 热词 + 句子[区间[1]+1:]
+            for 区间 in 替换区间:
+                句子 = 句子[:区间[0]] + 热词 + 句子[区间[1]+1:]
+    except Exception:
+        pass
 
     return 句子
 
 
 if __name__ == '__main__':
-    print(f'\x9b42m-------------开始---------------\x9b0m')
+    print(f'-------------开始---------------')
 
     热词文本 = '''
         撒贝宁
         康辉
         周涛
         乐清
+        # 注释行
     '''
 
     更新热词词典(热词文本)
@@ -170,3 +172,7 @@ if __name__ == '__main__':
     t4 = time()
 
     print(f'{res=}    {t4-t3=}')
+    
+    res2 = 热词替换('我非常喜欢撒贝宁老师')
+    print(f'{res2=}')
+

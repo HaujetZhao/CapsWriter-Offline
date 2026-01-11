@@ -208,3 +208,9 @@ class ShortcutHandler:
             logger.debug(f"已解绑快捷键: {Config.shortcut}")
         except Exception as e:
             logger.debug(f"解绑快捷键时发生错误: {e}")
+    def stop(self) -> None:
+        """停止快捷键处理器"""
+        self.unbind()
+        self._cancel_task()
+        if self._pool:
+            self._pool.shutdown(wait=False)

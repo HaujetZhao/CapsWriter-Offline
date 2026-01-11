@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional, List, Tuple
 
 from util.client.state import console
-from util.tools.hot_kwds import kwd_list
+from util.hotword.keywords import kwd_list
 from util.logger import get_logger
 
 # 日志记录器

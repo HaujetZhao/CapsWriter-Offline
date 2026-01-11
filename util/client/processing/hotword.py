@@ -16,7 +16,8 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from util.client.state import console
-from util.tools import hot_sub_zh, hot_sub_en, hot_sub_rule, hot_kwds
+from util.hotword import corrector_en as hot_sub_en, corrector_rule as hot_sub_rule, keywords as hot_kwds
+from util.hotword.corrector_pinyin import PinyinCorrector
 from config import ClientConfig as Config
 from util.logger import get_logger
 
@@ -43,6 +44,8 @@ class HotwordManager:
     def __init__(self):
         """初始化热词管理器"""
         self._observer: Optional[Observer] = None
+        # 初始化拼音纠错器 (阈值可调，建议 0.6~0.8)
+        self.corrector = PinyinCorrector(threshold=0.6)
     
     def load_all(self) -> None:
         """加载所有热词文件"""
@@ -63,7 +66,9 @@ class HotwordManager:
                 f.write('# 在此文件放置中文热词，每行一个，开头带井号表示注释，会被省略')
         
         with open(path, 'r', encoding='utf-8') as f:
-            num = hot_sub_zh.更新热词词典(f.read())
+            # 使用新的拼音纠错器加载热词
+            num = self.corrector.update_hotwords(f.read())
+            
         console.print(f'已载入 [green4]{num:5}[/] 条中文热词')
         logger.debug(f"载入 {num} 条中文热词")
     
@@ -93,6 +98,10 @@ class HotwordManager:
     
     def _load_kwds(self) -> None:
         """加载日记关键词"""
+        if not Config.hot_kwd:
+            hot_kwds.do_updata_kwd("")
+            return
+
         path = HOTWORD_FILES['kwds']
         if not path.exists():
             with open(path, 'w', encoding='utf-8') as f:
@@ -132,15 +141,20 @@ class HotwordManager:
         """
         original = text
         
+        # 1. 中文热词纠错 (RAG)
         if Config.hot_zh:
-            text = hot_sub_zh.热词替换(text)
+            text = self.corrector.correct(text)
+            
+        # 2. 英文热词替换 (Legacy)
         if Config.hot_en:
             text = hot_sub_en.热词替换(text)
+            
+        # 3. 自定义规则替换 (Legacy)
         if Config.hot_rule:
             text = hot_sub_rule.热词替换(text)
         
         if text != original:
-            logger.debug(f"热词替换: '{original[:30]}...' -> '{text[:30]}...'")
+            pass # 日志已经在 corrector 中打印了
         
         return text
     

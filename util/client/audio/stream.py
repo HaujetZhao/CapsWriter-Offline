@@ -18,6 +18,7 @@ import sounddevice as sd
 
 from util.client.state import console, get_state
 from util.logger import get_logger
+from util.common.lifecycle import lifecycle
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
@@ -90,8 +91,8 @@ class AudioStreamManager:
         if not threading.main_thread().is_alive():
             return
         
-        # 只有在应该运行且不是手动停止的情况下才重启
-        if self._running:
+        # 只有在应该运行且不是手动停止、且系统未处于关闭状态的情况下才重启
+        if self._running and not lifecycle.is_shutting_down:
             logger.info("音频流意外结束，正在尝试重启...")
             self.reopen()
         else:

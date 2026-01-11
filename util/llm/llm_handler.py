@@ -9,7 +9,8 @@ LLM 处理器 - 协调器
 
 from typing import Dict, Tuple, Optional
 from util.llm.llm_role_loader import RoleLoader
-from util.llm.llm_hotword_rag import HotwordsRAG
+from util.llm.llm_rag_adapter import HotwordsRAG
+from util.hotword.rag_llm_rectify import LLMRectifyRAG
 from util.llm.llm_context import ContextManager
 from util.llm.llm_watcher import LLMFileWatcher
 from util.llm.llm_role_config import RoleConfig
@@ -38,6 +39,9 @@ class LLMHandler:
 
         # 热词 RAG
         self.rag = HotwordsRAG(hotwords_file)
+        
+        # 纠错历史 RAG (new)
+        self.rectify_rag = LLMRectifyRAG('hot-llm-rectify.txt')
 
         # 上下文管理器池
         self.context_managers: Dict[str, ContextManager] = {}
@@ -47,7 +51,7 @@ class LLMHandler:
         self.client_pool = ClientPool()
 
         # 消息构建器
-        self.message_builder = MessageBuilder(rag=self.rag)
+        self.message_builder = MessageBuilder(rag=self.rag, rectify_rag=self.rectify_rag)
 
         # 角色检测器
         self.role_detector = RoleDetector(self.role_loader)
@@ -176,6 +180,7 @@ def init_llm_system():
         except Exception as e:
             from util.client.state import console
             console.print(f'[red]LLM 系统初始化失败: {e}[/]')
+            logger.error(f"LLM 系统初始化失败: {e}", exc_info=True)
 
 
 def polish_text(text: str, callback=None, should_stop_check=None) -> tuple:

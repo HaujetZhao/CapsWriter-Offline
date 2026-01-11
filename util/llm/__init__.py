@@ -18,7 +18,7 @@ from .llm_message_builder import MessageBuilder
 from .llm_client_pool import ClientPool
 
 # RAG 和剪贴板/选中文字
-from .llm_hotword_rag import HotwordsRAG
+from .llm_rag_adapter import HotwordsRAG
 from .llm_clipboard import copy_to_clipboard
 from .llm_get_selection import (
     get_selected_text,

@@ -35,12 +35,9 @@ def cleanup_client_resources():
     # 停止音频流
     if state.stream_manager:
         try:
-            # stream_manager.stop() 可能不存在，视具体实现而定
-            # 这里主要是 state.stream (InputStream) 的关闭
-            # 但 stream_manager 可能管理着流的生命周期
-            if hasattr(state.stream_manager, 'stop'):
-                 state.stream_manager.stop()
-            state.reset() # reset 会关闭 stream
+            if hasattr(state.stream_manager, 'close'):
+                 state.stream_manager.close()
+            # state.stream will be set to None in state.reset() later
         except Exception as e:
             logger.warning(f"停止音频流时发生错误: {e}")
 

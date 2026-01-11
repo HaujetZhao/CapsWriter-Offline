@@ -1,6 +1,5 @@
+# coding: utf-8
 import re
-
-
 
 '''
 热词是每行一个的文本，先更新热词词典，然后再替换句子中的热词。
@@ -19,8 +18,6 @@ res = 热词替换('the chat gpt is now fully supported by microsoft')
 print(res)
 
 '''
-
-
 
 __all__ = ['更新热词词典', '热词替换']
 
@@ -61,17 +58,21 @@ def 热词替换(句子):
 
     句子：       被查找和替换的句子
     '''
-    所有匹配 = 匹配热词(句子)
-    for 匹配项 in 所有匹配:
-        正则模式 = re.sub('[^\w]', '', 匹配项)
-        正则模式1 = r'(?<=[^a-zA-z])' + re.sub('(.)', r'\1 *?', 正则模式) + r'(?=[^a-zA-z]|\b)'
-        正则模式2 = r'(?<=\b)' + re.sub('(.)', r'\1 *?', 正则模式) + r'(?=[^a-zA-z]|\b)'
-        句子 = re.sub(正则模式1, 匹配项, 句子, flags=re.I)
-        句子 = re.sub(正则模式2, 匹配项, 句子, flags=re.I)
+    try:
+        所有匹配 = 匹配热词(句子)
+        for 匹配项 in 所有匹配:
+            正则模式 = re.sub('[^\w]', '', 匹配项)
+            正则模式1 = r'(?<=[^a-zA-z])' + re.sub('(.)', r'\1 *?', 正则模式) + r'(?=[^a-zA-z]|\b)'
+            正则模式2 = r'(?<=\b)' + re.sub('(.)', r'\1 *?', 正则模式) + r'(?=[^a-zA-z]|\b)'
+            句子 = re.sub(正则模式1, 匹配项, 句子, flags=re.I)
+            句子 = re.sub(正则模式2, 匹配项, 句子, flags=re.I)
+    except Exception:
+        pass
     return 句子
 
+
 if __name__ == '__main__':
-    print(f'\x9b42m-------------开始---------------\x9b0m')
+    print(f'-------------开始---------------')
 
     热词文本 = '''
         ChatGPT
@@ -87,8 +88,11 @@ if __name__ == '__main__':
 
     更新热词词典(热词文本)
 
-    res = 热词替换('7 zip测试')
-
-
-    print(f'{res}')
+    res = 热词替换('the chat gpt is now fully supported by microsoft')
+    print(f"输入: 'the chat gpt is now fully supported by microsoft'")
+    print(f"输出: {res}")
+    
+    res2 = 热词替换('7 zip测试')
+    print(f"输入: '7 zip测试'")
+    print(f"输出: {res2}")
 
