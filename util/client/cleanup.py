@@ -49,13 +49,16 @@ def cleanup_client_resources():
     # 关闭 WebSocket 连接
     if state.websocket is not None:
         try:
-            # 注意: 这里使用 create_task 可能会因为 loop 关闭而失败
-            # 如果是在 atexit 中调用，只能尽力而为
-            if not state.websocket.closed:
-                # 尝试同步关闭或记录
-                logger.debug("试图关闭 WebSocket 连接...")
-                # 由于 websocket close 是 async 的，这里很难在同步的 cleanup 中完美处理
-                # 但 state.reset() 会将 websocket 设为 None
+            logger.debug("试图关闭 WebSocket 连接...")
+            if state.loop and state.loop.is_running():
+                # 使用 run_coroutine_threadsafe 确保在信号处理/多线程上下文中安全调度
+                asyncio.run_coroutine_threadsafe(state.websocket.close(), state.loop)
+            else:
+                # 如果没有运行的 loop，无法优雅关闭 async websocket
+                 # 显式关闭 coroutine 以避免 Warning (虽然此时已无法发送关闭帧)
+                state.websocket.close().close() 
+        except AttributeError:
+             pass # 已经关闭或没有 closed 属性
         except Exception as e:
             logger.warning(f"关闭 WebSocket 连接时发生错误: {e}")
             
