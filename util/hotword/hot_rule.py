@@ -25,8 +25,8 @@ from threading import Lock
 from typing import Dict
 
 
-class CorrectorRule:
-    """规则纠错器 - 基于正则表达式的精确替换"""
+class RuleCorrector:
+    """规则纠错器 - 基于规则表达式的精确替换"""
 
     def __init__(self):
         self.patterns: Dict[str, str] = {}
@@ -59,7 +59,7 @@ class CorrectorRule:
 
         return len(new_patterns)
 
-    def correct(self, text: str) -> str:
+    def substitute(self, text: str) -> str:
         """
         执行规则替换
 

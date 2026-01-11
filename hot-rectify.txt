@@ -13,21 +13,6 @@
 这样不就可以了
 ---
 
-测试一下
-测试1下
----
-
-你好，你好
-你好，您好
----
-
-
-
-
-你好，你好
-你好，你Vv
----
-
 Do you know cloud code?It is used for writing code
 Do you know Claud Code? It is used for writing code
 ---

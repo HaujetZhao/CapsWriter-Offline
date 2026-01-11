@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 from typing import List, Tuple, Dict, Set
 from difflib import SequenceMatcher
+from dataclasses import dataclass
 
 from .algo_phoneme import get_phoneme_seq, normalize_text
 from .algo_calc import fuzzy_substring_distance
@@ -23,168 +24,244 @@ from util.logger import get_logger
 logger = get_logger('client')
 
 
-def get_char_phoneme_count(text: str) -> int:
-    """估算文本的音素数量（简化版：中文每字3音素，英文每单词1音素）"""
-    count = 0
-    i = 0
-    while i < len(text):
-        char = text[i]
-        if '\u4e00' <= char <= '\u9fff':
-            # 中文：每字约 3 个音素（声母+韵母+声调）
-            count += 3
-            i += 1
-        elif char.isalpha():
-            # 英文：找到完整单词，算 1 个音素
-            j = i + 1
-            while j < len(text) and text[j].isalpha():
-                j += 1
-            count += 1
-            i = j
-        elif char.isdigit():
-            # 数字：连续数字算 1 个音素
-            j = i + 1
-            while j < len(text) and text[j].isdigit():
-                j += 1
-            count += 1
-            i = j
-        else:
-            i += 1
-    return count
-
-
-def expand_fragment(text: str, start: int, end: int, min_phonemes: int = 4) -> Tuple[int, int]:
+@dataclass
+class Fragment:
     """
-    如果片段音素数量不足，向两边扩展
-    
-    Args:
-        text: 完整文本
-        start: 片段起始位置
-        end: 片段结束位置
-        min_phonemes: 最小音素数量
-        
-    Returns:
-        (扩展后起始位置, 扩展后结束位置)
+    纠错片段
+
+    Attributes:
+        text: 片段文本
+        source_text: 来源文本（错句或正句的完整文本）
+        start: 片段在 source_text 中的起始位置
+        end: 片段在 source_text 中的结束位置
     """
-    fragment = text[start:end]
-    current_count = get_char_phoneme_count(fragment)
-    
-    if current_count >= min_phonemes:
-        return start, end
-    
-    # 需要扩展的音素数量
-    needed = min_phonemes - current_count
-    
-    # 交替向左右扩展
-    new_start, new_end = start, end
-    expand_left = True
-    
-    while needed > 0:
-        if expand_left and new_start > 0:
-            # 向左扩展一个"词"
-            new_start -= 1
-            char = text[new_start]
-            
-            # 如果是中文，扩展一个字
-            if '\u4e00' <= char <= '\u9fff':
-                needed -= 3
-            # 如果是英文，找到完整单词
-            elif char.isalpha():
-                while new_start > 0 and text[new_start - 1].isalpha():
-                    new_start -= 1
-                needed -= 1
-            # 如果是数字，找到完整数字
-            elif char.isdigit():
-                while new_start > 0 and text[new_start - 1].isdigit():
-                    new_start -= 1
-                needed -= 1
-                
-        elif not expand_left and new_end < len(text):
-            # 向右扩展一个"词"
-            char = text[new_end]
-            
-            if '\u4e00' <= char <= '\u9fff':
-                new_end += 1
-                needed -= 3
-            elif char.isalpha():
-                new_end += 1
-                while new_end < len(text) and text[new_end].isalpha():
-                    new_end += 1
-                needed -= 1
-            elif char.isdigit():
-                new_end += 1
-                while new_end < len(text) and text[new_end].isdigit():
-                    new_end += 1
-                needed -= 1
-            else:
-                new_end += 1
-        else:
-            # 一边到头了，只向另一边扩展
-            if new_start == 0 and new_end < len(text):
-                expand_left = False
-                continue
-            elif new_end == len(text) and new_start > 0:
-                expand_left = True
-                continue
-            else:
-                # 两边都到头了
-                break
-        
-        expand_left = not expand_left
-    
-    return new_start, new_end
+    text: str
+    source_text: str
+    start: int
+    end: int
 
+    def __repr__(self):
+        return f"Fragment('{self.text}', pos={self.start}:{self.end})"
 
-def extract_diff_fragments(wrong: str, right: str, min_phonemes: int = 4) -> List[str]:
+def extract_diff_fragments(wrong: str, right: str, zh_min_phonemes: int = 4, expand_words: int = 1) -> List[str]:
     """
     提取两个句子之间的差异片段（包括错误版本和正确版本）
-    自动扩展过短的片段以达到最小音素数量
-    
+    基于单词序列进行精准提取
+
+    核心策略：
+    - 使用 SequenceMatcher 比较单词序列（而非字符序列）
+    - 提取**连续的修正片段**，而非单个单词
+    - 英文片段：直接保留，不扩展
+    - 中文片段：如果太短，左右各扩展 expand_words 个单词
+
+    边界定义：
+    - 中文：每个字都是一个边界
+    - 英文单词：连续字母/数字构成一个词
+    - 大小写变化：小写→大写是边界（如 cloudCode）
+    - 空格/标点：边界
+
     例如：
-    "原锯子不对" => "原句子不对"
-      差异：锯/句 (太短) -> 扩展为 原锯子/原句子
-    
-    "今天天气不做" => "今天天气不错"  
-      差异：不做/不错 (够长)
-    
+    "cloud code" => "Claud Code"
+      提取: ["cloud code", "Claud Code"]  （连续的修正片段）
+
+    "这样就可以了" => "这样不就可以了"
+      提取: ["样不就"]  （左右各扩展1个字）
+
     Args:
         wrong: 错误句子
         right: 正确句子
-        min_phonemes: 最小音素数量，默认4（约一个中文词或英文单词）
+        zh_min_phonemes: 中文片段的最小音素数量（默认4，约1-2个词）
+        expand_words: 中文扩展时左右各扩展的单词数量（默认1）
+
+    Returns:
+        提取到的差异片段列表（连续的单词组合）
     """
     fragments = set()
-    
-    # 使用 SequenceMatcher 找出差异
-    matcher = SequenceMatcher(None, wrong, right)
-    
+
+    def get_word_boundaries(text: str) -> List[Tuple[int, int, str]]:
+        """
+        获取文本中所有单词的边界
+
+        返回: [(start, end, word), ...] 每个单词的起止位置和内容
+        规则：
+        - 中文：每个字单独一个词
+        - 英文：连续字母/数字构成一个词
+        - 大小写转换处：cloudCode -> [cloud, Code]
+        """
+        boundaries = []
+        i = 0
+        n = len(text)
+
+        while i < n:
+            # 跳过空白和标点
+            if not (text[i].isalnum() or '\u4e00' <= text[i] <= '\u9fff'):
+                i += 1
+                continue
+
+            start = i
+
+            # 中文：每个字单独处理
+            if '\u4e00' <= text[i] <= '\u9fff':
+                i += 1
+            # 英文/数字：连续收集
+            elif text[i].isalnum():
+                last_was_lower = text[i].islower()
+                while i < n and text[i].isalnum():
+                    # 检测大小写转换：cloudCode 会在 C 处分割
+                    if text[i].isupper() and last_was_lower and i > start:
+                        break
+                    last_was_lower = text[i].islower()
+                    i += 1
+
+            end = i
+            boundaries.append((start, end, text[start:end]))
+
+        return boundaries
+
+    def expand_by_words(text: str, start: int, end: int, expand_count: int = 1) -> Tuple[int, int]:
+        """
+        按单词数量向左右扩展片段
+
+        Args:
+            text: 完整文本
+            start: 片段起始位置
+            end: 片段结束位置
+            expand_count: 左右各扩展的单词数量
+
+        Returns:
+            (扩展后起始位置, 扩展后结束位置)
+        """
+        # 获取单词边界
+        bounds = get_word_boundaries(text)
+
+        # 找到当前片段对应的单词索引
+        start_idx = None
+        end_idx = None
+        for i, (b_start, b_end, _) in enumerate(bounds):
+            if b_start == start:
+                start_idx = i
+            if b_end == end:
+                end_idx = i + 1
+                if start_idx is not None:
+                    break
+
+        if start_idx is None or end_idx is None:
+            return start, end
+
+        # 向左扩展
+        new_start_idx = max(0, start_idx - expand_count)
+        # 向右扩展
+        new_end_idx = min(len(bounds), end_idx + expand_count)
+
+        # 返回新的位置
+        new_start = bounds[new_start_idx][0]
+        new_end = bounds[new_end_idx - 1][1]
+
+        return new_start, new_end
+
+    def extract_continuous_fragment(bounds: List[Tuple[int, int, str]], start_idx: int, end_idx: int, original_text: str) -> str:
+        """
+        从边界列表中提取连续的片段（保留原始文本中的分隔符）
+
+        Args:
+            bounds: 单词边界列表 [(start, end, word), ...]
+            start_idx: 起始单词索引
+            end_idx: 结束单词索引（不包含）
+            original_text: 原始文本
+
+        Returns:
+            连续的片段字符串
+        """
+        if start_idx >= end_idx or start_idx >= len(bounds):
+            return ""
+
+        # 获取第一个单词的起始位置和最后一个单词的结束位置
+        first_start = bounds[start_idx][0]
+        last_end = bounds[end_idx - 1][1]
+
+        # 从原始文本中切片，保留原始的分隔符（空格、标点等）
+        return original_text[first_start:last_end]
+
+    # 获取两个文本的单词边界
+    wrong_bounds = get_word_boundaries(wrong)
+    right_bounds = get_word_boundaries(right)
+
+    # 构建单词列表
+    wrong_word_list = [word for _, _, word in wrong_bounds]
+    right_word_list = [word for _, _, word in right_bounds]
+
+    # 使用 SequenceMatcher 比较单词序列（而非字符序列）
+    matcher = SequenceMatcher(None, wrong_word_list, right_word_list)
+
+    # 存储片段对象
+    fragments: List[Fragment] = []
+
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == 'replace':
-            # 替换：两边都是差异片段，可能需要扩展
-            exp_i1, exp_i2 = expand_fragment(wrong, i1, i2, min_phonemes)
-            exp_j1, exp_j2 = expand_fragment(right, j1, j2, min_phonemes)
-            
-            wrong_frag = wrong[exp_i1:exp_i2]
-            right_frag = right[exp_j1:exp_j2]
-            
-            if wrong_frag:
-                fragments.add(wrong_frag)
-            if right_frag:
-                fragments.add(right_frag)
-                
+            # 替换：提取错句和正句中的连续片段
+            if i2 > i1:
+                frag_text = extract_continuous_fragment(wrong_bounds, i1, i2, wrong)
+                if frag_text:
+                    start_pos = wrong_bounds[i1][0]
+                    end_pos = wrong_bounds[i2-1][1]
+                    fragments.append(Fragment(frag_text, wrong, start_pos, end_pos))
+            if j2 > j1:
+                frag_text = extract_continuous_fragment(right_bounds, j1, j2, right)
+                if frag_text:
+                    start_pos = right_bounds[j1][0]
+                    end_pos = right_bounds[j2-1][1]
+                    fragments.append(Fragment(frag_text, right, start_pos, end_pos))
+
         elif tag == 'delete':
-            # 删除：错句中有，正句中没有
-            exp_i1, exp_i2 = expand_fragment(wrong, i1, i2, min_phonemes)
-            wrong_frag = wrong[exp_i1:exp_i2]
-            if wrong_frag:
-                fragments.add(wrong_frag)
-                
+            # 删除：提取错句中的连续片段
+            if i2 > i1:
+                frag_text = extract_continuous_fragment(wrong_bounds, i1, i2, wrong)
+                if frag_text:
+                    start_pos = wrong_bounds[i1][0]
+                    end_pos = wrong_bounds[i2-1][1]
+                    fragments.append(Fragment(frag_text, wrong, start_pos, end_pos))
+
         elif tag == 'insert':
-            # 插入：正句中有，错句中没有
-            exp_j1, exp_j2 = expand_fragment(right, j1, j2, min_phonemes)
-            right_frag = right[exp_j1:exp_j2]
-            if right_frag:
-                fragments.add(right_frag)
-    
-    return list(fragments)
+            # 插入：提取正句中的连续片段
+            if j2 > j1:
+                frag_text = extract_continuous_fragment(right_bounds, j1, j2, right)
+                if frag_text:
+                    start_pos = right_bounds[j1][0]
+                    end_pos = right_bounds[j2-1][1]
+                    fragments.append(Fragment(frag_text, right, start_pos, end_pos))
+
+    # 智能过滤和扩展
+    result = []
+    for frag in fragments:
+        phonemes = get_phoneme_seq(frag.text)
+        if not phonemes:
+            continue
+
+        # 检查音素的语言类型
+        # 英文单词（lang='en'）：直接保留，1个音素=1个完整单词
+        # 数字（lang='num'）：直接保留
+        # 中文（lang='zh'）：需要扩展到足够的音素数量
+        has_non_zh = any(p.lang != 'zh' for p in phonemes)
+
+        if has_non_zh:
+            # 英文/数字：直接保留
+            result.append(frag.text)
+        else:
+            # 中文：检查是否需要扩展
+            if len(phonemes) >= zh_min_phonemes:
+                # 已经足够长，直接保留
+                result.append(frag.text)
+            else:
+                # 中文片段太短，左右各扩展 expand_words 个单词
+                exp_start, exp_end = expand_by_words(frag.source_text, frag.start, frag.end, expand_count=expand_words)
+                expanded_frag = frag.source_text[exp_start:exp_end]
+                if expanded_frag and expanded_frag != frag.text:
+                    result.append(expanded_frag)
+                else:
+                    # 扩展失败或没有变化，保留原片段
+                    result.append(frag.text)
+
+    return result
 
 
 class RectifyRecord:
@@ -216,13 +293,13 @@ class RectificationRAG:
     忽略以 # 开头的注释和空行
     """
 
-    def __init__(self, rectify_file: str = 'hot-rectify.txt', threshold: float = 0.6):
+    def __init__(self, rectify_file: str = 'hot-rectify.txt', threshold: float = 0.5):
         """
         初始化
-        
+
         Args:
             rectify_file: 纠错历史文件路径
-            threshold: 相似度阈值
+            threshold: 相似度阈值（默认0.5）
         """
         self.rectify_file = Path(rectify_file)
         self.threshold = threshold
@@ -384,7 +461,7 @@ class RectificationRAG:
             logger.debug(f"纠错 RAG: 未检索到相关纠错历史")
             return ""
 
-        lines = ["参考以下历史纠错："]
+        lines = ["纠错历史："]
         for wrong, right, score in results:
             lines.append(f"- {wrong} => {right}")
 
@@ -392,72 +469,151 @@ class RectificationRAG:
         logger.debug(f"纠错 RAG: 生成提示词:\n{result}")
         return result
 
+    def search_detailed(self, text: str, top_k: int = 5) -> List[dict]:
+        """
+        检索相关的纠错历史（详细版，返回每个片段的得分）
+
+        Args:
+            text: 输入文本（语音识别结果）
+            top_k: 最大结果数
+
+        Returns:
+            [dict, ...] 每个字典包含:
+            - wrong: 错误文本
+            - right: 正确文本
+            - score: 最高得分
+            - fragments: 每个检索片段的详细信息
+        """
+        if not text or not self.records:
+            return []
+
+        input_phonemes = get_phoneme_seq(text)
+        if not input_phonemes:
+            return []
+
+        with self._lock:
+            records = self.records[:]
+
+        results = []
+
+        for record in records:
+            fragment_details = []
+
+            # 计算每个片段的匹配得分
+            for fragment, frag_phonemes in record.fragment_phonemes.items():
+                if not frag_phonemes:
+                    continue
+
+                # 在输入中查找片段
+                min_dist = fuzzy_substring_distance(input_phonemes, frag_phonemes)
+                denom = len(frag_phonemes) if len(frag_phonemes) > 0 else 1
+                score = 1.0 - (min_dist / denom)
+
+                fragment_details.append({
+                    'fragment': fragment,
+                    'score': round(score, 3),
+                    'phonemes': len(frag_phonemes)
+                })
+
+            # 按得分排序
+            fragment_details.sort(key=lambda x: x['score'], reverse=True)
+
+            if fragment_details:
+                best_score = fragment_details[0]['score']
+                if best_score >= self.threshold:
+                    results.append({
+                        'wrong': record.wrong,
+                        'right': record.right,
+                        'score': best_score,
+                        'fragments': fragment_details
+                    })
+
+        # 按最高得分排序
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return results[:top_k]
+
 
 if __name__ == "__main__":
+    import sys
+    import io
+    # 设置 UTF-8 输出
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
     import logging
-    logging.basicConfig(level=logging.DEBUG)
-    
-    print("\n--- 扩展逻辑测试 ---")
-    
-    # 测试 extract_diff_fragments 的扩展逻辑
-    test_cases_expand = [
-        ("原锯子", "原句子"),      # 单字差异，应扩展
-        ("天器好", "天气好"),      # 单字差异，应扩展
-        ("今天不做", "今天不错"),  # 够长，不需扩展
-        ("caps riter", "CapsWriter"),
-        ("helo world", "hello world"),  # 单个字母差异
+    logging.basicConfig(level=logging.INFO)
+
+    print("\n=== 纠错检索详细测试 ===\n")
+
+    # 使用实际的 hot-rectify.txt 文件
+    rectify_file = Path("hot-rectify.txt")
+    if not rectify_file.exists():
+        print(f"文件不存在: {rectify_file}")
+        sys.exit(1)
+
+    # 加载纠错历史（使用默认阈值 0.5）
+    rag = RectificationRAG(str(rectify_file))
+
+    print(f"已加载 {len(rag.records)} 条纠错记录\n")
+
+    # 显示每条记录的检索词
+    print("=" * 80)
+    print("纠错记录及其检索词：")
+    print("=" * 80)
+    for i, record in enumerate(rag.records, 1):
+        print(f"\n{i}. {record.wrong} => {record.right}")
+        print(f"   检索词 ({len(record.fragments)} 个):")
+        for frag in record.fragments:
+            phonemes = get_phoneme_seq(frag)
+            print(f"     - '{frag}' (音素数: {len(phonemes)})")
+
+    # 测试检索
+    print("\n" + "=" * 80)
+    print("检索测试：")
+    print("=" * 80)
+
+    test_queries = [
+        "cloud 这个软件是非常好的",
+        "我最近正在使用 Cloud Code",
+        "你能看到关于 Cloud Code 的纠错信息吗",
+        "Cloud这个软件很好用",
+        "这样不就可以了",  # 修改：包含 "不" 字的查询
     ]
-    
-    print("\n差异片段提取（带扩展）：")
-    for wrong, right in test_cases_expand:
-        fragments = extract_diff_fragments(wrong, right)
-        print(f"  '{wrong}' => '{right}'")
-        print(f"    检索词: {fragments}")
-    
-    print("\n--- RectificationRAG 完整测试 ---")
-    
-    # 创建临时文件
-    test_file = Path("test_rectify.txt")
-    with open(test_file, "w", encoding="utf-8") as f:
-        f.write("""# 中文纠错（含单字修改）
-原锯子 => 原句子
-天器好 => 天气好
-康灰主持 => 康辉主持
-东方菜富 => 东方财富
 
-# 英文纠错
-caps riter => CapsWriter
-helo world => hello world
-micro soft => Microsoft
-pythn => Python
-""")
-        
-    try:
-        rag = RectificationRAG(str(test_file), threshold=0.5)
-        
-        print("\n=== 单字修改测试（验证扩展） ===")
-        
-        print("\n搜索 '天器很好啊':")
-        res = rag.search("天器很好啊")
-        print(f"  结果: {res}")
-        
-        print("\n搜索 '这个原锯子不对':")
-        res = rag.search("这个原锯子不对")
-        print(f"  结果: {res}")
-        
-        print("\n=== 中英混合测试 ===")
-        
-        print("\n搜索 '康灰用caps riter写代码':")
-        res = rag.search("康灰用caps riter写代码")
-        print(f"  结果: {res}")
-        
-        print("\n搜索 'helo world program':")
-        res = rag.search("helo world program")
-        print(f"  结果: {res}")
-        
-        print("\n=== Prompt 生成 ===")
-        print(rag.format_prompt("康灰在东方菜富用caps riter"))
+    for query in test_queries:
+        print(f"\n搜索: '{query}'")
+        print("-" * 60)
 
-    finally:
-        if test_file.exists():
-            test_file.unlink()
+        # 使用详细检索
+        results = rag.search_detailed(query)
+
+        if results:
+            for r in results:
+                print(f"  错误: {r['wrong']}")
+                print(f"  正确: {r['right']}")
+                print(f"  最高得分: {r['score']}")
+                print(f"  检索片段详情:")
+                for frag in r['fragments']:
+                    print(f"    - '{frag['fragment']}' 得分={frag['score']} 音素数={frag['phonemes']}")
+        else:
+            # 即使没有匹配，也显示所有记录的得分
+            print(f"  未匹配到纠错历史（所有记录得分均低于阈值 {rag.threshold}）")
+            print(f"  详细得分:")
+            for record in rag.records:
+                # 计算该记录的最高得分
+                input_phonemes = get_phoneme_seq(query)
+                best_score = 0.0
+                best_fragment = ""
+                for fragment, frag_phonemes in record.fragment_phonemes.items():
+                    if not frag_phonemes:
+                        continue
+                    min_dist = fuzzy_substring_distance(input_phonemes, frag_phonemes)
+                    denom = len(frag_phonemes) if len(frag_phonemes) > 0 else 1
+                    score = 1.0 - (min_dist / denom)
+                    if score > best_score:
+                        best_score = score
+                        best_fragment = fragment
+                print(f"    - {record.wrong} => {record.right}")
+                print(f"      最高得分: {best_score:.3f} (片段: '{best_fragment}')")
+
+    print("\n" + "=" * 80)

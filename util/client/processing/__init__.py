@@ -6,7 +6,7 @@ processing 子模块
 """
 
 from util.client.processing.result_processor import ResultProcessor
-from util.client.processing.hotword import HotwordManager
+from util.hotword import HotwordManager
 from util.client.processing.output import TextOutput
 
 __all__ = [

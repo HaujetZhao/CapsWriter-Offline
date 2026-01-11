@@ -7,7 +7,7 @@ from config import ClientConfig as Config
 from util.ui.tray import enable_min_to_tray_with_rectify
 from util.client.cleanup import request_exit_from_tray
 from util.client.ui import TipsDisplay
-from util.client.processing.hotword import get_hotword_manager
+from util.hotword import get_hotword_manager
 from util.llm.llm_handler import init_llm_system
 from util.client.audio import AudioStreamManager
 from util.client.input import ShortcutHandler

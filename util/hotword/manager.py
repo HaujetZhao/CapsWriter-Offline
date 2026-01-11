@@ -16,8 +16,8 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from util.client.state import console
-from util.hotword.hot_rule import CorrectorRule
-from util.hotword.hot_phoneme import PhonemeCorrector, CorrectionResult
+from util.hotword.hot_rule import RuleCorrector
+from util.hotword.hot_phoneme import PhonemeCorrector
 from util.hotword.hot_rectification import RectificationRAG
 from config import ClientConfig as Config
 from util.logger import get_logger
@@ -40,23 +40,22 @@ class HotwordManager:
     """
     热词管理器
 
-    负责热词的加载、替换和动态更新。
-    使用统一的 hot.txt 进行 RAG 音素匹配。
+    负责热词的加载、管理和动态更新。
     """
 
     def __init__(self):
         """初始化热词管理器"""
         self._observer: Optional[Observer] = None
         # 使用配置中的双阈值初始化音素纠错器
-        self.corrector = PhonemeCorrector(
+        self.phoneme_corrector = PhonemeCorrector(
             threshold=Config.hot_thresh,      # 替换阈值（高）
             similar_threshold=Config.hot_similar  # 相似列表阈值（低）
         )
         # 初始化规则纠错器
-        self.rule_corrector = CorrectorRule()
+        self.rule_corrector = RuleCorrector()
         # 初始化纠错历史 RAG
         self.rectify_rag = RectificationRAG('hot-rectify.txt')
-    
+
     def load_all(self) -> None:
         """加载所有热词文件"""
         logger.info("正在加载热词...")
@@ -65,7 +64,7 @@ class HotwordManager:
         self._load_rectify()
         console.line()
         logger.info("热词加载完成")
-    
+
     def _load_hot(self) -> None:
         """加载热词（统一文件）"""
         path = HOTWORD_FILES['hot']
@@ -74,11 +73,11 @@ class HotwordManager:
                 f.write('# 在此放置热词，每行一个，井号开头为注释\n')
 
         with open(path, 'r', encoding='utf-8') as f:
-            num = self.corrector.update_hotwords(f.read())
+            num = self.phoneme_corrector.update_hotwords(f.read())
 
         console.print(f'热词 [cyan]hot.txt[/] 已更新，载入 [green4]{num:5}[/] 条热词')
         logger.debug(f"载入 {num} 条热词")
-    
+
     def _load_rule(self) -> None:
         """加载自定义规则"""
         path = HOTWORD_FILES['rule']
@@ -97,65 +96,19 @@ class HotwordManager:
         if self.rectify_rag.records:
             console.print(f'热词 [cyan]hot-rectify.txt[/] 已更新，载入 [green4]{len(self.rectify_rag.records)}[/] 条纠错规则')
             logger.debug(f"载入 {len(self.rectify_rag.records)} 条 LLM 纠错历史")
-    
-    def substitute(self, text: str) -> CorrectionResult:
-        """
-        执行热词替换
 
-        Args:
-            text: 原始文本
+    def get_phoneme_corrector(self) -> PhonemeCorrector:
+        """获取音素纠错器"""
+        return self.phoneme_corrector
 
-        Returns:
-            CorrectionResult(纠错后的文本, 匹配的热词列表)
-            matched_hotwords 使用相似列表阈值（低阈值），供 LLM 上下文使用
-        """
-        logger.debug(f"[热词替换] 原始文本: {text}")
-        matched_hotwords = []
+    def get_rule_corrector(self) -> RuleCorrector:
+        """获取规则纠错器"""
+        return self.rule_corrector
 
-        # 1. 热词 RAG 纠错
-        if Config.hot:
-            logger.debug(f"[热词替换] 开始 RAG 音素匹配 (替换阈值={Config.hot_thresh}, 相似阈值={Config.hot_similar})")
-            result = self.corrector.correct(text)
-            if result.text != text:
-                logger.debug(f"[热词替换] RAG 匹配成功: '{text}' => '{result.text}', 匹配热词: {result.matched_hotwords}")
-            else:
-                logger.debug(f"[热词替换] RAG 未匹配到热词（低于替换阈值 {Config.hot_thresh}）")
-            text = result.text
-            matched_hotwords = result.matched_hotwords
+    def get_rectify_rag(self) -> RectificationRAG:
+        """获取纠错历史检索器"""
+        return self.rectify_rag
 
-            # 获取相似热词列表（使用低阈值）
-            if matched_hotwords:
-                logger.debug(f"[热词替换] 相似热词列表: {matched_hotwords}")
-        else:
-            logger.debug(f"[热词替换] RAG 已禁用，跳过")
-
-        # 2. 自定义规则替换
-        if Config.hot_rule:
-            before_rule = text
-            text = self.rule_corrector.correct(text)
-            if before_rule != text:
-                logger.debug(f"[热词替换] 自定义规则替换: '{before_rule}' => '{text}'")
-            else:
-                logger.debug(f"[热词替换] 自定义规则未匹配")
-        else:
-            logger.debug(f"[热词替换] 自定义规则已禁用，跳过")
-
-        logger.debug(f"[热词替换] 最终结果: {text}, 匹配热词: {matched_hotwords}")
-        return CorrectionResult(text=text, matched_hotwords=matched_hotwords)
-
-    def get_matched_hotwords(self, text: str) -> list:
-        """
-        获取匹配的热词列表（供 LLM 调用）
-
-        Args:
-            text: 原始文本
-
-        Returns:
-            [(hotword, score), ...] 匹配的热词及其分数
-        """
-        result = self.corrector.correct(text)
-        return result.matched_hotwords
-    
     def start_file_watcher(self) -> Any:
         """
         启动文件监视（监视根目录，过滤热词文件）
@@ -172,7 +125,7 @@ class HotwordManager:
         self._observer.start()
         logger.debug("热词文件监视已启动")
         return self._observer
-    
+
     def stop_file_watcher(self) -> None:
         """停止文件监视"""
         if self._observer:

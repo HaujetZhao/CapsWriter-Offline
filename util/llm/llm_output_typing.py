@@ -91,12 +91,11 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
                 return (TextOutput.strip_punc(full_text), token_count, generation_time)
 
     except Exception as e:
-        # 处理 LLM 异常
-        result_text, success = handle_llm_error(e, text, "LLM")
-        if success:
-            # 降级策略：输出原文本
-            result_text = TextOutput.strip_punc(result_text)
-            await output_text(result_text, paste)
+        # 处理 LLM 异常：降级到原文本
+        result_text, _ = handle_llm_error(e, text, "LLM")
+        # 降级策略：输出原文本
+        result_text = TextOutput.strip_punc(result_text)
+        await output_text(result_text, paste)
         return (result_text, 0, 0.0)
 
 

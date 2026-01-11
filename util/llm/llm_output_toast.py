@@ -120,9 +120,37 @@ async def handle_toast_mode(text: str, role_config = None, matched_hotwords=None
         if msg_id:
             toast_manager.close_toast(msg_id)
 
-        # 处理 LLM 异常（显示错误通知）
-        from util.llm.llm_error_handler import show_error_notification
-        show_error_notification(e, "LLM")
+        # 处理 LLM 异常：降级到原文本（按照角色配置）
+        from util.llm.llm_error_handler import handle_llm_error, should_fallback_to_original
+        from util.llm.llm_handler import get_handler
 
-        # 返回空字符串表示失败
-        return ("", 0, 0.0)
+        # 获取角色名称用于错误提示
+        role_name = role_config.name if role_config else "LLM"
+
+        # 获取原始输入文本（移除角色前缀）
+        handler = get_handler()
+        _, content = handler.detect_role(text)
+        original_text = content if content else text
+
+        # 判断是否应该降级
+        if should_fallback_to_original(e):
+            # 降级策略：使用 typing 方式输出原文本
+            result_text, _ = handle_llm_error(e, original_text, role_name)
+            result_text = TextOutput.strip_punc(result_text)
+
+            # 导入 typing 输出函数
+            from util.llm.llm_output_typing import output_text
+
+            # 获取 paste 参数（从 role_config 或使用默认值）
+            from config import ClientConfig as Config
+            paste = Config.paste  # 使用全局配置
+
+            # 按照 typing 方式输出降级文本
+            await output_text(result_text, paste)
+
+            return (result_text, 0, 0.0)
+        else:
+            # 不可降级：显示错误通知，返回空字符串
+            from util.llm.llm_error_handler import show_error_notification
+            show_error_notification(e, role_name)
+            return ("", 0, 0.0)

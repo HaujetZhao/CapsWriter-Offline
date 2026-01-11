@@ -16,7 +16,7 @@ from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 from config import ClientConfig as Config
 from util.client.state import console
 from util.client.websocket_manager import WebSocketManager
-from util.client.processing.hotword import get_hotword_manager
+from util.hotword import get_hotword_manager
 from util.client.processing.output import TextOutput
 from util.tools.window_detector import get_active_window_info
 from util.logger import get_logger
@@ -231,8 +231,13 @@ class ResultProcessor:
             return
 
         # 热词替换
-        correction_result = self._hotword_manager.substitute(text)
+        # 1. 音素纠错
+        correction_result = self._hotword_manager.get_phoneme_corrector().correct(text)
         text = correction_result.text
+
+        # 2. 规则纠错
+        text = self._hotword_manager.get_rule_corrector().substitute(text)
+
         text = TextOutput.strip_punc(text)
 
         # 保存最近一次识别结果（供用户手动添加纠错记录到 hot-rectify.txt）

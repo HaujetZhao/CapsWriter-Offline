@@ -15,15 +15,11 @@ LLM 消息构建模块
 from __future__ import annotations
 
 import json
-from typing import List, Dict, Optional, Tuple, TYPE_CHECKING, Any
+from typing import List, Dict, Optional, Tuple, Any
 
 from util.llm.llm_role_config import RoleConfig
 from util.llm.llm_constants import estimate_tokens
 from util.logger import get_logger
-
-# 类型检查时导入，运行时可选
-if TYPE_CHECKING:
-    from util.hotword.hot_rectification import RectificationRAG
 
 logger = get_logger('client')
 
@@ -31,17 +27,18 @@ logger = get_logger('client')
 class MessageBuilder:
     """LLM 消息构建器"""
 
-    def __init__(
-        self,
-        rectify_rag: Optional['RectificationRAG'] = None
-    ):
+    def __init__(self):
         """
         初始化消息构建器
-
-        Args:
-            rectify_rag: 纠错历史 RAG 检索器
         """
-        self.rectify_rag = rectify_rag
+        # 延迟导入避免循环依赖
+        pass
+
+    def _get_rectify_rag(self):
+        """从 HotwordManager 获取 RectificationRAG"""
+        from util.hotword import get_hotword_manager
+        manager = get_hotword_manager()
+        return manager.get_rectify_rag()
 
     def build_messages(
         self,
@@ -89,17 +86,31 @@ class MessageBuilder:
         enable_hotwords = getattr(role_config, 'enable_hotwords', False)
         enable_rectify_rag = getattr(role_config, 'enable_rectify_rag', False)
 
+        logger.debug(f"[消息构建] enable_hotwords={enable_hotwords}, hotwords数量={len(hotwords) if hotwords else 0}")
+        logger.debug(f"[消息构建] enable_rectify_rag={enable_rectify_rag}")
+
         # 添加 RAG 热词列表（根据角色配置）
         if enable_hotwords and hotwords:
             hotwords_prompt = self._format_hotwords_prompt(hotwords)
             if hotwords_prompt:
                 user_content_parts.append(hotwords_prompt)
+                logger.debug(f"[消息构建] 已添加热词列表")
 
         # 添加纠错历史（根据角色配置）
-        if self.rectify_rag and enable_rectify_rag:
-            rectify_prompt = self.rectify_rag.format_prompt(user_content)
-            if rectify_prompt:
-                user_content_parts.append(rectify_prompt)
+        if enable_rectify_rag:
+            logger.debug(f"[消息构建] 开始调用 rectify_rag.format_prompt")
+            rectify_rag = self._get_rectify_rag()
+            if rectify_rag:
+                rectify_prompt = rectify_rag.format_prompt(user_content)  
+                if rectify_prompt:
+                    user_content_parts.append(rectify_prompt)
+                    logger.debug(f"[消息构建] 已添加纠错历史")
+                else:
+                    logger.debug(f"[消息构建] rectify_prompt 为空")
+            else:
+                logger.debug(f"[消息构建] rectify_rag 为 None")
+        else:
+            logger.debug(f"[消息构建] 跳过纠错历史: enable_rectify_rag={enable_rectify_rag}")
 
         # 添加选中文字（根据角色配置）
         if selection_text:

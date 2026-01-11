@@ -19,7 +19,7 @@ from util.llm.llm_role_detector import RoleDetector
 from util.llm.llm_processor import LLMProcessor
 from util.llm.llm_get_selection import get_selected_text, record_selection_usage
 from util.logger import get_logger
-from util.client.processing.hotword import get_hotword_manager
+from util.hotword import get_hotword_manager
 
 logger = get_logger('client')
 
@@ -41,9 +41,6 @@ class LLMHandler:
         self.roles = self.role_loader.get_roles()
         logger.info(f"已加载角色: {list(self.roles.keys())}")
 
-        # 从热词管理器获取纠错历史 RAG
-        self.rectify_rag = self.hotword_manager.rectify_rag
-
         # 上下文管理器池
         self.context_managers: Dict[str, ContextManager] = {}
         self._init_context_managers()
@@ -51,8 +48,8 @@ class LLMHandler:
         # 客户端池
         self.client_pool = ClientPool()
 
-        # 消息构建器
-        self.message_builder = MessageBuilder(rectify_rag=self.rectify_rag)
+        # 消息构建器（内部从 HotwordManager 获取 rectify_rag）
+        self.message_builder = MessageBuilder()
 
         # 角色检测器
         self.role_detector = RoleDetector(self.role_loader)
@@ -126,7 +123,9 @@ class LLMHandler:
             logger.debug("角色配置为空，跳过 LLM 处理")
             return (text, 0, 0.0)
 
-        role_name = role_config.name
+        # 获取处理后的角色名称（空字符串 -> '默认'）
+        from util.llm.llm_constants import RoleConfigDefaults
+        role_name = role_config.name or RoleConfigDefaults.DEFAULT_ROLE_NAME
         logger.debug(f"使用角色: {role_name}, 处理内容: {content}")
 
         # 获取上下文管理器（如果启用历史）
