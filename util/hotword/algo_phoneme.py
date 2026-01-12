@@ -29,6 +29,11 @@ class Phoneme:
     is_word_start: bool = False  # 是否是字起始（声母/零声母）
     is_word_end: bool = False    # 是否是字结束（声调）
 
+    @property
+    def info(self) -> Tuple[str, str, bool, bool]:
+        """返回包含所有属性的四元组 (值, 语言, 起始标, 结束标)"""
+        return (self.value, self.lang, self.is_word_start, self.is_word_end)
+
     def __str__(self) -> str:
         return self.value
 

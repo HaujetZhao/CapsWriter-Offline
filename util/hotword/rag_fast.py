@@ -118,18 +118,28 @@ class PhonemeIndex:
         self.index: Dict[int, List[Tuple[str, np.ndarray]]] = defaultdict(list)
         self.all_hotwords: List[Tuple[str, np.ndarray]] = []
         
-    def add(self, hotword: str, phonemes: List[Phoneme]):
+    def add(self, hotword: str, phonemes: List[Phoneme], key_indices: List[int] = None):
         """添加热词到索引"""
         if not phonemes:
             return
+        
+        if key_indices is None:
+            key_indices = [0]
         
         # 规范：只处理 Phoneme 对象
         phoneme_strs = [p.value for p in phonemes]
                 
         codes = self.encoder.encode_sequence(phoneme_strs)
-        first_code = codes[0]
         
-        self.index[first_code].append((hotword, codes))
+        # 收集需要索引的 code
+        target_codes = set()
+        for idx in key_indices:
+            if idx < len(codes):
+                target_codes.add(codes[idx])
+        
+        for code in target_codes:
+            self.index[code].append((hotword, codes))
+            
         self.all_hotwords.append((hotword, codes))
         
     def get_candidates(self, input_phonemes: List[Phoneme]) -> List[Tuple[str, np.ndarray]]:
@@ -193,7 +203,15 @@ class FastRAG:
         """
         for hw, phonemes in hotwords.items():
             if phonemes:
-                self.index.add(hw, phonemes)
+                # 默认只索引首音素
+                indices = [0]
+                
+                if phonemes[0].lang == 'en':
+                    # 英文热词额外索引第二个音素，以容错首位拼写错误 (如 klaude -> Claude)
+                    limit = min(len(phonemes), 2)
+                    indices = list(range(limit))
+                
+                self.index.add(hw, phonemes, indices)
                 self.hotword_count += 1
                 
     def search(self, input_phonemes: List[Phoneme], top_k: int = 10) -> List[Tuple[str, float]]:
