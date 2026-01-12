@@ -164,9 +164,27 @@ def find_best_match(main_seq: List[Phoneme], sub_seq: List[Phoneme]) -> Tuple[fl
     # DP 矩阵: rows=n+1, cols=m+1
     dp = [[0.0] * (m + 1) for _ in range(n + 1)]
 
-    # Initialize first column
+    # Initialize first row (Start Constraints)
+    # dp[0][j] = 0 means we can start matching at position j (main_seq[j]) with 0 cost.
+    # We only allow starting at valid word boundaries.
+    for j in range(m + 1):
+        if j in valid_starts:
+            dp[0][j] = 0.0
+        else:
+            # Special case: allow starting at absolute beginning if it matches word start
+            # (valid_starts usually includes 0 if main_seq[0] is start)
+            # But we also accept start at end of string (j=m) as valid "empty match", though useless for non-empty sub.
+            dp[0][j] = float('inf')
+            
+    # Allow 0 to be valid if valid_starts is empty? No, pure boundary constraint.
+    # If j=m, it's out of bounds for main_seq, so cannot start a word there. 
+    # Unless we match empty string? But let's keep it simple.
+    # Note: dp[0][0] must be 0 if 0 is in valid_starts.
+    
+    # Initialize first column (Deletion cost from valid start)
+    # This loop depends on dp[0][0] being 0 or inf.
     for i in range(1, n + 1):
-        dp[i][0] = float(i)
+        dp[i][0] = dp[i-1][0] + 1.0
 
     # 填充 DP 矩阵
     for i in range(1, n + 1):
