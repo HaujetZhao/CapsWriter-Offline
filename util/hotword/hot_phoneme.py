@@ -28,7 +28,9 @@ class MatchResult(NamedTuple):
 class CorrectionResult(NamedTuple):
     """纠错结果，包含纠错后的文本和匹配的热词列表"""
     text: str                           # 纠错后的文本
-    matched_hotwords: List[Tuple[str, float]]  # [(热词, 分数), ...]
+    matchs: List[Tuple[str, float]]  # [(热词, 分数), ...]
+    similars: List[Tuple[str, float]]  # [(热词, 分数), ...]
+    
 
 
 class PhonemeCorrector:
@@ -52,7 +54,7 @@ class PhonemeCorrector:
         初始化拼音纠错器
         """
         self.threshold = threshold
-        self.similar_threshold = similar_threshold if similar_threshold is not None else threshold - 0.15
+        self.similar_threshold = similar_threshold if similar_threshold is not None else threshold - 0.2
         
         self.max_diff = 2             # 滑窗匹配中允许的最大音素差异数
         self.top_k_candidates = 100   # 粗筛保留的候选词数
@@ -85,10 +87,11 @@ class PhonemeCorrector:
     def _find_matches(self, fast_results: List, input_processed: List[Tuple]) -> List[MatchResult]:
         """精细匹配逻辑：滑动窗口、模糊打分、边界检查"""
         matches = []
+        similars = []
         input_len = len(input_processed)
 
         for hw, score in fast_results:
-            if score < self.threshold: continue
+            # if score < self.threshold: continue
             
             # 获取热词的对比序列 (保持 info 七元组中的前五项：值, 语言, 字始, 字终, 声调)
             hw_phonemes = self.hotwords[hw]
@@ -124,14 +127,18 @@ class PhonemeCorrector:
 
                 # 2. 精细相似度计算 (调用 Numba 加速的 fast_substring_score)
                 current_score = fast_substring_score(hw_compare, sub_seg)
-                if current_score < self.similar_threshold: continue
 
                 # 记录匹配：从 info 七元组 [5], [6] 直接拿位置
                 char_start = sub_seg[0][5]
                 char_end = sub_seg[-1][6]
-                matches.append(MatchResult(char_start, char_end, current_score, hw))
-            
-        return matches
+                similars.append(MatchResult(char_start, char_end, current_score, hw))
+                if current_score >= self.threshold:
+                    matches.append(MatchResult(char_start, char_end, current_score, hw))
+
+        # 潜在热词按得分降序排序、过滤
+        similars.sort(key=lambda x: x.score, reverse=True)
+        similars = [p for p in similars if p.score >= self.similar_threshold]
+        return matches, similars
 
     def _resolve_and_replace(self, text: str, matches: List[MatchResult]) -> Tuple[str, List[Tuple[str, float]], List[Tuple[str, float]]]:
         """冲突去重与文本替换"""
@@ -170,16 +177,21 @@ class PhonemeCorrector:
             
         return "".join(result_list), [(m.hotword, m.score) for m in final_matches], all_matched_info
 
-    def correct(self, text: str) -> CorrectionResult:
-        """执行纠错替换"""
+    def correct(self, text: str, k: int = 10) -> CorrectionResult:
+        """
+        执行纠错替换
+        
+        Args:
+            text: 输入文本
+            k: 返回上下文相关的前 k 个热词
+        """
         if not text or not self.hotwords:
-            return CorrectionResult(text=text, matched_hotwords=[])
+            return CorrectionResult(text=text, matchs=[], similars=[])
 
         # 1. 提取带位置信息的音素序列
-        # get_phoneme_info now returns a list of Phoneme objects, each containing a 7-tuple info
         input_phonemes = get_phoneme_info(text)
         if not input_phonemes:
-            return CorrectionResult(text=text, matched_hotwords=[])
+            return CorrectionResult(text=text, matchs=[], similars=[])
 
         # 2. 检索与匹配
         with self._lock:
@@ -187,17 +199,14 @@ class PhonemeCorrector:
             fast_results = self.fast_rag.search(input_phonemes, top_k=100)
             # 预处理输入 (转换为全能七元组：值, 语言, 字始, 字终, 是调, 始位, 终位)
             input_processed = [p.info for p in input_phonemes]
-            # 精筛 (不再需要传递 char_indices，元组自带位置)
-            matches = self._find_matches(fast_results, input_processed)
+            # 精筛
+            matches, similars = self._find_matches(fast_results, input_processed)
 
         # 3. 冲突解决与替换
         new_text, final_hw_info, all_hw_info = self._resolve_and_replace(text, matches)
+        similars = [(m.hotword, m.score) for m in similars[:k]]
 
-        # 如果没有执行实际替换，但有高分匹配，依然返回这些匹配供 RAG 使用
-        if new_text == text:
-             return CorrectionResult(text=text, matched_hotwords=all_hw_info)
-             
-        return CorrectionResult(text=new_text, matched_hotwords=final_hw_info)
+        return CorrectionResult(text=new_text, matchs=final_hw_info, similars=similars)
 
 
 if __name__ == "__main__":
@@ -237,8 +246,8 @@ if __name__ == "__main__":
     for text in test_cases_zh:
         result = corrector.correct(text)
         print(f"  '{text}' -> '{result.text}'")
-        if result.matched_hotwords:
-            print(f"    匹配热词: {result.matched_hotwords}")
+        if result.matchs:
+            print(f"    匹配热词: {result.matchs}")
     
     print("\n=== 英文测试 ===")
     test_cases_en = [
@@ -251,8 +260,8 @@ if __name__ == "__main__":
     for text in test_cases_en:
         result = corrector.correct(text)
         print(f"  '{text}' -> '{result.text}'")
-        if result.matched_hotwords:
-            print(f"    匹配热词: {result.matched_hotwords}")
+        if result.matchs:
+            print(f"    匹配热词: {result.matchs}")
 
     print("\n=== 股票热词测试 (stocks.txt) ===")
     # 读取 stocks.txt 文件
@@ -279,11 +288,11 @@ if __name__ == "__main__":
         for text in test_cases_stocks:
             result = corrector.correct(text)
             print(f"  '{text}' -> '{result.text}'")
-            if result.matched_hotwords:
+            if result.matchs:
                 # 只显示前3个匹配的热词，避免输出过长
-                displayed = result.matched_hotwords[:3]
-                if len(result.matched_hotwords) > 3:
-                    displayed.append(f"...(共{len(result.matched_hotwords)}个)")
+                displayed = result.matchs[:3]
+                if len(result.matchs) > 3:
+                    displayed.append(f"...(共{len(result.matchs)}个)")
                 print(f"    匹配热词: {displayed}")
 
         # =====================================================================
@@ -325,7 +334,7 @@ if __name__ == "__main__":
         for text in comparison_tests:
             # PhonemeCorrector 结果
             result_pc = corrector.correct(text)
-            pc_top = result_pc.matched_hotwords[0] if result_pc.matched_hotwords else None
+            pc_top = result_pc.matchs[0] if result_pc.matchs else None
 
             # FastRAG 结果
             input_phonemes, _ = get_phoneme_info(text)
