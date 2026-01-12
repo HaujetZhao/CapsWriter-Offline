@@ -210,32 +210,31 @@ class FastRAG:
                 
     def search(self, input_phonemes: List[Phoneme], top_k: int = 10) -> List[Tuple[str, float]]:
         """
-        检索相关热词
-        
-        Args:
-            input_phonemes: 输入音素序列 (List[Phoneme])
-            top_k: 返回前 K 个结果
-            
-        Returns:
-            [(热词, 分数), ...]
+        检索相关热词（高层编排）
         """
-        if not input_phonemes:
-            return []
+        if not input_phonemes: return []
         
+        # 1. 编码输入并获取候选
         input_codes = self.index.encode_input(input_phonemes)
-        input_len = len(input_codes)
-        
-        # 获取候选（首音素过滤）
         candidates = self.index.get_candidates(input_phonemes)
         
+        # 2. 遍历打分与过滤
+        results = self._score_candidates(input_codes, candidates)
+        
+        # 3. 排序并截断
+        results.sort(key=lambda x: x[1], reverse=True)
+        return results[:top_k]
+
+    def _score_candidates(self, input_codes: np.ndarray, candidates: List[Tuple[str, np.ndarray]]) -> List[Tuple[str, float]]:
+        """对候选列表进行相似度计算与阈值过滤"""
         results = []
+        input_len = len(input_codes)
         
         for hw, hw_codes in candidates:
             hw_len = len(hw_codes)
             
-            # 长度过滤：热词太长不可能匹配
-            if hw_len > input_len + 3:
-                continue
+            # 长度过滤：热词太长或太短都不可能匹配
+            if hw_len > input_len + 3: continue
             
             # 计算距离
             if HAS_NUMBA:
@@ -243,15 +242,11 @@ class FastRAG:
             else:
                 min_dist = self._python_distance(input_codes, hw_codes)
             
-            # 计算分数
+            # 计算分数 (1 - 归一化距离)
             score = 1.0 - (min_dist / hw_len)
-            
             if score >= self.threshold:
                 results.append((hw, round(score, 3)))
-        
-        # 排序
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:top_k]
+        return results
 
     def compute_score(self, input_phonemes: List[str], hotword_phonemes: List[str]) -> float:
         """

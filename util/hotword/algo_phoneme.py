@@ -141,100 +141,62 @@ def split_mixed_label(input_str: str) -> List[str]:
     return tokens
 
 
+def _zh_char_to_phonemes(char: str) -> List[Phoneme]:
+    """将单个汉字转为音素列表 [声母, 韵母, 声调]"""
+    try:
+        py_initials = pinyin(char, style=Style.INITIALS, strict=False)
+        py_finals = pinyin(char, style=Style.FINALS, strict=False)
+        py_tone3 = pinyin(char, style=Style.TONE3, strict=False)
+
+        if not py_tone3 or not py_tone3[0] or not py_tone3[0][0]:
+            return [Phoneme(char, 'zh', is_word_start=True, is_word_end=True)]
+
+        res = []
+        has_initial = py_initials and py_initials[0] and py_initials[0][0]
+        
+        # 1. 声母
+        if has_initial:
+            res.append(Phoneme(py_initials[0][0], 'zh', is_word_start=True))
+        
+        # 2. 韵母
+        if py_finals and py_finals[0] and py_finals[0][0]:
+            res.append(Phoneme(py_finals[0][0], 'zh', is_word_start=not has_initial))
+            
+        # 3. 声调
+        py_val = py_tone3[0][0]
+        tone = py_val[-1] if py_val[-1].isdigit() else '0'
+        res.append(Phoneme(tone, 'zh', is_word_end=True))
+        
+        return res if res else [Phoneme(char, 'zh', is_word_start=True, is_word_end=True)]
+    except Exception:
+        return [Phoneme(char, 'zh', is_word_start=True, is_word_end=True)]
+
+
 def get_phoneme_seq(text: str, ascii_split_char: bool = False) -> List[Phoneme]:
     """
     将文本转换为音素序列（带语言属性）
-
-    Args:
-        text: 输入文本
-        ascii_split_char: 是否将英文和数字拆分为单字符 (用于模糊匹配)
-                       True: "Python" -> [Phoneme('p','en'), ..., Phoneme('n','en')]
-                       False: "Python" -> [Phoneme('python','en')]
-
-    对于中文字符：转换为 [声母, 韵母, 声调]，语言类型为 'zh'
-    对于英文单词：语言类型为 'en'
-    对于数字：语言类型为 'num'
-
-    Returns:
-        List[Phoneme]: 带语言属性的音素列表
     """
-    # 规范化文本：移除符号和空格，统一处理
     normalized = normalize_text(text)
-
     if not pinyin:
-        logger.warning("pypinyin 未安装，热词/纠错功能将降级为字符匹配。运行 'pip install pypinyin' 安装。")
-        # 降级模式：返回字符序列，语言类型统一设为 'zh'，每个字符都是独立的字
+        logger.warning("pypinyin 未安装，功能将降级。")
         return [Phoneme(c, 'zh', is_word_start=True, is_word_end=True) for c in split_mixed_label(normalized)]
 
-    tokens = split_mixed_label(normalized)
     phoneme_seq: List[Phoneme] = []
-
-    for token in tokens:
-        # 英文单词或数字
-        is_en_num = bool(re.match(r'^[a-z0-9]+$', token))
-
-        if is_en_num:
-            lang: Literal['en', 'num'] = 'num' if token.isdigit() else 'en'
+    for token in split_mixed_label(normalized):
+        # 英文/数字处理
+        if re.match(r'^[a-z0-9]+$', token):
+            lang = 'num' if token.isdigit() else 'en'
             if ascii_split_char:
-                # 拆分为单字符（每个字符都是独立的字）
                 phoneme_seq.extend([Phoneme(c, lang, is_word_start=True, is_word_end=True) for c in token])
             else:
-                # 保持整体（整个单词是一个字）
                 phoneme_seq.append(Phoneme(token, lang, is_word_start=True, is_word_end=True))
             continue
 
-        # 符号或其他非英文数字的多字符 token
-        if len(token) > 1 and not is_en_num:
-            phoneme_seq.append(Phoneme(token, 'zh', is_word_start=True, is_word_end=True))
-            continue
-
-        if not token.strip():
-            continue
-
-        # 中文转拼音
-        try:
-            # 直接使用 pypinyin 的 Style 获取声母、韵母、声调
-            py_initials = pinyin(token, style=Style.INITIALS, strict=False)
-            py_finals = pinyin(token, style=Style.FINALS, strict=False)
-            py_tone3 = pinyin(token, style=Style.TONE3, strict=False)
-
-            if py_tone3 and py_tone3[0] and py_tone3[0][0]:
-                # 判断是否零声母（没有声母）
-                has_initial = py_initials and py_initials[0] and py_initials[0][0]
-
-                # 提取声母（字起始）
-                if has_initial:
-                    initial = py_initials[0][0]
-                    if initial:
-                        phoneme_seq.append(Phoneme(initial, 'zh', is_word_start=True))
-
-                # 提取韵母（零声母时是字起始）
-                if py_finals and py_finals[0] and py_finals[0][0]:
-                    final = py_finals[0][0]
-                    if final:
-                        is_start = not has_initial  # 零声母时韵母是字起始
-                        phoneme_seq.append(Phoneme(final, 'zh', is_word_start=is_start))
-
-                # 提取声调（字结束）
-                py = py_tone3[0][0]
-                tone = ''
-                if py and py[-1].isdigit():
-                    tone = py[-1]
-                else:
-                    tone = '0'
-
-                if tone:
-                    phoneme_seq.append(Phoneme(tone, 'zh', is_word_end=True))
-
-                # 如果没有提取到任何音素，保留原字
-                if not any([
-                    has_initial,
-                    (py_finals and py_finals[0] and py_finals[0][0]),
-                ]):
-                    phoneme_seq.append(Phoneme(token, 'zh', is_word_start=True, is_word_end=True))
-            else:
-                phoneme_seq.append(Phoneme(token, 'zh', is_word_start=True, is_word_end=True))
-        except Exception as e:
+        # 中文/其他处理
+        if len(token) == 1:
+            phoneme_seq.extend(_zh_char_to_phonemes(token))
+        else:
+            # 兜底：处理可能的非英数多字符 token
             phoneme_seq.append(Phoneme(token, 'zh', is_word_start=True, is_word_end=True))
 
     return phoneme_seq

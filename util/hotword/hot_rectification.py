@@ -13,11 +13,11 @@ LLM 纠错历史 RAG
 import threading
 import time
 from pathlib import Path
-from typing import List, Tuple, Dict, Set
+from typing import List, Tuple, Dict, Set, Optional
 from difflib import SequenceMatcher
 from dataclasses import dataclass
 
-from .algo_phoneme import get_phoneme_seq, normalize_text
+from .algo_phoneme import get_phoneme_seq, normalize_text, Phoneme
 from .algo_calc import fuzzy_substring_distance
 try:
     from util.logger import get_logger
@@ -46,225 +46,91 @@ class Fragment:
     def __repr__(self):
         return f"Fragment('{self.text}', pos={self.start}:{self.end})"
 
+def _get_word_boundaries(text: str) -> List[Tuple[int, int, str]]:
+    """
+    获取文本中所有单词的边界
+    返回: [(start, end, word), ...] 每个单词的起止位置和内容
+    """
+    boundaries = []
+    i, n = 0, len(text)
+    while i < n:
+        if not (text[i].isalnum() or '\u4e00' <= text[i] <= '\u9fff'):
+            i += 1
+            continue
+        start = i
+        if '\u4e00' <= text[i] <= '\u9fff':
+            i += 1
+        elif text[i].isalnum():
+            last_was_lower = text[i].islower()
+            while i < n and text[i].isalnum():
+                if text[i].isupper() and last_was_lower and i > start:
+                    break
+                last_was_lower = text[i].islower()
+                i += 1
+        boundaries.append((start, i, text[start:i]))
+    return boundaries
+
+
+def _expand_by_words(text: str, start: int, end: int, expand_count: int = 1) -> Tuple[int, int]:
+    """按单词数量向左右扩展片段"""
+    bounds = _get_word_boundaries(text)
+    start_idx = next((i for i, b in enumerate(bounds) if b[0] == start), None)
+    end_idx = next((i + 1 for i, b in enumerate(bounds) if b[1] == end), None)
+
+    if start_idx is None or end_idx is None:
+        return start, end
+
+    new_start = bounds[max(0, start_idx - expand_count)][0]
+    new_end = bounds[min(len(bounds), end_idx + expand_count) - 1][1]
+    return new_start, new_end
+
+
+def _extract_continuous_fragment(bounds: List[Tuple[int, int, str]], start_idx: int, end_idx: int, original_text: str) -> str:
+    """从边界列表中提取连续的片段（保留原始文本中的分隔符）"""
+    if start_idx >= end_idx or start_idx >= len(bounds):
+        return ""
+    return original_text[bounds[start_idx][0] : bounds[end_idx - 1][1]]
+
+
 def extract_diff_fragments(wrong: str, right: str, zh_min_phonemes: int = 4, expand_words: int = 1) -> List[str]:
     """
     提取两个句子之间的差异片段（包括错误版本和正确版本）
     基于单词序列进行精准提取
-
-    核心策略：
-    - 使用 SequenceMatcher 比较单词序列（而非字符序列）
-    - 提取**连续的修正片段**，而非单个单词
-    - 英文片段：直接保留，不扩展
-    - 中文片段：如果太短，左右各扩展 expand_words 个单词
-
-    边界定义：
-    - 中文：每个字都是一个边界
-    - 英文单词：连续字母/数字构成一个词
-    - 大小写变化：小写→大写是边界（如 cloudCode）
-    - 空格/标点：边界
-
-    例如：
-    "cloud code" => "Claud Code"
-      提取: ["cloud code", "Claud Code"]  （连续的修正片段）
-
-    "这样就可以了" => "这样不就可以了"
-      提取: ["样不就"]  （左右各扩展1个字）
-
-    Args:
-        wrong: 错误句子
-        right: 正确句子
-        zh_min_phonemes: 中文片段的最小音素数量（默认4，约1-2个词）
-        expand_words: 中文扩展时左右各扩展的单词数量（默认1）
-
-    Returns:
-        提取到的差异片段列表（连续的单词组合）
     """
-    fragments = set()
-
-    def get_word_boundaries(text: str) -> List[Tuple[int, int, str]]:
-        """
-        获取文本中所有单词的边界
-
-        返回: [(start, end, word), ...] 每个单词的起止位置和内容
-        规则：
-        - 中文：每个字单独一个词
-        - 英文：连续字母/数字构成一个词
-        - 大小写转换处：cloudCode -> [cloud, Code]
-        """
-        boundaries = []
-        i = 0
-        n = len(text)
-
-        while i < n:
-            # 跳过空白和标点
-            if not (text[i].isalnum() or '\u4e00' <= text[i] <= '\u9fff'):
-                i += 1
-                continue
-
-            start = i
-
-            # 中文：每个字单独处理
-            if '\u4e00' <= text[i] <= '\u9fff':
-                i += 1
-            # 英文/数字：连续收集
-            elif text[i].isalnum():
-                last_was_lower = text[i].islower()
-                while i < n and text[i].isalnum():
-                    # 检测大小写转换：cloudCode 会在 C 处分割
-                    if text[i].isupper() and last_was_lower and i > start:
-                        break
-                    last_was_lower = text[i].islower()
-                    i += 1
-
-            end = i
-            boundaries.append((start, end, text[start:end]))
-
-        return boundaries
-
-    def expand_by_words(text: str, start: int, end: int, expand_count: int = 1) -> Tuple[int, int]:
-        """
-        按单词数量向左右扩展片段
-
-        Args:
-            text: 完整文本
-            start: 片段起始位置
-            end: 片段结束位置
-            expand_count: 左右各扩展的单词数量
-
-        Returns:
-            (扩展后起始位置, 扩展后结束位置)
-        """
-        # 获取单词边界
-        bounds = get_word_boundaries(text)
-
-        # 找到当前片段对应的单词索引
-        start_idx = None
-        end_idx = None
-        for i, (b_start, b_end, _) in enumerate(bounds):
-            if b_start == start:
-                start_idx = i
-            if b_end == end:
-                end_idx = i + 1
-                if start_idx is not None:
-                    break
-
-        if start_idx is None or end_idx is None:
-            return start, end
-
-        # 向左扩展
-        new_start_idx = max(0, start_idx - expand_count)
-        # 向右扩展
-        new_end_idx = min(len(bounds), end_idx + expand_count)
-
-        # 返回新的位置
-        new_start = bounds[new_start_idx][0]
-        new_end = bounds[new_end_idx - 1][1]
-
-        return new_start, new_end
-
-    def extract_continuous_fragment(bounds: List[Tuple[int, int, str]], start_idx: int, end_idx: int, original_text: str) -> str:
-        """
-        从边界列表中提取连续的片段（保留原始文本中的分隔符）
-
-        Args:
-            bounds: 单词边界列表 [(start, end, word), ...]
-            start_idx: 起始单词索引
-            end_idx: 结束单词索引（不包含）
-            original_text: 原始文本
-
-        Returns:
-            连续的片段字符串
-        """
-        if start_idx >= end_idx or start_idx >= len(bounds):
-            return ""
-
-        # 获取第一个单词的起始位置和最后一个单词的结束位置
-        first_start = bounds[start_idx][0]
-        last_end = bounds[end_idx - 1][1]
-
-        # 从原始文本中切片，保留原始的分隔符（空格、标点等）
-        return original_text[first_start:last_end]
-
     # 获取两个文本的单词边界
-    wrong_bounds = get_word_boundaries(wrong)
-    right_bounds = get_word_boundaries(right)
+    wrong_bounds = _get_word_boundaries(wrong)
+    right_bounds = _get_word_boundaries(right)
 
-    # 构建单词列表
-    wrong_word_list = [word for _, _, word in wrong_bounds]
-    right_word_list = [word for _, _, word in right_bounds]
-
-    # 使用 SequenceMatcher 比较单词序列（而非字符序列）
-    matcher = SequenceMatcher(None, wrong_word_list, right_word_list)
-
-    # 存储片段对象
+    # 提取差异块
+    matcher = SequenceMatcher(None, [b[2] for b in wrong_bounds], [b[2] for b in right_bounds])
     fragments: List[Fragment] = []
 
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == 'replace':
-            # 替换：提取错句和正句中的连续片段
-            if i2 > i1:
-                frag_text = extract_continuous_fragment(wrong_bounds, i1, i2, wrong)
-                if frag_text:
-                    start_pos = wrong_bounds[i1][0]
-                    end_pos = wrong_bounds[i2-1][1]
-                    fragments.append(Fragment(frag_text, wrong, start_pos, end_pos))
-            if j2 > j1:
-                frag_text = extract_continuous_fragment(right_bounds, j1, j2, right)
-                if frag_text:
-                    start_pos = right_bounds[j1][0]
-                    end_pos = right_bounds[j2-1][1]
-                    fragments.append(Fragment(frag_text, right, start_pos, end_pos))
-
-        elif tag == 'delete':
-            # 删除：提取错句中的连续片段
-            if i2 > i1:
-                frag_text = extract_continuous_fragment(wrong_bounds, i1, i2, wrong)
-                if frag_text:
-                    start_pos = wrong_bounds[i1][0]
-                    end_pos = wrong_bounds[i2-1][1]
-                    fragments.append(Fragment(frag_text, wrong, start_pos, end_pos))
-
-        elif tag == 'insert':
-            # 插入：提取正句中的连续片段
-            if j2 > j1:
-                frag_text = extract_continuous_fragment(right_bounds, j1, j2, right)
-                if frag_text:
-                    start_pos = right_bounds[j1][0]
-                    end_pos = right_bounds[j2-1][1]
-                    fragments.append(Fragment(frag_text, right, start_pos, end_pos))
+        if tag in ('replace', 'delete') and i2 > i1:
+            frag_text = _extract_continuous_fragment(wrong_bounds, i1, i2, wrong)
+            if frag_text:
+                fragments.append(Fragment(frag_text, wrong, wrong_bounds[i1][0], wrong_bounds[i2-1][1]))
+        if tag in ('replace', 'insert') and j2 > j1:
+            frag_text = _extract_continuous_fragment(right_bounds, j1, j2, right)
+            if frag_text:
+                fragments.append(Fragment(frag_text, right, right_bounds[j1][0], right_bounds[j2-1][1]))
 
     # 智能过滤和扩展
     result = []
     for frag in fragments:
         phonemes = get_phoneme_seq(frag.text)
-        if not phonemes:
-            continue
+        if not phonemes: continue
 
-        # 检查音素的语言类型
-        # 英文单词（lang='en'）：直接保留，1个音素=1个完整单词
-        # 数字（lang='num'）：直接保留
-        # 中文（lang='zh'）：需要扩展到足够的音素数量
-        has_non_zh = any(p.lang != 'zh' for p in phonemes)
-
-        if has_non_zh:
-            # 英文/数字：直接保留
+        # 语言判定与扩展策略
+        if any(p.lang != 'zh' for p in phonemes) or len(phonemes) >= zh_min_phonemes:
             result.append(frag.text)
         else:
-            # 中文：检查是否需要扩展
-            if len(phonemes) >= zh_min_phonemes:
-                # 已经足够长，直接保留
-                result.append(frag.text)
-            else:
-                # 中文片段太短，左右各扩展 expand_words 个单词
-                exp_start, exp_end = expand_by_words(frag.source_text, frag.start, frag.end, expand_count=expand_words)
-                expanded_frag = frag.source_text[exp_start:exp_end]
-                if expanded_frag and expanded_frag != frag.text:
-                    result.append(expanded_frag)
-                else:
-                    # 扩展失败或没有变化，保留原片段
-                    result.append(frag.text)
+            # 中文片段太短，扩展单词
+            exp_start, exp_end = _expand_by_words(frag.source_text, frag.start, frag.end, expand_words)
+            expanded_frag = frag.source_text[exp_start:exp_end]
+            result.append(expanded_frag if expanded_frag else frag.text)
 
-    return result
+    return list(dict.fromkeys(result))  # 去重并保持顺序
 
 
 class RectifyRecord:
@@ -381,59 +247,50 @@ class RectificationRAG:
         except Exception as e:
             logger.error(f"加载纠错历史失败: {e}")
 
-    def search(self, text: str, top_k: int = 5) -> List[Tuple[str, str, float]]:
-        """
-        检索相关的纠错历史
-        
-        Args:
-            text: 输入文本（语音识别结果）
-            top_k: 最大结果数（可在角色配置中设置）
+    def _score_record(self, input_phonemes: List[Phoneme], record: RectifyRecord) -> Tuple[float, List[dict]]:
+        """计算单条记录与输入音素序列的匹配得分及片段详情"""
+        fragment_details = []
+        for fragment, frag_phonemes in record.fragment_phonemes.items():
+            if not frag_phonemes: continue
             
-        Returns:
-            [(wrong, right, score), ...] 按分数降序
-        """
-        if not text or not self.records:
-            return []
+            # 计算相似度 (1 - 归一化编辑距离)
+            min_dist = fuzzy_substring_distance(input_phonemes, frag_phonemes)
+            score = 1.0 - (min_dist / len(frag_phonemes))
+            
+            fragment_details.append({
+                'fragment': fragment,
+                'score': round(score, 3),
+                'phonemes': len(frag_phonemes)
+            })
+            
+        if not fragment_details:
+            return 0.0, []
+            
+        # 按得分排序，记录得分为最高片段分
+        fragment_details.sort(key=lambda x: x['score'], reverse=True)
+        return fragment_details[0]['score'], fragment_details
+
+    def search(self, text: str, top_k: int = 5) -> List[Tuple[str, str, float]]:
+        """检索相关的纠错历史"""
+        if not text or not self.records: return []
             
         input_phonemes = get_phoneme_seq(text)
-        if not input_phonemes:
-            return []
+        if not input_phonemes: return []
         
         logger.debug(f"纠错检索: 输入='{text}', 音素数={len(input_phonemes)}")
-            
-        # 每条记录的最高匹配分数
-        record_scores: Dict[int, float] = {}
         
         with self._lock:
             records = self.records[:]
         
-        for idx, record in enumerate(records):
-            best_score = 0.0
-            
-            # 用每个检索片段与输入匹配，取最高分
-            for fragment, frag_phonemes in record.fragment_phonemes.items():
-                if not frag_phonemes:
-                    continue
-                    
-                # 在输入中查找片段
-                min_dist = fuzzy_substring_distance(input_phonemes, frag_phonemes)
-                denom = len(frag_phonemes) if len(frag_phonemes) > 0 else 1
-                score = 1.0 - (min_dist / denom)
-                
-                if score > best_score:
-                    best_score = score
-            
+        matches = []
+        for record in records:
+            best_score, _ = self._score_record(input_phonemes, record)
             if best_score >= self.threshold:
-                record_scores[idx] = best_score
+                matches.append((record.wrong, record.right, round(best_score, 3)))
                 
-        # 按分数排序
-        sorted_indices = sorted(record_scores.keys(), key=lambda i: record_scores[i], reverse=True)
-        
-        results = []
-        for idx in sorted_indices[:top_k]:
-            record = records[idx]
-            score = record_scores[idx]
-            results.append((record.wrong, record.right, round(score, 3)))
+        # 按分数排序并截断
+        matches.sort(key=lambda x: x[2], reverse=True)
+        results = matches[:top_k]
             
         if results:
             logger.debug(f"纠错匹配结果: {results}")
@@ -473,65 +330,27 @@ class RectificationRAG:
         return result
 
     def search_detailed(self, text: str, top_k: int = 5) -> List[dict]:
-        """
-        检索相关的纠错历史（详细版，返回每个片段的得分）
-
-        Args:
-            text: 输入文本（语音识别结果）
-            top_k: 最大结果数
-
-        Returns:
-            [dict, ...] 每个字典包含:
-            - wrong: 错误文本
-            - right: 正确文本
-            - score: 最高得分
-            - fragments: 每个检索片段的详细信息
-        """
-        if not text or not self.records:
-            return []
+        """检索相关的纠错历史（详细版）"""
+        if not text or not self.records: return []
 
         input_phonemes = get_phoneme_seq(text)
-        if not input_phonemes:
-            return []
+        if not input_phonemes: return []
 
         with self._lock:
             records = self.records[:]
 
         results = []
-
         for record in records:
-            fragment_details = []
-
-            # 计算每个片段的匹配得分
-            for fragment, frag_phonemes in record.fragment_phonemes.items():
-                if not frag_phonemes:
-                    continue
-
-                # 在输入中查找片段
-                min_dist = fuzzy_substring_distance(input_phonemes, frag_phonemes)
-                denom = len(frag_phonemes) if len(frag_phonemes) > 0 else 1
-                score = 1.0 - (min_dist / denom)
-
-                fragment_details.append({
-                    'fragment': fragment,
-                    'score': round(score, 3),
-                    'phonemes': len(frag_phonemes)
+            best_score, fragment_details = self._score_record(input_phonemes, record)
+            if best_score >= self.threshold:
+                results.append({
+                    'wrong': record.wrong,
+                    'right': record.right,
+                    'score': best_score,
+                    'fragments': fragment_details
                 })
 
-            # 按得分排序
-            fragment_details.sort(key=lambda x: x['score'], reverse=True)
-
-            if fragment_details:
-                best_score = fragment_details[0]['score']
-                if best_score >= self.threshold:
-                    results.append({
-                        'wrong': record.wrong,
-                        'right': record.right,
-                        'score': best_score,
-                        'fragments': fragment_details
-                    })
-
-        # 按最高得分排序
+        # 按最高得分排序并截断
         results.sort(key=lambda x: x['score'], reverse=True)
         return results[:top_k]
 
