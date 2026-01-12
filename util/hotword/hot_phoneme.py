@@ -12,8 +12,8 @@ import time
 import logging
 
 from .algo_phoneme import get_phoneme_info, Phoneme
-from .rag_accu import AccuRAG
 from .rag_fast import FastRAG
+from .algo_calc import fast_substring_score
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ class PhonemeCorrector:
         
         new_hotwords = {}
         for hw in lines:
-            phons, _ = get_phoneme_info(hw)
+            phons = get_phoneme_info(hw)
             if phons:
                 new_hotwords[hw] = phons
         
@@ -82,7 +82,7 @@ class PhonemeCorrector:
         logger.debug(f"PhonemeCorrector 已更新 {len(new_hotwords)} 个热词，耗时 {time.time() - start_time:.3f}s")
         return len(new_hotwords)
 
-    def _find_matches(self, fast_results: List, input_processed: List[Tuple[str, str, bool, bool, bool]], char_indices: List) -> List[MatchResult]:
+    def _find_matches(self, fast_results: List, input_processed: List[Tuple]) -> List[MatchResult]:
         """精细匹配逻辑：滑动窗口、模糊打分、边界检查"""
         matches = []
         input_len = len(input_processed)
@@ -90,63 +90,45 @@ class PhonemeCorrector:
         for hw, score in fast_results:
             if score < self.threshold: continue
             
-            # 获取热词的音素序列并转为简化的对比元组
-            hw_phons = self.hotwords.get(hw)
-            if not hw_phons: continue
-            
-            hw_info = [p.info for p in hw_phons]
-            target_len = len(hw_info)
+            # 获取热词的对比序列 (保持 info 七元组中的前五项：值, 语言, 字始, 字终, 声调)
+            hw_phonemes = self.hotwords[hw]
+            hw_compare = [p.info[:5] for p in hw_phonemes]
+            target_len = len(hw_compare)
             if target_len > input_len: continue
-            
+
             # 滑动窗口查找
             for i in range(input_len - target_len + 1):
-                sub_seg = input_processed[i : i+target_len]
+                sub_seg = input_processed[i : i + target_len]
                 
-                # 语义解包: (val, lang, start, end, is_tone)
                 # 策略：要求首音协议（非英文强卡首音）
-                if sub_seg[0][1] != 'en' and sub_seg[0][0] != hw_info[0][0]:
+                if sub_seg[0][1] != 'en' and sub_seg[0][0] != hw_compare[0][0]:
                     continue
                 
-                # 计算差异分值
-                diff = 0
-                all_lang_match = True
-                for k in range(target_len):
-                    # 比较值 [0] 和 语言 [1]
-                    if sub_seg[k][1] != hw_info[k][1]:
-                        all_lang_match = False
-                        break
-                    if sub_seg[k][0] != hw_info[k][0]:
-                        diff += 1
-                        if diff > self.max_diff: break # 超过最大允许差异
+                # 1. 边界粗筛选
+                if not sub_seg[0][2]: continue  # 第一个音素必须是词起始
                 
-                if not all_lang_match or diff > self.max_diff: continue
-                
-                current_score = 1.0 - (diff / target_len)
-                if current_score < self.similar_threshold: continue
-
-                # 边界检查
-                # 查看起始标 [2]
-                if not sub_seg[0][2]: continue
-                
-                # 处理中文词尾声调顺延的情况
-                # 查看结束标 [3]
+                # 最后一个音素检测
                 last_match_idx = i + target_len - 1
-                is_end_ok = input_processed[last_match_idx][3]
-                
-                # 语义化：中文、调不准、但接下来的音素是声调的情况
-                if not is_end_ok and input_processed[last_match_idx][1] == 'zh':
+                is_end_ok = False
+                if sub_seg[-1][3]: 
+                    is_end_ok = True
+                else:
+                    # 容错：如果是中文，允许热词比实际发音序列更短（如果后面跟着声调）
                     next_idx = last_match_idx + 1
                     if next_idx < input_len:
                         next_info = input_processed[next_idx]
-                        # 检查下一个是否是中文声调 [4] 且是词尾 [3]
                         if next_info[1] == 'zh' and next_info[4] and next_info[3]:
                             is_end_ok = True
                             
                 if not is_end_ok: continue
 
-                # 记录匹配
-                char_start = char_indices[i][0]
-                char_end = char_indices[last_match_idx][1]
+                # 2. 精细相似度计算 (调用 Numba 加速的 fast_substring_score)
+                current_score = fast_substring_score(hw_compare, sub_seg)
+                if current_score < self.similar_threshold: continue
+
+                # 记录匹配：从 info 七元组 [5], [6] 直接拿位置
+                char_start = sub_seg[0][5]
+                char_end = sub_seg[-1][6]
                 matches.append(MatchResult(char_start, char_end, current_score, hw))
             
         return matches
@@ -157,10 +139,15 @@ class PhonemeCorrector:
         matches.sort(key=lambda x: (x.score, x.end - x.start), reverse=True)
         
         final_matches = []
-        all_matched_info = [(m.hotword, m.score) for m in matches]
+        all_matched_info = []
         occupied_ranges = []
 
+        seen_hw_score = set()
         for m in matches:
+            if (m.hotword, m.score) not in seen_hw_score:
+                all_matched_info.append((m.hotword, m.score))
+                seen_hw_score.add((m.hotword, m.score))
+
             if m.score < self.threshold: continue
             
             is_overlap = False
@@ -170,6 +157,7 @@ class PhonemeCorrector:
                     break
             
             if not is_overlap:
+                # 检查是否真的有变化（避免原地替换）
                 if text[m.start : m.end] != m.hotword:
                     final_matches.append(m)
                 occupied_ranges.append((m.start, m.end))
@@ -187,8 +175,9 @@ class PhonemeCorrector:
         if not text or not self.hotwords:
             return CorrectionResult(text=text, matched_hotwords=[])
 
-        # 1. 提取音素
-        input_phonemes, char_indices = get_phoneme_info(text)
+        # 1. 提取带位置信息的音素序列
+        # get_phoneme_info now returns a list of Phoneme objects, each containing a 7-tuple info
+        input_phonemes = get_phoneme_info(text)
         if not input_phonemes:
             return CorrectionResult(text=text, matched_hotwords=[])
 
@@ -196,10 +185,10 @@ class PhonemeCorrector:
         with self._lock:
             # 粗筛
             fast_results = self.fast_rag.search(input_phonemes, top_k=100)
-            # 预处理输入 (直接使用 info 四元组)
+            # 预处理输入 (转换为全能七元组：值, 语言, 字始, 字终, 是调, 始位, 终位)
             input_processed = [p.info for p in input_phonemes]
-            # 精筛 (不再需要传递 input_phonemes)
-            matches = self._find_matches(fast_results, input_processed, char_indices)
+            # 精筛 (不再需要传递 char_indices，元组自带位置)
+            matches = self._find_matches(fast_results, input_processed)
 
         # 3. 冲突解决与替换
         new_text, final_hw_info, all_hw_info = self._resolve_and_replace(text, matches)

@@ -20,14 +20,18 @@ class Phoneme:
 
     Attributes:
         value: 音素值（如 'b', 'ing', 'python', '4'）
-        lang: 语言类型 ('zh'=中文, 'en'=英文, 'num'=数字)
+        lang: 语言类型 ('zh'=中文, 'en'=英文, 'num'=数字, 'other'=其他)
         is_word_start: 是否是字边界起始位置（声母/零声母）
         is_word_end: 是否是字边界结束位置（声调）
+        char_start: 该音素在原文本中的起始索引
+        char_end: 该音素在原文本中的结束索引
     """
     value: str
-    lang: Literal['zh', 'en', 'num']
-    is_word_start: bool = False  # 是否是字起始（声母/零声母）
-    is_word_end: bool = False    # 是否是字结束（声调）
+    lang: Literal['zh', 'en', 'num', 'other']
+    is_word_start: bool = False
+    is_word_end: bool = False
+    char_start: int = 0
+    char_end: int = 0
 
     @property
     def is_tone(self) -> bool:
@@ -40,9 +44,9 @@ class Phoneme:
         return self.lang == 'en'
 
     @property
-    def info(self) -> Tuple[str, str, bool, bool, bool]:
-        """返回包含所有属性的五元组 (值, 语言, 起始标, 结束标, 是否声调)"""
-        return (self.value, self.lang, self.is_word_start, self.is_word_end, self.is_tone)
+    def info(self) -> Tuple[str, str, bool, bool, bool, int, int]:
+        """返回包含所有属性的七元组 (值, 语言, 起始标, 结束标, 是否声调, 字始, 字终)"""
+        return (self.value, self.lang, self.is_word_start, self.is_word_end, self.is_tone, self.char_start, self.char_end)
 
     def __str__(self) -> str:
         return self.value
@@ -236,179 +240,98 @@ def get_phoneme_seq(text: str, ascii_split_char: bool = False) -> List[Phoneme]:
     return phoneme_seq
 
 
-def get_phoneme_info(text: str, ascii_split_char: bool = True) -> Tuple[List[Phoneme], List[Tuple[int, int]]]:
+def get_phoneme_info(text: str, ascii_split_char: bool = True) -> List[Phoneme]:
     """
-    获取音素序列及其对应的字符索引（带语言属性）
-
-    采用单步扫描方案：
-    1. 直接遍历原始文本，跳过分隔符
-    2. 驼峰拆分、数字边界等规范化操作只在逻辑上处理，不实际生成规范化文本
-    3. 同时记录原始文本索引，无需映射表
-
-    Args:
-        ascii_split_char: 是否将英文单词拆分为单字符音素 (e.g. "iPhone" -> "i", "p", "h"...)
-
-    Returns:
-        (phonemes, char_indices)
-        phonemes: 带语言属性的音素列表
-        char_indices: 每个音素对应在原文本中的字符索引 [(start, end), ...]
+    获取带位置和语言属性的音素序列（高层编排）
     """
     if not pinyin:
-        # 降级模式：按字符切分
-        return [], []
+        return [Phoneme(c, 'zh', char_start=i, char_end=i+1) for i, c in enumerate(text)]
 
     phoneme_seq: List[Phoneme] = []
-    char_indices: List[Tuple[int, int]] = []
-
-    pos = 0  # 原始文本中的当前位置
-    prev_char_type = None  # 前一个字符的类型：'upper', 'lower', 'digit', 'zh', None
-
+    pos = 0
     while pos < len(text):
         char = text[pos]
 
-        # 判断当前字符类型
+        # 1. 判定类型
         if '\u4e00' <= char <= '\u9fff':
-            char_type = 'zh'
-        elif char.isupper():
-            char_type = 'upper'
-        elif char.islower():
-            char_type = 'lower'
-        elif char.isdigit():
-            char_type = 'digit'
+            # 处理中文片段
+            pos = _process_zh(text, pos, phoneme_seq)
+        elif char.isalnum():
+            # 处理英文/数字片段
+            pos = _process_en_num(text, pos, phoneme_seq, ascii_split_char)
         else:
-            # 分隔符：跳过，并重置前一个字符类型
-            prev_char_type = None
+            # 其他字符（空格、标点）：跳过，保持音素流连续以便匹配
             pos += 1
-            continue
-
-        # 处理驼峰拆分和数字边界（逻辑上的空格）
-        # 驼峰：小写后跟大写 -> 逻辑边界
-        if (prev_char_type == 'lower' and char_type == 'upper') or \
-           (prev_char_type in ['upper', 'lower'] and char_type == 'digit') or \
-           (prev_char_type == 'digit' and char_type in ['upper', 'lower']):
-            # 逻辑边界：不实际插入空格，只是标记
-            prev_char_type = char_type
-
-        # 处理中文
-        if char_type == 'zh':
-            # === 处理连续中文片段 (批量处理以支持多音字) ===
-            zh_start = pos
-            scan_pos = pos + 1
-            while scan_pos < len(text) and '\u4e00' <= text[scan_pos] <= '\u9fff':
-                scan_pos += 1
-            zh_end = scan_pos
             
-            fragment = text[zh_start:zh_end]
-            
-            try:
-                # 批量获取声母、韵母、声调
-                # errors='ignore' 确保列表长度对齐（因为 fragment 全是汉字）
-                py_initials = pinyin(fragment, style=Style.INITIALS, strict=False, errors='ignore')
-                py_finals = pinyin(fragment, style=Style.FINALS, strict=False, errors='ignore')
-                py_tones = pinyin(fragment, style=Style.TONE3, neutral_tone_with_five=True, errors='ignore')
+    return phoneme_seq
 
-                # 安全长度
-                min_len = min(len(fragment), len(py_initials), len(py_finals), len(py_tones))
+
+def _process_zh(text: str, pos: int, seq: List[Phoneme]) -> int:
+    """处理连续的中文片段，并返回扫描后的新位置"""
+    zh_start = pos
+    scan_pos = pos + 1
+    while scan_pos < len(text) and '\u4e00' <= text[scan_pos] <= '\u9fff':
+        scan_pos += 1
+    zh_end = scan_pos
+    fragment = text[zh_start:zh_end]
+    
+    try:
+        py_initials = pinyin(fragment, style=Style.INITIALS, strict=False, errors='ignore')
+        py_finals = pinyin(fragment, style=Style.FINALS, strict=False, errors='ignore')
+        py_tones = pinyin(fragment, style=Style.TONE3, neutral_tone_with_five=True, errors='ignore')
+
+        min_len = min(len(fragment), len(py_initials), len(py_finals), len(py_tones))
+        for i in range(min_len):
+            idx = zh_start + i
+            init, fin, tone = py_initials[i][0], py_finals[i][0], py_tones[i][0]
+            
+            items = []
+            if init:
+                items.append(Phoneme(init, 'zh', is_word_start=True, char_start=idx, char_end=idx+1))
+            if fin:
+                items.append(Phoneme(fin, 'zh', is_word_start=not init, char_start=idx, char_end=idx+1))
+            if tone and tone[-1].isdigit():
+                items.append(Phoneme(tone[-1], 'zh', is_word_end=True, char_start=idx, char_end=idx+1))
                 
-                for i in range(min_len):
-                    curr_char_idx = zh_start + i
-                    curr_char = fragment[i]
-                    items: List[Phoneme] = []
-                    
-                    init = py_initials[i][0] if py_initials[i] else ''
-                    fin = py_finals[i][0] if py_finals[i] else ''
-                    tone_str = py_tones[i][0] if py_tones[i] else ''
-                    
-                    if init:
-                        items.append(Phoneme(init, 'zh', is_word_start=True))
-                        
-                    if fin:
-                        is_start = not init
-                        items.append(Phoneme(fin, 'zh', is_word_start=is_start))
-                        
-                    if tone_str and tone_str[-1].isdigit():
-                        tone_val = tone_str[-1]
-                        items.append(Phoneme(tone_val, 'zh', is_word_end=True))
-                        
-                    if not items:
-                        items.append(Phoneme(curr_char, 'zh', is_word_start=True, is_word_end=True))
-                        
-                    phoneme_seq.extend(items)
-                    char_indices.extend([(curr_char_idx, curr_char_idx + 1)] * len(items))
-
-            except Exception:
-                # 降级：逐字回退
-                for i, c in enumerate(fragment):
-                    phoneme_seq.append(Phoneme(c, 'zh', is_word_start=True, is_word_end=True))
-                    char_indices.append((zh_start + i, zh_start + i + 1))
+            if not items:
+                items.append(Phoneme(fragment[i], 'zh', is_word_start=True, is_word_end=True, char_start=idx, char_end=idx+1))
+            seq.extend(items)
+    except Exception:
+        # 降级处理
+        for i, c in enumerate(fragment):
+            seq.append(Phoneme(c, 'zh', is_word_start=True, is_word_end=True, char_start=zh_start+i, char_end=zh_start+i+1))
             
-            pos = zh_end
-            prev_char_type = 'zh'
-            continue
+    return zh_end
 
-        # 处理英文单词或数字（连续的字母数字序列）
-        if char_type in ['upper', 'lower', 'digit']:
-            start_pos = pos
 
-            # 向后扫描，收集连续的字母数字，同时检测拆分边界
-            while pos < len(text):
-                next_char = text[pos]
-
-                if not next_char.isalnum():
-                    # 非字母数字：停止
-                    break
-
-                # 检查边界条件
-                if pos > start_pos:
-                    prev_char = text[pos - 1]
-
-                    # 驼峰边界：小写后跟大写 (aA)
-                    if prev_char.islower() and next_char.isupper():
-                        break
-                    # 数字边界1：字母后跟数字 (a1)
-                    if prev_char.isalpha() and next_char.isdigit():
-                        break
-                    # 数字边界2：数字后跟字母 (1a)
-                    if prev_char.isdigit() and next_char.isalpha():
-                        break
-
-                pos += 1
-
-            end_pos = pos
-            # 提取原始文本中的单词（保留原始大小写）
-            token_original = text[start_pos:end_pos]
-            token_lower = token_original.lower()
-
-            # 判断语言类型
-            lang: Literal['en', 'num'] = 'num' if token_lower.isdigit() else 'en'
-
-            if ascii_split_char:
-                # 拆分为单字符，但保留单词边界信息
-                # 只有单词第一个字母是 start，最后一个字母是 end
-                token_len = len(token_lower)
-                for i, c in enumerate(token_lower):
-                    is_start = (i == 0)
-                    is_end = (i == token_len - 1)
-                    phoneme_seq.append(Phoneme(c, lang, is_word_start=is_start, is_word_end=is_end))
-                    char_indices.append((start_pos + i, start_pos + i + 1))
-            else:
-                phoneme_seq.append(Phoneme(token_lower, lang, is_word_start=True, is_word_end=True))
-                char_indices.append((start_pos, end_pos))
-
-            # 更新前一个字符类型（用于检测跨单词的边界）
-            if token_lower.isdigit():
-                prev_char_type = 'digit'
-            elif token_original[0].islower():
-                prev_char_type = 'lower'
-            else:
-                prev_char_type = 'upper'
-
-            continue
-
-        # 其他情况
+def _process_en_num(text: str, pos: int, seq: List[Phoneme], split_char: bool) -> int:
+    """处理英文/数字片段，支持驼峰和数字边界拆分"""
+    start_pos = pos
+    while pos < len(text):
+        char = text[pos]
+        if not char.isalnum(): break
+        
+        # 处理逻辑拆分边界 (驼峰 aA, 字母数字 a1, 数字字母 1a)
+        if pos > start_pos:
+            prev = text[pos-1]
+            if (prev.islower() and char.isupper()) or \
+               (prev.isalpha() and char.isdigit()) or \
+               (prev.isdigit() and char.isalpha()):
+                break
         pos += 1
-
-    return phoneme_seq, char_indices
+    
+    end_pos = pos
+    token = text[start_pos:end_pos].lower()
+    lang = 'num' if token.isdigit() else 'en'
+    
+    if split_char:
+        for i, c in enumerate(token):
+            seq.append(Phoneme(c, lang, is_word_start=(i==0), is_word_end=(i==len(token)-1), 
+                               char_start=start_pos+i, char_end=start_pos+i+1))
+    else:
+        seq.append(Phoneme(token, lang, is_word_start=True, is_word_end=True, 
+                           char_start=start_pos, char_end=end_pos))
+    return end_pos
 
 
 if __name__ == "__main__":

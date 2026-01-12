@@ -231,7 +231,49 @@ def find_best_match(main_seq: List[Phoneme], sub_seq: List[Phoneme]) -> Tuple[fl
     return score, best_start, end_pos
 
 
-def fuzzy_substring_distance(main_seq: List[str], sub_seq: List[str]) -> float:
+def fast_substring_score(hw_info: List[Tuple], input_info: List[Tuple]) -> float:
+    """
+    高性能音素序列相似度计算 (针对 info 五元组/七元组)
+    
+    规则：保持与 get_phoneme_cost 一致但直接操作元组以提升性能。
+    元组索引: 0=value, 1=lang, 4/4=is_tone (info[:5] 中的第5项)
+    """
+    n = len(hw_info)
+    m = len(input_info)
+    if n == 0: return 0.0
+    
+    # 简单的线性比对（因为目前滑动窗口已经对齐了长度）
+    # 如果需要更复杂的编辑距离，可以使用类似 fuzzy_substring_distance 的逻辑
+    diff = 0.0
+    for i in range(n):
+        h_val, h_lang, _, _, h_tone = hw_info[i][:5]
+        i_val, i_lang, _, _, i_tone = input_info[i][:5]
+        
+        if h_lang != i_lang:
+            diff += 1.0
+            continue
+            
+        if h_val == i_val:
+            continue
+            
+        # 相似音素判断
+        if h_lang == 'zh':
+            pair = {h_val, i_val}
+            is_similar = False
+            for s in SIMILAR_PHONEMES:
+                if pair.issubset(s):
+                    is_similar = True
+                    break
+            if is_similar:
+                diff += 0.5
+                continue
+        
+        diff += 1.0
+        
+    return 1.0 - (diff / n)
+
+
+def fuzzy_substring_distance(main_seq: List[Phoneme], sub_seq: List[Phoneme]) -> float:
     """
     计算子序列在主序列中的最小编辑距离（允许子序列匹配主序列的任意部分）
     使用滚动数组优化的动态规划实现

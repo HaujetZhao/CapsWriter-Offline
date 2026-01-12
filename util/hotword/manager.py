@@ -149,10 +149,6 @@ class HotwordManager:
         logger.debug(f"已启动热词文件监视: {watched_dirs}")
         return self._observer
 
-        self._observer.start()
-        logger.debug("热词文件监视已启动")
-        return self._observer
-
     def stop_file_watcher(self) -> None:
         """停止文件监视"""
         if self._observer:
