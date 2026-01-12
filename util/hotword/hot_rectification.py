@@ -19,9 +19,12 @@ from dataclasses import dataclass
 
 from .algo_phoneme import get_phoneme_seq, normalize_text
 from .algo_calc import fuzzy_substring_distance
-from util.logger import get_logger
-
-logger = get_logger('client')
+try:
+    from util.logger import get_logger
+    logger = get_logger('client')
+except ImportError:
+    import logging
+    logger = logging.getLogger(__name__)
 
 
 @dataclass

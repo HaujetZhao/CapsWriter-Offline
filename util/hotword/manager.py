@@ -14,16 +14,43 @@ from typing import Dict, Callable, Optional, TYPE_CHECKING, Any, Tuple
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+from rich.console import Console
 
-from util.client.state import console
-from util.hotword.hot_rule import RuleCorrector
-from util.hotword.hot_phoneme import PhonemeCorrector
-from util.hotword.hot_rectification import RectificationRAG
-from config import ClientConfig as Config
-from util.logger import get_logger
+from .hot_rule import RuleCorrector
+from .hot_phoneme import PhonemeCorrector
+from .hot_rectification import RectificationRAG
 
-# 日志记录器
-logger = get_logger('client')
+# 尝试导入主项目的统一组件，失败则使用本地默认值（独立运行模式）
+try:
+    from config import ClientConfig
+    HOT_THRESH = ClientConfig.hot_thresh
+    HOT_SIMILAR = ClientConfig.hot_similar
+except ImportError:
+    HOT_THRESH = 0.7
+    HOT_SIMILAR = 0.6
+
+try:
+    from util.logger import get_logger
+    logger = get_logger('client')
+except ImportError:
+    import logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger('hotword')
+
+try:
+    from util.client.state import console
+except ImportError:
+    try:
+        from rich.console import Console
+        console = Console(highlight=False)
+    except ImportError:
+        class MockConsole:
+            def print(self, *args, **kwargs): 
+                # rich 格式清洗略去，直接打印内容
+                msg = str(args[0]) if args else ""
+                print(msg.replace('[cyan]', '').replace('[/]', '').replace('[green4]', ''))
+            def line(self): print()
+        console = MockConsole()
 
 # 全局单例
 _manager: Optional[HotwordManager] = None
@@ -46,10 +73,10 @@ class HotwordManager:
     def __init__(self):
         """初始化热词管理器"""
         self._observer: Optional[Observer] = None
-        # 使用配置中的双阈值初始化音素纠错器
+        # 使用配置（或默认值）初始化音素纠错器
         self.phoneme_corrector = PhonemeCorrector(
-            threshold=Config.hot_thresh,      # 替换阈值（高）
-            similar_threshold=Config.hot_similar  # 相似列表阈值（低）
+            threshold=HOT_THRESH,      # 替换阈值（高）
+            similar_threshold=HOT_SIMILAR  # 相似列表阈值（低）
         )
         # 初始化规则纠错器
         self.rule_corrector = RuleCorrector()

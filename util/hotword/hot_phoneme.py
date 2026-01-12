@@ -124,40 +124,215 @@ class PhonemeCorrector:
             fast_results = self.fast_rag.search(input_phonemes, top_k=100)
             candidate_hws = [hw for hw, _ in fast_results]
 
-            # 阶段2: AccuRAG 精确计算 (禁用阈值过滤，获取所有候选)
-            precise_results = self.accu_rag.search(
-                input_phonemes,
-                candidate_hws=candidate_hws,
-                top_k=50,
-                apply_threshold=False  # 不过滤，获取所有候选
-            )
+            # 阶段2: 轻量级定位与替换 (替代原先重型的 AccuRAG)
+            # 策略：直接在输入音素流中寻找候选热词的音素子序列
+            
+            # 1. 预计算候选热词的音素
+            candidate_phonemes_map = {}
+            for hw, score in fast_results:
+                if score >= self.threshold: # 只处理分数够高的
+                    # 这里为了快，直接从 self.fast_rag.index 里取（需要 FastRAG 暴露接口或者自己存一份）
+                    # 简单起见，这里重新获取一次音素（会有一点点开销，但比 AccuRAG 小得多）
+                    phons, _ = get_phoneme_info(hw)
+                    candidate_phonemes_map[hw] = (phons, score)
 
-        # 转换结果为 MatchResult
-        for hw, score, start_idx, end_idx in precise_results:
-            if start_idx < len(char_indices) and end_idx > 0 and end_idx <= len(char_indices):
-                char_start = char_indices[start_idx][0]
-                char_end = char_indices[end_idx-1][1]
-                match = MatchResult(char_start, char_end, score, hw)
-                all_matches.append(match)
+            # 2. 在原文本音素中匹配
+            # 改进：支持模糊定位 (Fuzzy Positioning)
+            input_len = len(input_phonemes)
+            
+            # 预处理：去除输入音素的声调，用于快速模糊匹配
+            input_phons_no_tone = []
+            for p in input_phonemes:
+                val = p.value
+                # 如果是纯声调(1-5)，直接忽略
+                if val.isdigit():
+                    continue
+                # 如果是带声调的拼音(hao3)，去除声调
+                if val and val[-1].isdigit():
+                     input_phons_no_tone.append(val[:-1])
+                else:
+                     input_phons_no_tone.append(val)
+            
+            for hw, (hw_phons, score) in candidate_phonemes_map.items():
+                hw_len = len(hw_phons)
+                # hw_phons 也包含声调 Phoneme，所以去声调后的长度会变短
+                # 我们先去声调再比较长度
+                
+                hw_phons_no_tone = []
+                for p in hw_phons:
+                    val = p.value
+                    if val.isdigit():
+                        continue
+                    if val and val[-1].isdigit():
+                        hw_phons_no_tone.append(val[:-1])
+                    else:
+                        hw_phons_no_tone.append(val)
+                
+                
+                # 重新计算长度
+                curr_hw_len = len(hw_phons_no_tone)
+                curr_input_len = len(input_phons_no_tone)
+                
+                if curr_hw_len > curr_input_len:
+                    continue
 
-                # 只将高阈值匹配加入替换列表
-                if score >= self.threshold:
-                    matches.append(match)
+                # 滑窗匹配 (使用去声调后的列表)
+                for i in range(curr_input_len - curr_hw_len + 1):
+                    # 快速检查首尾（无声调）
+                    if input_phons_no_tone[i] != hw_phons_no_tone[0]: continue
+                    
+                    # 检查片段
+                    sub_segment = input_phons_no_tone[i : i+curr_hw_len]
+                    
+                    # 1. 无声调完全匹配
+                    if sub_segment == hw_phons_no_tone:
+                        # 找到位置了！
+                        # 难点：input_phons_no_tone 的索引 i 对应原来 char_indices 的哪里？
+                        # 因为我们跳过了声调，所以索引不再一一对应。
+                        
+                        # 这种简化方案导致了索引映射丢失！
+                        # 我们必须保留原始列表的结构，或者建立映射。
+                        
+                        # 方案B：不去掉声调 Phoneme，而是把它的 value 置为空，或者在比较时跳过。
+                        # 但为了代码简单，我们重新做一个带索引的列表
+                        pass
 
-        if not all_matches:
-            return CorrectionResult(text=text, matched_hotwords=[])
+            # === 修正方案：保留索引映射 ===
+            # 构建一个 list of (phoneme_val_no_tone, lang, original_index)
+            input_processed = []
+            for idx, p in enumerate(input_phonemes):
+                val = p.value
+                if val.isdigit(): continue # 跳过声调
+                
+                clean_val = val[:-1] if (val and val[-1].isdigit()) else val
+                input_processed.append((clean_val, p.lang, idx))
+            
+            # 对热词也做同样处理
+            
+            for hw, (hw_phons, score) in candidate_phonemes_map.items():
+                hw_mid = []
+                for p in hw_phons:
+                    val = p.value
+                    if val.isdigit(): continue
+                    clean_val = val[:-1] if (val and val[-1].isdigit()) else val
+                    hw_mid.append((clean_val, p.lang))
+                
+                if not hw_mid: continue
+                
+                target_len = len(hw_mid)
+                input_len_p = len(input_processed)
+                
+                if target_len > input_len_p: continue
+                
+                for i in range(input_len_p - target_len + 1):
+                     # 首尾检查 (值和语言都要匹配)
+                     input_start = input_processed[i]
+                     hw_start = hw_mid[0]
+                     
+                     if input_start[0] != hw_start[0]: continue # 值不等
+                     if input_start[1] != hw_start[1]: continue # 语言不等
+                     
+                     # 提取片段
+                     sub_seg = input_processed[i : i+target_len]
+                     
+                     matched = False
+                     
+                     # 1. 完全匹配 (检查值和语言)
+                     # 快速比较整个列表的(val, lang)
+                     sub_mid = [(x[0], x[1]) for x in sub_seg]
+                     if sub_mid == hw_mid:
+                         matched = True
+                     
+                     # 2. 模糊匹配
+                     elif score >= self.similar_threshold: # 高分才允许误差
+                         diff = 0
+                         for k in range(target_len):
+                             # 只有当 语言一致 且 值不一致 时，才算 1 个差异
+                             # 如果语言都不同，直接视为严重错误，禁止匹配 (或者算大分值)
+                             # 这里为严格起见，语言不同直接判死刑
+                             if sub_seg[k][1] != hw_mid[k][1]:
+                                 diff = 999
+                                 break
+                                 
+                             if sub_seg[k][0] != hw_mid[k][0]:
+                                 diff += 1
+                                 if diff > 2: break
+                                 
+                         if diff <= 2 and diff <= target_len * 0.3:
+                             matched = True
+                     
+                     if matched:
+                         # 边界检查：热词匹配必须在词的边界上
+                         orig_start_phon_idx = input_processed[i][2]
+                         orig_end_phon_idx = input_processed[i + target_len - 1][2]
+                         
+                         start_p = input_phonemes[orig_start_phon_idx]
+                         end_p = input_phonemes[orig_end_phon_idx]
+                         
+                         # 严格边界检查：
+                         if not start_p.is_word_start:
+                             matched = False
+                         elif not end_p.is_word_end:
+                              # 特殊情况：对于中文，字尾可能是声调音素
+                              # 如果当前音素不是结尾，但下一个音素是声调且是结尾，则也算通过
+                              next_idx = orig_end_phon_idx + 1
+                              if next_idx < len(input_phonemes):
+                                  next_p = input_phonemes[next_idx]
+                                  if next_p.lang == 'zh' and next_p.value.isdigit() and next_p.is_word_end:
+                                      pass # 通过
+                                  else:
+                                      matched = False
+                              else:
+                                  matched = False
+                     
+                     if matched:
+                         # 映射回原始字符索引
+                         orig_start_phon_idx = input_processed[i][2]
+                         orig_end_phon_idx = input_processed[i + target_len - 1][2]
+                         
+                         # 拿到字符索引
+                         char_start = char_indices[orig_start_phon_idx][0]
+                         # 结束字符索引是最后一个音素对应的结束索引
+                         char_end = char_indices[orig_end_phon_idx][1]
+                         
+                         match = MatchResult(char_start, char_end, score, hw)
+                         matches.append(match)
+                         all_matches.append(match)
+                         
 
-        # 收集所有匹配的热词（用于 LLM 上下文）- 使用相似列表阈值过滤
-        # 按分数从高到低排序
-        all_matched_hotwords = sorted(
-            [(m.hotword, m.score) for m in all_matches if m.score >= self.similar_threshold],
-            key=lambda x: x[1],
-            reverse=True
-        )
 
-        if not matches:
-            # 没有达到替换阈值，直接返回原文本和相似热词列表
-            return CorrectionResult(text=text, matched_hotwords=all_matched_hotwords)
+        # 3. 解决重叠匹配
+        # 策略：分数优先，其次长度优先
+        # 去重：同一个位置可能匹配了多次，保留分数最高的
+        matches.sort(key=lambda x: (x.score, x.end - x.start), reverse=True)
+
+        final_matches = []
+        occupied_ranges = [] # [(start, end)]
+
+        for m in matches:
+            is_overlap = False
+            for r_start, r_end in occupied_ranges:
+                # 检查区间重叠: not (end1 <= start2 or start1 >= end2)
+                if not (m.end <= r_start or m.start >= r_end):
+                    is_overlap = True
+                    break
+            
+            if not is_overlap:
+                final_matches.append(m)
+                occupied_ranges.append((m.start, m.end))
+
+        if not final_matches:
+            return CorrectionResult(text=text, matched_hotwords=[(m.hotword, m.score) for m in all_matches])
+
+        # 4. 执行替换 (从后往前，避免索引偏移)
+        # 按开始位置倒序
+        final_matches.sort(key=lambda x: x.start, reverse=True)
+        
+        corrected_text = list(text)
+        for m in final_matches:
+            corrected_text[m.start : m.end] = list(m.hotword)
+            
+        return CorrectionResult(text="".join(corrected_text), matched_hotwords=[(m.hotword, m.score) for m in final_matches])
 
         # 3. 解决重叠匹配
         # 策略：分数优先，其次长度优先

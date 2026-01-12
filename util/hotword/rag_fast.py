@@ -9,7 +9,7 @@
 """
 
 import numpy as np
-from typing import List, Dict, Tuple, Set
+from typing import List, Dict, Tuple, Set, Union
 from collections import defaultdict
 import time
 import logging
@@ -80,6 +80,8 @@ if HAS_NUMBA:
 # 音素编码器（字符串 -> 整数）
 # =============================================================================
 
+from .algo_phoneme import Phoneme
+
 class PhonemeEncoder:
     """将音素字符串编码为整数，用于 Numba 加速"""
     
@@ -116,29 +118,36 @@ class PhonemeIndex:
         self.index: Dict[int, List[Tuple[str, np.ndarray]]] = defaultdict(list)
         self.all_hotwords: List[Tuple[str, np.ndarray]] = []
         
-    def add(self, hotword: str, phonemes: List[str]):
+    def add(self, hotword: str, phonemes: List[Phoneme]):
         """添加热词到索引"""
         if not phonemes:
             return
         
-        codes = self.encoder.encode_sequence(phonemes)
+        # 规范：只处理 Phoneme 对象
+        phoneme_strs = [p.value for p in phonemes]
+                
+        codes = self.encoder.encode_sequence(phoneme_strs)
         first_code = codes[0]
         
         self.index[first_code].append((hotword, codes))
         self.all_hotwords.append((hotword, codes))
         
-    def get_candidates(self, input_phonemes: List[str]) -> List[Tuple[str, np.ndarray]]:
+    def get_candidates(self, input_phonemes: List[Phoneme]) -> List[Tuple[str, np.ndarray]]:
         """
         获取候选热词
-        
+
         只返回首音素在输入中出现过的热词
+
+        Args:
+            input_phonemes: 输入音素序列 (List[Phoneme])
         """
         # 获取输入中所有唯一的音素（作为潜在首音素）
         input_codes = set()
-        for p in input_phonemes:
-            if p in self.encoder.phoneme_to_code:
-                input_codes.add(self.encoder.phoneme_to_code[p])
         
+        for p in input_phonemes:
+            if p.value in self.encoder.phoneme_to_code:
+                input_codes.add(self.encoder.phoneme_to_code[p.value])
+
         # 收集候选
         candidates = []
         seen = set()
@@ -147,12 +156,13 @@ class PhonemeIndex:
                 if hw not in seen:
                     candidates.append((hw, codes))
                     seen.add(hw)
-        
+
         return candidates
     
-    def encode_input(self, phonemes: List[str]) -> np.ndarray:
+    def encode_input(self, phonemes: List[Phoneme]) -> np.ndarray:
         """编码输入序列"""
-        return self.encoder.encode_sequence(phonemes)
+        phoneme_strs = [p.value for p in phonemes]
+        return self.encoder.encode_sequence(phoneme_strs)
 
 
 # =============================================================================
@@ -174,24 +184,24 @@ class FastRAG:
         self.index = PhonemeIndex()
         self.hotword_count = 0
         
-    def add_hotwords(self, hotwords: Dict[str, List[str]]):
+    def add_hotwords(self, hotwords: Dict[str, List[Phoneme]]):
         """
         批量添加热词
         
         Args:
-            hotwords: {热词原文: 音素序列}
+            hotwords: {热词原文: 音素序列} (key: str, value: List[Phoneme])
         """
         for hw, phonemes in hotwords.items():
             if phonemes:
                 self.index.add(hw, phonemes)
                 self.hotword_count += 1
                 
-    def search(self, input_phonemes: List[str], top_k: int = 10) -> List[Tuple[str, float]]:
+    def search(self, input_phonemes: List[Phoneme], top_k: int = 10) -> List[Tuple[str, float]]:
         """
         检索相关热词
         
         Args:
-            input_phonemes: 输入音素序列
+            input_phonemes: 输入音素序列 (List[Phoneme])
             top_k: 返回前 K 个结果
             
         Returns:

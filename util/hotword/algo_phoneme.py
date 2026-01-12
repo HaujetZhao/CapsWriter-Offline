@@ -221,7 +221,7 @@ def get_phoneme_seq(text: str, ascii_split_char: bool = False) -> List[Phoneme]:
     return phoneme_seq
 
 
-def get_phoneme_info(text: str) -> Tuple[List[Phoneme], List[Tuple[int, int]]]:
+def get_phoneme_info(text: str, ascii_split_char: bool = True) -> Tuple[List[Phoneme], List[Tuple[int, int]]]:
     """
     获取音素序列及其对应的字符索引（带语言属性）
 
@@ -229,6 +229,9 @@ def get_phoneme_info(text: str) -> Tuple[List[Phoneme], List[Tuple[int, int]]]:
     1. 直接遍历原始文本，跳过分隔符
     2. 驼峰拆分、数字边界等规范化操作只在逻辑上处理，不实际生成规范化文本
     3. 同时记录原始文本索引，无需映射表
+
+    Args:
+        ascii_split_char: 是否将英文单词拆分为单字符音素 (e.g. "iPhone" -> "i", "p", "h"...)
 
     Returns:
         (phonemes, char_indices)
@@ -273,57 +276,58 @@ def get_phoneme_info(text: str) -> Tuple[List[Phoneme], List[Tuple[int, int]]]:
 
         # 处理中文
         if char_type == 'zh':
+            # === 处理连续中文片段 (批量处理以支持多音字) ===
+            zh_start = pos
+            scan_pos = pos + 1
+            while scan_pos < len(text) and '\u4e00' <= text[scan_pos] <= '\u9fff':
+                scan_pos += 1
+            zh_end = scan_pos
+            
+            fragment = text[zh_start:zh_end]
+            
             try:
-                # 直接使用 pypinyin 的 Style 获取声母、韵母、声调
-                py_initials = pinyin(char, style=Style.INITIALS, strict=False)
-                py_finals = pinyin(char, style=Style.FINALS, strict=False)
-                py_tone3 = pinyin(char, style=Style.TONE3, strict=False)
+                # 批量获取声母、韵母、声调
+                # errors='ignore' 确保列表长度对齐（因为 fragment 全是汉字）
+                py_initials = pinyin(fragment, style=Style.INITIALS, strict=False, errors='ignore')
+                py_finals = pinyin(fragment, style=Style.FINALS, strict=False, errors='ignore')
+                py_tones = pinyin(fragment, style=Style.TONE3, neutral_tone_with_five=True, errors='ignore')
 
-                if py_tone3 and py_tone3[0] and py_tone3[0][0]:
-                    # 判断是否零声母（没有声母）
-                    has_initial = py_initials and py_initials[0] and py_initials[0][0]
-
-                    # 分解声韵调
+                # 安全长度
+                min_len = min(len(fragment), len(py_initials), len(py_finals), len(py_tones))
+                
+                for i in range(min_len):
+                    curr_char_idx = zh_start + i
+                    curr_char = fragment[i]
                     items: List[Phoneme] = []
-
-                    # 提取声母（字起始）
-                    if has_initial:
-                        initial = py_initials[0][0]
-                        if initial:
-                            items.append(Phoneme(initial, 'zh', is_word_start=True))
-
-                    # 提取韵母（零声母时是字起始）
-                    if py_finals and py_finals[0] and py_finals[0][0]:
-                        final = py_finals[0][0]
-                        if final:
-                            is_start = not has_initial  # 零声母时韵母是字起始
-                            items.append(Phoneme(final, 'zh', is_word_start=is_start))
-
-                    # 提取声调（字结束）
-                    py = py_tone3[0][0]
-                    tone = ''
-                    if py and py[-1].isdigit():
-                        tone = py[-1]
-                    else:
-                        tone = '0'
-
-                    if tone:
-                        items.append(Phoneme(tone, 'zh', is_word_end=True))
-
+                    
+                    init = py_initials[i][0] if py_initials[i] else ''
+                    fin = py_finals[i][0] if py_finals[i] else ''
+                    tone_str = py_tones[i][0] if py_tones[i] else ''
+                    
+                    if init:
+                        items.append(Phoneme(init, 'zh', is_word_start=True))
+                        
+                    if fin:
+                        is_start = not init
+                        items.append(Phoneme(fin, 'zh', is_word_start=is_start))
+                        
+                    if tone_str and tone_str[-1].isdigit():
+                        tone_val = tone_str[-1]
+                        items.append(Phoneme(tone_val, 'zh', is_word_end=True))
+                        
                     if not items:
-                        items.append(Phoneme(char, 'zh', is_word_start=True, is_word_end=True))
-
+                        items.append(Phoneme(curr_char, 'zh', is_word_start=True, is_word_end=True))
+                        
                     phoneme_seq.extend(items)
-                    # 单个中文字符的索引
-                    char_indices.extend([(pos, pos + 1)] * len(items))
-                else:
-                    phoneme_seq.append(Phoneme(char, 'zh', is_word_start=True, is_word_end=True))
-                    char_indices.append((pos, pos + 1))
-            except:
-                phoneme_seq.append(Phoneme(char, 'zh', is_word_start=True, is_word_end=True))
-                char_indices.append((pos, pos + 1))
+                    char_indices.extend([(curr_char_idx, curr_char_idx + 1)] * len(items))
 
-            pos += 1
+            except Exception:
+                # 降级：逐字回退
+                for i, c in enumerate(fragment):
+                    phoneme_seq.append(Phoneme(c, 'zh', is_word_start=True, is_word_end=True))
+                    char_indices.append((zh_start + i, zh_start + i + 1))
+            
+            pos = zh_end
             prev_char_type = 'zh'
             continue
 
@@ -363,8 +367,18 @@ def get_phoneme_info(text: str) -> Tuple[List[Phoneme], List[Tuple[int, int]]]:
             # 判断语言类型
             lang: Literal['en', 'num'] = 'num' if token_lower.isdigit() else 'en'
 
-            phoneme_seq.append(Phoneme(token_lower, lang, is_word_start=True, is_word_end=True))
-            char_indices.append((start_pos, end_pos))
+            if ascii_split_char:
+                # 拆分为单字符，但保留单词边界信息
+                # 只有单词第一个字母是 start，最后一个字母是 end
+                token_len = len(token_lower)
+                for i, c in enumerate(token_lower):
+                    is_start = (i == 0)
+                    is_end = (i == token_len - 1)
+                    phoneme_seq.append(Phoneme(c, lang, is_word_start=is_start, is_word_end=is_end))
+                    char_indices.append((start_pos + i, start_pos + i + 1))
+            else:
+                phoneme_seq.append(Phoneme(token_lower, lang, is_word_start=True, is_word_end=True))
+                char_indices.append((start_pos, end_pos))
 
             # 更新前一个字符类型（用于检测跨单词的边界）
             if token_lower.isdigit():
