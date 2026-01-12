@@ -1,5 +1,6 @@
 
 import os
+from pathlib import Path
 from platform import system
 from util.client.state import get_state
 from util.logger import get_logger
@@ -53,7 +54,16 @@ def setup_client_components(base_dir):
 
     # 3. 热词
     logger.info("正在加载热词...")
-    hotword_manager = get_hotword_manager()
+    hotword_files = {
+        'hot': Path('hot.txt'),
+        'rule': Path('hot-rule.txt'),
+        'rectify': Path('hot-rectify.txt'),
+    }
+    hotword_manager = get_hotword_manager(
+        hotword_files=hotword_files,
+        threshold=Config.hot_thresh,
+        similar_threshold=Config.hot_similar
+    )
     hotword_manager.load_all()
     hotword_manager.start_file_watcher()
 

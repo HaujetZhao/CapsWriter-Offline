@@ -47,56 +47,42 @@ class PhonemeCorrector:
     并将相似度超过阈值的片段替换为热词。
     """
 
-    def __init__(self, threshold: float = 0.6, similar_threshold: float = None):
+    def __init__(self, threshold: float = 0.7, similar_threshold: float = None):
         """
         初始化拼音纠错器
-
-        Args:
-            threshold: 替换阈值 (0-1)，越高越严格，用于实际替换操作
-            similar_threshold: 相似列表阈值 (0-1)，低于替换阈值，用于 LLM 上下文
-                             如果为 None，则自动设为 threshold - 0.2
         """
-        self.threshold = threshold  # 替换阈值（高阈值，避免误替换）
-        self.similar_threshold = similar_threshold if similar_threshold is not None else threshold - 0.2
-        self.hotwords: Dict[str, List[Phoneme]] = {}  # {hotword: phoneme_seq}
+        self.threshold = threshold
+        self.similar_threshold = similar_threshold if similar_threshold is not None else threshold - 0.15
+        
+        self.max_diff = 2             # 滑窗匹配中允许的最大音素差异数
+        self.top_k_candidates = 100   # 粗筛保留的候选词数
+        
+        self.hotwords: Dict[str, List[Phoneme]] = {}
+        self.fast_rag = FastRAG(threshold=min(self.threshold, self.similar_threshold) - 0.1)
         self._lock = threading.Lock()
 
-        # 两阶段检索组件
-        self.accu_rag = AccuRAG(threshold=threshold)
-        self.fast_rag = FastRAG(threshold=threshold - 0.1)  # 第一阶段阈值放宽
-
     def update_hotwords(self, hotword_text: str) -> int:
-        """
-        更新热词列表（线程安全）
-
-        Args:
-            hotword_text: 热词文本，每行一个
-
-        Returns:
-            加载的热词数量
-        """
-        new_hotwords = {}
-
-        # 预计算所有热词的音素
-        lines = [line.strip() for line in hotword_text.splitlines() if line.strip() and not line.strip().startswith('#')]
-
+        """更新纠错热词库 (线程安全)"""
         start_time = time.time()
-        for word in lines:
-            phonemes, _ = get_phoneme_info(word)
-            if phonemes:
-                new_hotwords[word] = phonemes
-
+        
+        # 预析取有效行
+        lines = [line.strip() for line in hotword_text.splitlines() if line.strip() and not line.strip().startswith('#')]
+        
+        new_hotwords = {}
+        for hw in lines:
+            phons, _ = get_phoneme_info(hw)
+            if phons:
+                new_hotwords[hw] = phons
+        
         with self._lock:
             self.hotwords = new_hotwords
-
-            # 更新两阶段检索
-            self.accu_rag.update_hotwords(new_hotwords)
+            self.fast_rag = FastRAG(threshold=min(self.threshold, self.similar_threshold) - 0.1)
             self.fast_rag.add_hotwords(new_hotwords)
-
+        
         logger.debug(f"PhonemeCorrector 已更新 {len(new_hotwords)} 个热词，耗时 {time.time() - start_time:.3f}s")
         return len(new_hotwords)
 
-    def _find_matches(self, fast_results: List, input_processed: List[Tuple[str, str, bool, bool]], char_indices: List) -> List[MatchResult]:
+    def _find_matches(self, fast_results: List, input_processed: List[Tuple[str, str, bool, bool, bool]], char_indices: List) -> List[MatchResult]:
         """精细匹配逻辑：滑动窗口、模糊打分、边界检查"""
         matches = []
         input_len = len(input_processed)
@@ -105,10 +91,10 @@ class PhonemeCorrector:
             if score < self.threshold: continue
             
             # 获取热词的音素序列并转为简化的对比元组
-            hw_phons, _ = get_phoneme_info(hw)
-            hw_info = [p.info for p in hw_phons]
-            if not hw_info: continue
+            hw_phons = self.hotwords.get(hw)
+            if not hw_phons: continue
             
+            hw_info = [p.info for p in hw_phons]
             target_len = len(hw_info)
             if target_len > input_len: continue
             
@@ -116,8 +102,8 @@ class PhonemeCorrector:
             for i in range(input_len - target_len + 1):
                 sub_seg = input_processed[i : i+target_len]
                 
+                # 语义解包: (val, lang, start, end, is_tone)
                 # 策略：要求首音协议（非英文强卡首音）
-                # sub_seg[0] 是 (val, lang, start, end)
                 if sub_seg[0][1] != 'en' and sub_seg[0][0] != hw_info[0][0]:
                     continue
                 
@@ -131,9 +117,9 @@ class PhonemeCorrector:
                         break
                     if sub_seg[k][0] != hw_info[k][0]:
                         diff += 1
-                    if diff > 2: break
+                        if diff > self.max_diff: break # 超过最大允许差异
                 
-                if not all_lang_match or diff > 2: continue
+                if not all_lang_match or diff > self.max_diff: continue
                 
                 current_score = 1.0 - (diff / target_len)
                 if current_score < self.similar_threshold: continue
@@ -146,16 +132,19 @@ class PhonemeCorrector:
                 # 查看结束标 [3]
                 last_match_idx = i + target_len - 1
                 is_end_ok = input_processed[last_match_idx][3]
+                
+                # 语义化：中文、调不准、但接下来的音素是声调的情况
                 if not is_end_ok and input_processed[last_match_idx][1] == 'zh':
                     next_idx = last_match_idx + 1
                     if next_idx < input_len:
                         next_info = input_processed[next_idx]
-                        # 检查下一个是否是声调 [0].isdigit() 且是词尾 [3]
-                        if next_info[1] == 'zh' and next_info[0].isdigit() and next_info[3]:
+                        # 检查下一个是否是中文声调 [4] 且是词尾 [3]
+                        if next_info[1] == 'zh' and next_info[4] and next_info[3]:
                             is_end_ok = True
+                            
                 if not is_end_ok: continue
 
-                # 记录匹配 (直接通过索引 i 拿字符范围)
+                # 记录匹配
                 char_start = char_indices[i][0]
                 char_end = char_indices[last_match_idx][1]
                 matches.append(MatchResult(char_start, char_end, current_score, hw))

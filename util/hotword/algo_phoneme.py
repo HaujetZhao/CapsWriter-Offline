@@ -30,9 +30,19 @@ class Phoneme:
     is_word_end: bool = False    # 是否是字结束（声调）
 
     @property
-    def info(self) -> Tuple[str, str, bool, bool]:
-        """返回包含所有属性的四元组 (值, 语言, 起始标, 结束标)"""
-        return (self.value, self.lang, self.is_word_start, self.is_word_end)
+    def is_tone(self) -> bool:
+        """是否是声调"""
+        return self.value.isdigit()
+
+    @property
+    def is_english(self) -> bool:
+        """是否是英文"""
+        return self.lang == 'en'
+
+    @property
+    def info(self) -> Tuple[str, str, bool, bool, bool]:
+        """返回包含所有属性的五元组 (值, 语言, 起始标, 结束标, 是否声调)"""
+        return (self.value, self.lang, self.is_word_start, self.is_word_end, self.is_tone)
 
     def __str__(self) -> str:
         return self.value

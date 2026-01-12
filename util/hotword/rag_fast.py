@@ -118,24 +118,26 @@ class PhonemeIndex:
         self.index: Dict[int, List[Tuple[str, np.ndarray]]] = defaultdict(list)
         self.all_hotwords: List[Tuple[str, np.ndarray]] = []
         
-    def add(self, hotword: str, phonemes: List[Phoneme], key_indices: List[int] = None):
-        """添加热词到索引"""
+    def add(self, hotword: str, phonemes: List[Phoneme]):
+        """添加热词到索引，内部自动决定索引哪些位置"""
         if not phonemes:
             return
         
-        if key_indices is None:
-            key_indices = [0]
-        
-        # 规范：只处理 Phoneme 对象
+        # 将音素对象编码为整数 ID 序列
         phoneme_strs = [p.value for p in phonemes]
-                
         codes = self.encoder.encode_sequence(phoneme_strs)
         
-        # 收集需要索引的 code
-        target_codes = set()
-        for idx in key_indices:
-            if idx < len(codes):
-                target_codes.add(codes[idx])
+        # 索引策略决策
+        # 默认只索引首个音素 (适用于中文，区分度高)
+        indices = [0]
+        
+        # 策略优化：如果是英文，索引前两个音素以容错 (如 klaude -> Claude)
+        if phonemes[0].lang == 'en':
+            limit = min(len(codes), 2)
+            indices = list(range(limit))
+            
+        # 收集去重后的 target_codes
+        target_codes = {codes[i] for i in indices if i < len(codes)}
         
         for code in target_codes:
             self.index[code].append((hotword, codes))
@@ -203,15 +205,7 @@ class FastRAG:
         """
         for hw, phonemes in hotwords.items():
             if phonemes:
-                # 默认只索引首音素
-                indices = [0]
-                
-                if phonemes[0].lang == 'en':
-                    # 英文热词额外索引第二个音素，以容错首位拼写错误 (如 klaude -> Claude)
-                    limit = min(len(phonemes), 2)
-                    indices = list(range(limit))
-                
-                self.index.add(hw, phonemes, indices)
+                self.index.add(hw, phonemes)
                 self.hotword_count += 1
                 
     def search(self, input_phonemes: List[Phoneme], top_k: int = 10) -> List[Tuple[str, float]]:

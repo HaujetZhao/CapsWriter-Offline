@@ -12,7 +12,7 @@
 from .hot_phoneme import PhonemeCorrector, CorrectionResult
 from .hot_rule import RuleCorrector
 from .hot_rectification import RectificationRAG
-from .manager import HotwordManager, get_hotword_manager, HOTWORD_FILES
+from .manager import HotwordManager, get_hotword_manager
 
 __all__ = [
     'PhonemeCorrector',
@@ -21,5 +21,4 @@ __all__ = [
     'RectificationRAG',
     'HotwordManager',
     'get_hotword_manager',
-    'HOTWORD_FILES',
 ]
