@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 # 版本信息
-__version__ = '2.0'
+__version__ = '2.1'
 
 # 项目根目录
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -12,13 +12,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 服务端配置
 class ServerConfig:
     addr = '0.0.0.0'
-    port = '6014'
+    port = '6016'
 
     # 语音模型选择：'funasr_nano', 'sensevoice', 'paraformer'
-    model_type = 'funasr_nano'
+    model_type = 'paraformer'
 
-    format_num = True  # 输出时是否将中文数字转为阿拉伯数字
-    format_spell = True  # 输出时是否调整中英之间的空格
+    format_num = True       # 输出时是否将中文数字转为阿拉伯数字
+    format_spell = True     # 输出时是否调整中英之间的空格
 
     enable_tray = True        # 是否启用托盘图标功能
 
@@ -29,7 +29,7 @@ class ServerConfig:
 # 客户端配置
 class ClientConfig:
     addr = '127.0.0.1'          # Server 地址
-    port = '6014'               # Server 端口
+    port = '6016'               # Server 端口
 
     shortcut     = 'caps lock'  # 控制录音的快捷键，默认是 CapsLock
     hold_mode    = True         # 长按模式，按下录音，松开停止，像对讲机一样用。

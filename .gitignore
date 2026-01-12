@@ -173,3 +173,13 @@ log/
 
 LLM/大助理.py
 LLM/高级翻译.py
+test_*.py 
+test_*.ipynb 
+test_*.md 
+test_*.txt
+stocks.txt 
+example_*.py
+example_.ipynb
+file_*.txt
+*summary*.txt
+*summary*.md

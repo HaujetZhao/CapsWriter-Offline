@@ -65,6 +65,7 @@ hiddenimports += [
     'keyboard',
     'pyclip',
     'numpy',
+    'numba', 
     'sounddevice',
     'pypinyin',
     'watchdog',
@@ -240,10 +241,9 @@ my_files = [
     'config.py',
     'core_server.py',
     'core_client.py',
-    'hot-en.txt',
-    'hot-zh.txt',
+    'hot.txt',
+    'hot-rectify.txt',
     'hot-rule.txt',
-    'keywords.txt',
     'readme.md'
 ]
 my_folders = []     # 这里是要复制的文件夹

@@ -22,21 +22,32 @@ dist/CapsWriter-Offline/
 │
 ├── util/                     # 工具模块（用户代码）
 │   ├── __init__.py
-│   ├── client_*.py
-│   └── server_*.py
+│   ├── client/               # 客户端工具
+│   ├── server/               # 服务端工具
+│   ├── llm/                  # LLM 处理
+│   ├── hotword/              # 热词管理
+│   └── ...
+│
+├── LLM/                      # LLM 角色定义
+│   ├── __init__.py
+│   ├── default.py
+│   ├── 翻译.py
+│   ├── Python.py
+│   └── ...
 │
 ├── assets/                   # 资源文件
 │   └── icon.ico
 │
 ├── models/                   # 模型文件（目录连接符）
-│   ├── Paraformer/
-│   ├── SenseVoice-Small/
-│   ├── FunASR-nano/
-│   └── Punct-CT-Transformer/
+│   ├── FunASR-Nano/          # 轻量级模型（推荐）
+│   ├── SenseVoice-Small/     # 多语言模型
+│   ├── Paraformer/           # 大模型
+│   ├── Punct-CT-Transformer/ # 标点模型
+│   └── FireRed/              # 大模型（未使用）
 │
-├── hot-en.txt                # 热词 - 基于音素 RAG 匹配度替换 - 支持中英
+├── hot.txt                   # 热词 - 基于 RAG 音素匹配（中英统一）
 ├── hot-rule.txt              # 正则表达式规则
-├── hot-rectify.txt           # 修改记录 - 通过音素 RAG 提取最相关的修改记录提供给 LLM 处理
+├── hot-rectify.txt           # 修改记录 - 音素 RAG 检索历史纠错
 └── readme.md
 ```
 
@@ -71,25 +82,104 @@ pyinstaller build.spec
 pyinstaller build-client.spec
 ```
 
+## 🔧 打包配置选项
+
+在 [`build.spec`](build.spec) 中可以配置以下选项：
+
+### CUDA Provider 支持
+
+```python
+# 是否收集 CUDA provider
+# - True: 包含 onnxruntime_providers_cuda.dll，支持 GPU 加速（需要在用户机器安装 CUDA 和 CUDNN）
+# - False: 不包含 CUDA provider，只使用 CPU 模式（打包体积更小，兼容性更好）
+INCLUDE_CUDA_PROVIDER = False
+```
+
+### 排除系统 CUDA DLL
+
+打包配置会自动排除从系统 CUDA 安装目录收集的 DLL，避免冲突：
+- `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v*\bin\`
+- `C:\Program Files\NVIDIA\CUDNN\v*\bin\`
+
+### 排除的用户模块
+
+以下模块不会被打包进 exe，而是作为源文件复制到根目录：
+- `util/` - 工具模块
+- `config.py` - 配置文件
+- `LLM/` - LLM 角色定义
+- `core_*.py` - 核心源码入口
+
 ## 📝 推荐的打包流程
 
-### 步骤 1：清理旧的构建文件
+### 步骤 1：环境准备
 
 ```bash
-rmdir /s /q build dist
+# 激活 conda 环境
+conda activate capswriter
+
+# 安装 PyInstaller
+pip install pyinstaller
 ```
 
 ### 步骤 2：安装依赖
 
 ```bash
+# 安装服务端依赖（包含 Sherpa-ONNX）
 pip install -r requirements-server.txt
+
+# 安装客户端依赖
 pip install -r requirements-client.txt
 ```
 
-### 步骤 3：运行打包
+**依赖文件说明**:
+
+**服务端依赖** ([`requirements-server.txt`](requirements-server.txt)):
+```
+sherpa-onnx==1.12.20+cuda12.cudnn9  # 语音识别核心库
+rich                               # 控制台美化
+websockets                         # WebSocket 通信
+numpy                              # 数值计算
+typeguard==2.13.3                  # 类型检查
+kaldi-native-fbank==1.17           # 特征提取
+Pillow                             # 图像处理（托盘图标）
+pystray                            # 托盘图标
+```
+
+**客户端依赖** ([`requirements-client.txt`](requirements-client.txt)):
+```
+rich                               # 控制台美化
+keyboard                           # 全局快捷键
+pyclip                             # 剪贴板操作
+numpy                              # 数值计算
+sounddevice                        # 音频采集
+websockets                         # WebSocket 通信
+pypinyin                           # 拼音支持（热词）
+watchdog                           # 文件监视
+typer                              # 命令行工具
+srt                                # 字幕生成
+pyinstaller                        # 打包工具
+Pillow                             # 图像处理
+pystray                            # 托盘图标
+```
+
+### 步骤 3：清理旧的构建文件
 
 ```bash
+# Windows
+rmdir /s /q build dist
+
+# Linux/Mac
+rm -rf build dist
+```
+
+### 步骤 4：运行打包
+
+```bash
+# 完整打包（服务端 + 客户端）
 pyinstaller build.spec
+
+# 或者仅打包客户端（Win7 兼容）
+pyinstaller build-client.spec
 ```
 
 **调试模式**（如果遇到问题）：
@@ -101,7 +191,7 @@ pyinstaller --log-level DEBUG build.spec
 pyinstaller --log-level WARN build.spec
 ```
 
-### 步骤 4：验证目录结构
+### 步骤 5：验证目录结构
 
 ```bash
 cd dist\CapsWriter-Offline
@@ -115,13 +205,14 @@ dir internal
 # 检查用户文件
 dir *.py
 dir util
+dir LLM
 dir assets
 
 # 检查 models 连接符
 dir models
 ```
 
-### 步骤 5：测试运行
+### 步骤 6：测试运行
 
 ```bash
 # 测试服务端
@@ -131,7 +222,12 @@ start_server.exe
 start_client.exe
 ```
 
-### 步骤 6：打包分发
+**常见问题**:
+- 如果缺少 DLL，检查 `internal/` 目录是否完整
+- 如果找不到模型，检查 `models/` 连接符是否正确创建
+- 如果热词不生效，检查 `hot*.txt` 文件是否存在
+
+### 步骤 7：打包分发
 
 ```bash
 # 使用 7-Zip 或其他工具压缩
@@ -139,16 +235,97 @@ start_client.exe
 # 或者直接复制 models/ 文件夹而不是创建连接符
 ```
 
+## 🎯 打包最佳实践
+
+### 1. 版本管理
+
+在 [`config.py`](config.py) 中定义版本号：
+```python
+__version__ = '2.0'
+```
+
+### 2. 模型管理
+
+模型文件单独打包，用户下载后放入 `models/` 目录：
+- FunASR-Nano（推荐）: 约 300MB
+- SenseVoice: 约 500MB
+- Paraformer: 约 1GB
+
+### 3. 目录连接符
+
+打包脚本会自动创建目录连接符（需要管理员权限）：
+```python
+link_folders = ['models', 'assets', 'util', 'LLM', '2026', 'log']
+```
+
+如果创建失败，会提示用户手动复制文件夹。
+
+### 4. 隐藏导入
+
+打包配置包含所有必要的隐藏导入：
+```python
+hiddenimports = [
+    'websockets', 'keyboard', 'pyclip', 'numpy',
+    'sounddevice', 'pypinyin', 'watchdog', 'typer',
+    'srt', 'sherpa_onnx', 'PIL', 'pystray',
+    # ...
+]
+```
+
+### 5. 排除模块
+
+以下模块会被排除以减小体积：
+```python
+excludes = [
+    'IPython', 'PySide6', 'PySide2', 'PyQt5',
+    'matplotlib', 'wx', 'funasr', 'pydantic', 'torch',
+]
+```
+
 ## 📚 参考资源
 
+### PyInstaller 文档
 - [PyInstaller 6.0 Changelog](https://pyinstaller.org/en/v6.0.0/CHANGES.html)
 - [PyInstaller Documentation](https://pyinstaller.org/en/stable/)
 - [Spec File Format](https://pyinstaller.org/en/stable/spec-file.html)
 - [PyInstaller Log Levels](https://pyinstaller.org/en/stable/advanced-features.html#logging)
 
+### Sherpa-ONNX 文档
+- [Sherpa-ONNX GitHub](https://github.com/k2-fsa/sherpa-onnx)
+- [Sherpa-ONNX 文档](https://k2-fsa.github.io/sherpa/onnx/)
+
+### 项目相关
+- [CapsWriter-Offline README](readme.md)
+- [开发指南](CLAUDE.md)
+
+## 🔍 故障排查
+
+### 常见问题
+
+**1. 打包后运行报错 "ModuleNotFoundError"**
+- 检查 `hiddenimports` 是否包含该模块
+- 使用 `--log-level DEBUG` 查看打包日志
+
+**2. 找不到 DLL 文件**
+- 检查 `internal/` 目录是否包含所需的 DLL
+- 检查 DLL 是否被错误排除
+
+**3. 模型文件加载失败**
+- 确认 `models/` 连接符创建成功
+- 或手动复制模型文件到打包目录
+
+**4. 热词不生效**
+- 确认 `hot*.txt` 文件被复制到根目录
+- 检查文件编码是否为 UTF-8
+
+**5. 客户端无法连接服务端**
+- 检查防火墙设置
+- 确认端口 6014 未被占用
+
 ---
 
-**更新日期**: 2026-01-08
+**更新日期**: 2026-01-12
 **PyInstaller 版本**: 6.0+
 **Python 版本**: 3.8+
+**Sherpa-ONNX 版本**: 1.12.20
 **项目版本**: CapsWriter-Offline v2.0

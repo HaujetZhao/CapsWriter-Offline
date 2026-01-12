@@ -239,6 +239,7 @@ class ResultProcessor:
         # 热词替换
         # 1. 音素纠错
         correction_result = self._hotword_manager.get_phoneme_corrector().correct(text, k=10)
+        correction_result = self._hotword_manager.get_phoneme_corrector().correct(text, k=10)
         text = correction_result.text
 
         # 2. 规则纠错
