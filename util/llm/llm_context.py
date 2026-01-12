@@ -38,6 +38,13 @@ class ContextManager:
             self.last_interaction = timestamp
             self._trim_history()
 
+    def clear(self):
+        """清除对话历史"""
+        with self._lock:
+            self.history = []
+            self.last_interaction = None
+            logger.info("对话历史已清除")
+
     def get_history(self) -> List[Dict]:
         """获取对话历史"""
         with self._lock:

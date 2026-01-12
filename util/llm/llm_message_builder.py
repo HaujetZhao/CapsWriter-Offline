@@ -120,7 +120,8 @@ class MessageBuilder:
 
         real_user_content = user_content
 
-        if user_content_parts:
+        # if user_content_parts:
+        if True:
             # 在开头添加上下文
             context_str = "\n\n".join(user_content_parts)
             real_user_content = f"{context_str}\n\n用户输入：\n{user_content}"

@@ -35,7 +35,7 @@ class ModelPaths:
     model_dir = Path() / 'models'
 
     # Paraformer 模型路径
-    paraformer_dir = model_dir / 'Paraformer' / "speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+    paraformer_dir = model_dir / 'Paraformer' / "speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-onnx"
     paraformer_model = paraformer_dir / 'model.onnx'
     paraformer_tokens = paraformer_dir / 'tokens.txt'
 

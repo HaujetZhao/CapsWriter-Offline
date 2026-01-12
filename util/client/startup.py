@@ -5,7 +5,7 @@ from platform import system
 from util.client.state import get_state
 from util.logger import get_logger
 from config import ClientConfig as Config
-from util.ui.tray import enable_min_to_tray_with_rectify
+from util.ui.tray import enable_min_to_tray
 from util.client.cleanup import request_exit_from_tray
 from util.client.ui import TipsDisplay
 from util.hotword import get_hotword_manager
@@ -35,19 +35,45 @@ def setup_client_components(base_dir):
             """重启音频服务回调"""
             if state.stream_manager:
                 state.stream_manager.reopen()
-                from util.client.ui import TipsDisplay
-                # 可以加个提示
-                logger.info("用户请求重启音频服务")
+                logger.info("用户请求重启音频")
+
+        def clear_memory():
+            """清除 LLM 对话记忆回调"""
+            from util.llm.llm_handler import clear_llm_history
+            clear_llm_history()
+            from util.ui.toast import toast
+            toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
+
+        def add_hotword():
+            """添加热词回调"""
+            try:
+                from util.ui.hotword_menu_handler import on_add_hotword
+                on_add_hotword()
+            except ImportError as e:
+                logger.warning(f"无法导入热词菜单处理器: {e}")
+
+        def add_rectify():
+            """添加纠错记录回调"""
+            try:
+                from util.ui.rectify_menu_handler import on_add_rectify_record
+                on_add_rectify_record()
+            except ImportError as e:
+                logger.warning(f"无法导入纠错菜单处理器: {e}")
 
         icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
-        enable_min_to_tray_with_rectify(
+        enable_min_to_tray(
             'CapsWriter Client',
             icon_path,
             logger=logger,
             exit_callback=request_exit_from_tray,
-            more_options=[('重启音频服务', restart_audio)]
+            more_options=[
+                ('✨ 添加热词', add_hotword),
+                ('🛠️ 添加纠错', add_rectify),
+                ('🧹 清除记忆', clear_memory),
+                ('🔄 重启音频', restart_audio),
+            ]
         )
-        logger.info("托盘图标已启用（带纠错记录菜单）")
+        logger.info("托盘图标已启用")
 
     # 2. UI 提示
     TipsDisplay.show_mic_tips()

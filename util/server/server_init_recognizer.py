@@ -116,7 +116,7 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
             ),
         )
         punc_model = sherpa_onnx.OfflinePunctuation(config)
-        console.print(f'[green4]标点模型载入完成', end='\n\n')
+        console.print(f'[green4]标点模型载入完成 (CT-Transformer)', end='\n\n')
         logger.info("标点模型加载完成")
 
     console.print(f'模型加载耗时 {time.time() - t1 :.2f}s', end='\n\n')

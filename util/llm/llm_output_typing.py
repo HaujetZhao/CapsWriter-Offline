@@ -48,11 +48,44 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
         else:
             # 非 paste 方式：实时流式 write
             chunks = []
+            pending_buffer = ""  # 用于缓存末尾的换行符和 trash 标点
 
             def stream_write_chunk(chunk: str):
-                """实时写入每个 chunk"""
+                """实时写入每个 chunk，但保留末尾换行符和 trash 标点，直到下一个非空内容到达"""
+                nonlocal pending_buffer
+                if not chunk:
+                    return
                 chunks.append(chunk)
-                keyboard.write(chunk)
+
+                # 1. 将 pending_buffer 与当前 chunk 结合处理
+                full_current = pending_buffer + chunk
+                
+                # 2. 从结合后的内容末尾提取所有需要拦截的字符（换行符和 trash 标点）
+                content = full_current
+                trailing = ""
+                
+                # 从右向左找第一个“有效字符”
+                for i in range(len(full_current) - 1, -1, -1):
+                    char = full_current[i]
+                    if char == '\n' or char in Config.trash_punc:
+                        continue
+                    else:
+                        # 找到了有效字符，它及其左边的都是 content
+                        content = full_current[:i+1]
+                        trailing = full_current[i+1:]
+                        break
+                else:
+                    # 全是拦截字符
+                    content = ""
+                    trailing = full_current
+
+                # 3. 写入有效内容，更新缓冲区
+                if content:
+                    keyboard.write(content)
+                    pending_buffer = trailing
+                else:
+                    # 如果全是拦截字符，则全部存入缓冲区，不执行写入
+                    pending_buffer = trailing
 
             # 流式调用 LLM，实时输出
             polished_text, token_count, generation_time = await asyncio.to_thread(
@@ -71,23 +104,7 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
                 # 合并所有 chunks
                 full_text = ''.join(chunks)
 
-                # 处理最后一段的标点
-                trash_count = 0
-                last_chunk = chunks[-1] if chunks else ''
-
-                # 计算末尾有多少个需要删除的标点
-                for char in reversed(last_chunk):
-                    if char in Config.trash_punc:
-                        trash_count += 1
-                    else:
-                        break
-
-                # 如果有标点需要删除，模拟退格键
-                if trash_count > 0:
-                    for _ in range(trash_count):
-                        keyboard.press_and_release('backspace')
-
-                # 返回去标点后的文本
+                # 返回去标点后的文本（由于 pending_buffer 里的东西没打出来，所以不需要退格）
                 return (TextOutput.strip_punc(full_text), token_count, generation_time)
 
     except Exception as e:

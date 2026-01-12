@@ -92,6 +92,15 @@ class LLMHandler:
                 ctx.last_interaction = old_contexts[role_name]['last_interaction']
                 logger.debug(f"恢复角色 '{role_name}' 的历史记录: {len(ctx.history)} 条")
 
+    def clear_history(self):
+        """清除所有角色的对话历史记录"""
+        logger.info("正在清除所有角色的对话历史记录...")
+        count = 0
+        for role_name, manager in self.context_managers.items():
+            manager.clear()
+            count += 1
+        logger.info(f"已清除 {count} 个角色的对话历史记录")
+
     def detect_role(self, text: str) -> Tuple[Optional[RoleConfig], str]:
         """检测文本是否匹配某个角色前缀
 
@@ -214,6 +223,12 @@ def polish_text(text: str, matched_hotwords=None, callback=None, should_stop_che
     """
     handler = get_handler()
     return handler.process(text, matched_hotwords, callback, should_stop_check)
+
+
+def clear_llm_history():
+    """清除 LLM 对话历史（便捷函数）"""
+    handler = get_handler()
+    handler.clear_history()
 
 
 # ======================================================================
