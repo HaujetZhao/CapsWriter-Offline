@@ -24,7 +24,6 @@ model: str = 'gemma3:4b'                     # 模型名称
 
 # 上下文管理
 max_context_length: int = 4096               # 最大上下文长度（token 数）
-forget_duration: int = 0                     # 遗忘时长（秒，0 表示不遗忘）
 
 # 功能配置
 enable_thinking: bool = False                # 是否启用思考（仅 Ollama 支持）
@@ -36,7 +35,6 @@ selection_max_length: int = 1000             # 选中文字最大长度
 
 # 输出配置
 output_mode: str = 'typing'                  # 输出方式: 'typing' 或 'toast' (即打字输出或弹窗输出)
-set_clipboard: bool = False                  # 输出完成后是否复制到剪贴板
 
 # Toast 弹窗配置
 toast_initial_width: float = 0.5             # Toast 窗口初始宽度（0.5 = 50% 屏幕宽度）
@@ -55,6 +53,12 @@ stop: str = ''                               # 停止序列
 
 # 高级选项
 extra_options: Dict[str, Any] = field(default_factory=dict)  # 额外的 API 参数
+
+# 提示词前缀
+prompt_prefix_hotwords: str = '热词列表：'      # 热词列表前缀
+prompt_prefix_rectify: str = '纠错历史：'       # 纠错历史前缀
+prompt_prefix_selection: str = '选中文字：'     # 选中文字前缀
+prompt_prefix_input: str = '用户输入：'         # 用户输入前缀
 
 # System Prompt
 system_prompt: str = ''                      # 系统提示词

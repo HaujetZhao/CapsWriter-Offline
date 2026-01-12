@@ -28,57 +28,23 @@ class RoleLoader:
         Returns:
             角色名称
         """
-        from util.llm.llm_constants import RoleConfigDefaults as Defaults
+        from dataclasses import fields
         
-        # 配置变量名到默认值的映射，使用常量类避免重复定义
-        config_vars = {
-            'name': Defaults.DEFAULT_NAME,
-            'match': Defaults.DEFAULT_MATCH,
-            'process': Defaults.DEFAULT_PROCESS,
-            'provider': Defaults.DEFAULT_PROVIDER,
-            'api_url': Defaults.DEFAULT_API_URL,
-            'api_key': Defaults.DEFAULT_API_KEY,
-            'model': Defaults.DEFAULT_MODEL,
-            'enable_hotwords': Defaults.DEFAULT_ENABLE_HOTWORDS,
-            'enable_rectify': Defaults.DEFAULT_enable_rectify,
-            'enable_thinking': Defaults.DEFAULT_ENABLE_THINKING,
-            'enable_history': Defaults.DEFAULT_ENABLE_HISTORY,
-            'max_context_length': Defaults.DEFAULT_MAX_CONTEXT_LENGTH,
-            'forget_duration': Defaults.DEFAULT_FORGET_DURATION,
-            'set_clipboard': Defaults.DEFAULT_SET_CLIPBOARD,
-            'enable_read_selection': Defaults.DEFAULT_ENABLE_READ_SELECTION,
-            'selection_max_length': Defaults.DEFAULT_SELECTION_MAX_LENGTH,
-            'output_mode': Defaults.DEFAULT_OUTPUT_MODE,
-            'toast_initial_width': Defaults.DEFAULT_TOAST_INITIAL_WIDTH,
-            'toast_initial_height': Defaults.DEFAULT_TOAST_INITIAL_HEIGHT,
-            'toast_font_family': Defaults.DEFAULT_TOAST_FONT_FAMILY,
-            'toast_font_size': Defaults.DEFAULT_TOAST_FONT_SIZE,
-            'toast_font_color': Defaults.DEFAULT_TOAST_FONT_COLOR,
-            'toast_bg_color': Defaults.DEFAULT_TOAST_BG_COLOR,
-            'toast_duration': Defaults.DEFAULT_TOAST_DURATION,
-            'temperature': Defaults.DEFAULT_TEMPERATURE,
-            'top_p': Defaults.DEFAULT_TOP_P,
-            'max_tokens': Defaults.DEFAULT_MAX_TOKENS,
-            'stop': Defaults.DEFAULT_STOP,
-            'extra_options': {},
-            'system_prompt': '',
-        }
+        # 1. 自动从 RoleConfig 获取所有的命名字段
+        config = {'module_name': module_name}
+        for f in fields(RoleConfig):
+            if f.name == 'module_name':
+                continue
+            # 如果模块（角色脚本）里定义了这个变量，就读取它
+            if hasattr(module, f.name):
+                config[f.name] = getattr(module, f.name)
+            # 否则不设置，让 RoleConfig 自动使用 dataclass 的默认值
 
-        config = {}
-        for var_name, default_value in config_vars.items():
-            if hasattr(module, var_name):
-                config[var_name] = getattr(module, var_name)
-            else:
-                config[var_name] = default_value
-
-        # 添加 module_name
-        config['module_name'] = module_name
-
-        # 创建 RoleConfig 对象（直接使用 **config 解包）
+        # 2. 创建 RoleConfig 对象
         role_config = RoleConfig(**config)
 
         # 空字符串和「默认」都表示默认角色
-        role_name = role_config.name or Defaults.DEFAULT_ROLE_NAME
+        role_name = role_config.name or RoleConfig.DEFAULT_ROLE_NAME
 
         self.roles_registry[role_name] = role_config
 
@@ -159,8 +125,8 @@ class RoleLoader:
 
     def get_default_role(self) -> RoleConfig:
         """获取默认角色"""
-        return self.roles_registry.get('默认', RoleConfig(name='默认', module_name='', process=False))
+        return self.roles_registry.get(RoleConfig.DEFAULT_ROLE_NAME, RoleConfig(name=RoleConfig.DEFAULT_ROLE_NAME, module_name='', process=False))
 
     def get_role_by_name(self, name: str) -> RoleConfig:
         """根据名字获取角色"""
-        return self.roles_registry.get(name, RoleConfig(name='默认', module_name='', process=False))
+        return self.roles_registry.get(name, RoleConfig(name=RoleConfig.DEFAULT_ROLE_NAME, module_name='', process=False))

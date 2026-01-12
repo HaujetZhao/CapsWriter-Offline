@@ -72,6 +72,9 @@ class ClientState:
     # 最近一次识别结果（用于手动添加纠错记录）
     last_recognition_text: Optional[str] = None
     
+    # 最近一次输出内容（如果是 LLM 润色，则是润色结果；否则是原始识别结果）
+    last_output_text: Optional[str] = None
+    
     def initialize(self) -> None:
         """
         初始化状态

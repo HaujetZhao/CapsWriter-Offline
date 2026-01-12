@@ -54,7 +54,7 @@ class LLMProcessor:
         Returns:
             (处理后的文本, 输出token数, 生成时间秒)
         """
-        logger.debug(f"开始 LLM 处理，模型: {role_config.model}")
+        logger.info(f"开始 LLM 处理，模型: {role_config.model}")
 
         # 获取客户端
         logger.debug(f"获取 LLM 客户端，提供商: {role_config.provider}, API: {role_config.api_url}")

@@ -79,60 +79,46 @@ class MessageBuilder:
             elif isinstance(context_manager, list):
                 messages.extend(context_manager)
 
-        # 3. 用户内容构建
-        user_content_parts = []
+        # 3. 用户内容构建 (集中式构建，方便管理格式)
+        context_parts = []
 
-        # 缓存角色配置属性（避免重复 getattr）
-        enable_hotwords = getattr(role_config, 'enable_hotwords', False)
-        enable_rectify = getattr(role_config, 'enable_rectify', False)
-
-        logger.debug(f"[消息构建] enable_hotwords={enable_hotwords}, hotwords数量={len(hotwords) if hotwords else 0}")
-        logger.debug(f"[消息构建] enable_rectify={enable_rectify}")
-
-        # 添加 RAG 热词列表（根据角色配置）
-        if enable_hotwords and hotwords:
-            hotwords_prompt = self._format_hotwords_prompt(hotwords)
-            if hotwords_prompt:
-                user_content_parts.append(hotwords_prompt)
+        # 3.1 热词列表
+        if role_config.enable_hotwords and hotwords:
+            words = [hw for hw, _ in hotwords]
+            if words:
+                context_parts.append(f"{role_config.prompt_prefix_hotwords}[{', '.join(words)}]")
                 logger.debug(f"[消息构建] 已添加热词列表")
 
-        # 添加纠错历史（根据角色配置）
-        if enable_rectify:
-            logger.debug(f"[消息构建] 开始调用 rectify_rag.format_prompt")
+        # 3.2 纠错历史 (从 RAG 获取原始数据并在本地格式化)
+        if role_config.enable_rectify:
             rectify_rag = self._get_rectify_rag()
             if rectify_rag:
-                rectify_prompt = rectify_rag.format_prompt(user_content)  
-                if rectify_prompt:
-                    user_content_parts.append(rectify_prompt)
-                    logger.debug(f"[消息构建] 已添加纠错历史")
-                else:
-                    logger.debug(f"[消息构建] rectify_prompt 为空")
-            else:
-                logger.debug(f"[消息构建] rectify_rag 为 None")
-        else:
-            logger.debug(f"[消息构建] 跳过纠错历史: enable_rectify={enable_rectify}")
+                matches = rectify_rag.search(user_content)
+                if matches:
+                    lines = [role_config.prompt_prefix_rectify]
+                    for wrong, right, _ in matches:
+                        lines.append(f"- {wrong} => {right}")
+                    context_parts.append("\n".join(lines))
+                    logger.debug(f"[消息构建] 已从 RAG 获取并添加 {len(matches)} 条纠错历史记录")
 
-        # 添加选中文字（根据角色配置）
+        # 3.3 选中文字
         if selection_text:
-            selection_prompt = self._format_selection_prompt(selection_text)
-            if selection_prompt:
-                user_content_parts.append(selection_prompt)
+             context_parts.append(f"{role_config.prompt_prefix_selection}{selection_text}")
+             logger.debug(f"[消息构建] 已添加选中文字")
 
-        real_user_content = user_content
+        # 3.4 最终组装
+        context_str = "\n\n".join(context_parts)
+        context_str = context_str + "\n\n" if context_str else ""
 
-        # if user_content_parts:
-        if True:
-            # 在开头添加上下文
-            context_str = "\n\n".join(user_content_parts)
-            real_user_content = f"{context_str}\n\n用户输入：\n{user_content}"
+        user_content = f"{context_str}{role_config.prompt_prefix_input}{user_content}"
 
         # 构建最终用户消息
-        final_user_msg = {"role": "user", "content": real_user_content}
+        final_user_msg = {"role": "user", "content": user_content}
 
         # 处理图片数据（注意：有图片时会将 content 改为列表格式）
         if image_data:
              final_user_msg["content"] = [
-                 {"type": "text", "text": real_user_content},
+                 {"type": "text", "text": user_content},
                  {"type": "image_url", "image_url": {"url": image_data}}
              ]
 
@@ -142,38 +128,6 @@ class MessageBuilder:
         self._debug_print_messages(role_config.name, role_config, messages)
 
         return messages
-
-    def _format_hotwords_prompt(self, hotwords: List[Tuple[str, float]]) -> str:
-        """
-        将检索结果格式化为提示词
-
-        Args:
-            hotwords: [(热词, 分数), ...]
-
-        Returns:
-            格式化的提示字符串
-        """
-        if not hotwords:
-            return ""
-
-        # 提取热词（只保留词，不保留分数）
-        hotword_list = [hw for hw, _ in hotwords]
-        return f"热词列表：[{', '.join(hotword_list)}]"
-
-    def _format_selection_prompt(self, selection_text: str) -> str:
-        """
-        将选中文字格式化为提示词
-
-        Args:
-            selection_text: 选中的文字
-
-        Returns:
-            格式化的提示字符串
-        """
-        if not selection_text or not selection_text.strip():
-            return ""
-
-        return f"选中文字：\n{selection_text}"
 
     def _debug_print_messages(
         self,
@@ -208,9 +162,24 @@ class MessageBuilder:
                 debug_msg.append(f"    ⚡ 提示: 上下文使用超过 60%")
 
             debug_msg.append(f"{'='*70}")
-            debug_msg.append(json.dumps(messages, ensure_ascii=False, indent=2))
-            debug_msg.append(f"{'='*70}\n")
-
+            
+            # 1. 首先用 DEBUG 级别打印详细统计信息
             logger.debug("\n".join(debug_msg))
+
+            # 2. 只有最新的一条用户消息用 INFO 打印
+            last_msg = messages[-1]
+            content = last_msg.get('content', '')
+            if isinstance(content, list):
+                # 处理多模态格式，提取文本
+                content = "\n".join([item.get('text', '') for item in content if item.get('type') == 'text'])
+
+            info_msg = [
+                f"\n{'='*70}",
+                f"[LLM 请求] 角色: {role_name}",
+                f"{content}",
+                f"{'='*70}\n"
+            ]
+            logger.info("\n".join(info_msg))
+
         except Exception as e:
-            logger.error(f"调试输出失败: {e}")
+            logger.error(f"消息日志输出失败: {e}")

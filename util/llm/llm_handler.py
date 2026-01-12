@@ -7,9 +7,10 @@ LLM 处理器 - 协调器
 3. 流式输出
 """
 
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Any
+from pathlib import Path
+
 from util.llm.llm_role_loader import RoleLoader
-from util.hotword.hot_rectification import RectificationRAG
 from util.llm.llm_context import ContextManager
 from util.llm.llm_watcher import LLMFileWatcher
 from util.llm.llm_role_config import RoleConfig
@@ -18,6 +19,7 @@ from util.llm.llm_message_builder import MessageBuilder
 from util.llm.llm_role_detector import RoleDetector
 from util.llm.llm_processor import LLMProcessor
 from util.llm.llm_get_selection import get_selected_text, record_selection_usage
+from util.llm.llm_process_text import LLMResult
 from util.logger import get_logger
 from util.hotword import get_hotword_manager
 
@@ -63,7 +65,6 @@ class LLMHandler:
             if role_config.enable_history:
                 self.context_managers[role_name] = ContextManager(
                     max_length=role_config.max_context_length,
-                    forget_duration=role_config.forget_duration,
                 )
 
     def reload_roles(self):
@@ -112,11 +113,12 @@ class LLMHandler:
         """
         return self.role_detector.detect(text)
 
-    def process(self, text: str, matched_hotwords=None, callback=None, should_stop_check=None) -> tuple[str, int, float]:
-        """处理输入文本
+    def process(self, role_config: RoleConfig, content: str, matched_hotwords=None, callback=None, should_stop_check=None) -> tuple[str, int, float]:
+        """执行实际的 LLM 模型调用（内部方法）
 
         Args:
-            text: 输入文本
+            role_config: 角色配置对象
+            content: 去除前缀后的输入内容
             matched_hotwords: [(hotword, score), ...] 来自 hot_phoneme 的检索结果
             callback: 流式输出的回调函数
             should_stop_check: 检查是否应该停止的函数（返回 True 表示停止）
@@ -124,43 +126,27 @@ class LLMHandler:
         Returns:
             (处理后的文本, 输出token数, 生成时间秒)
         """
-        logger.debug(f"开始 LLM 处理，输入文本: {text}")
-
-        role_config, content = self.detect_role(text)
-
-        if not role_config:
-            logger.debug("角色配置为空，跳过 LLM 处理")
-            return (text, 0, 0.0)
-
         # 获取处理后的角色名称（空字符串 -> '默认'）
-        from util.llm.llm_constants import RoleConfigDefaults
-        role_name = role_config.name or RoleConfigDefaults.DEFAULT_ROLE_NAME
-        logger.debug(f"使用角色: {role_name}, 处理内容: {content}")
+        role_name = role_config.name or RoleConfig.DEFAULT_ROLE_NAME
+        logger.debug(f"开始 LLM 核心处理 [角色: {role_name}] [内容长度: {len(content)}]")
 
         # 获取上下文管理器（如果启用历史）
         context_manager = self.context_managers.get(role_name) if role_config.enable_history else None
         if context_manager:
             logger.debug(f"角色 '{role_name}' 启用历史，当前历史条数: {len(context_manager.history)}")
-        else:
-            logger.debug(f"角色 '{role_name}' 未启用历史")
-
+        
         # 获取选中文字（如果启用）
         selection_text = get_selected_text(role_config)
-        if selection_text:
-            logger.debug(f"角色 '{role_name}' 获取到选中文字: {selection_text[:50]}...")
-        else:
-            logger.debug(f"角色 '{role_name}' 未获取到选中文字")
-
+        
         # 构建消息
         messages = self.message_builder.build_messages(
             role_config, content, context_manager,
             hotwords=matched_hotwords,
             selection_text=selection_text
         )
-        logger.debug(f"构建消息完成，消息数量: {len(messages)}, 总token数: {sum(len(m.get('content', '')) for m in messages)}")
-
+        
         # 使用 LLM 处理引擎执行请求
-        result = self.processor.process(
+        result_text, token_count, gen_time = self.processor.process(
             role_config=role_config,
             messages=messages,
             callback=callback,
@@ -171,7 +157,81 @@ class LLMHandler:
         # 记录选中文字的使用（用于下一轮判断是否重复）
         record_selection_usage(role_config, selection_text)
 
-        return result
+        return result_text, token_count, gen_time
+
+    async def process_and_output(self, text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
+        """
+        统一入口：处理输入文本并根据配置执行输出（打字或弹屏）
+        
+        Args:
+            text: 待润色的完整原始文本（含可能的前缀）
+            return_result: 是否返回 LLMResult 对象
+            paste: 是否强制使用粘贴模式（None 则遵循配置）
+            matched_hotwords: 潜在热词列表
+        """
+        import time
+        from util.llm.llm_output_typing import handle_typing_mode, output_text
+        from util.llm.llm_output_toast import handle_toast_mode
+        from util.client.processing.output import TextOutput
+
+        start_time = time.time()
+        
+        # 1. 角色检测
+        role_config, content = self.detect_role(text)
+
+        # 2. 如果不匹配任何需要处理的角色（或者默认角色被禁用）
+        if not role_config:
+            result_text = TextOutput.strip_punc(text)
+            await output_text(result_text, paste)
+            
+            # 更新全局状态
+            from util.client.state import get_state
+            get_state().last_output_text = result_text
+
+            if return_result:
+                return LLMResult(result=result_text, role_name=None, processed=False, 
+                                 token_count=0, polish_time=0, input_text=text)
+            return None
+
+        # 3. 检查是否启用 LLM 处理
+        display_name = role_config.name or RoleConfig.DEFAULT_ROLE_NAME
+        if not role_config.process:
+            # 角色匹配但禁用 LLM（如只是占位符），原样输出
+            result_text = TextOutput.strip_punc(content)
+            await output_text(result_text, paste)
+            
+            # 更新全局状态
+            from util.client.state import get_state
+            get_state().last_output_text = result_text
+
+            if return_result:
+                return LLMResult(result=result_text, role_name=display_name, processed=False,
+                                 token_count=0, polish_time=0, input_text=content)
+            return None
+
+        # 4. 根据输出模式分发处理
+        if role_config.output_mode == 'toast':
+            result, token_count, gen_time = await handle_toast_mode(text, role_config, matched_hotwords, content)
+        else: # typing
+            result, token_count, gen_time = await handle_typing_mode(text, paste, matched_hotwords, role_config, content)
+
+        # 5. 后置处理
+        # 更新全局状态（即便是中断了，也记录已经输出的部分）
+        if result:
+            from util.client.state import get_state
+            get_state().last_output_text = result
+
+        if return_result:
+            return LLMResult(
+                result=result,
+                role_name=display_name,
+                processed=True,
+                token_count=token_count,
+                polish_time=time.time() - start_time,
+                input_text=content,
+                generation_time=gen_time
+            )
+        return None
 
 
 # ======================================================================
@@ -209,20 +269,10 @@ def init_llm_system():
             logger.error(f"LLM 系统初始化失败: {e}", exc_info=True)
 
 
-def polish_text(text: str, matched_hotwords=None, callback=None, should_stop_check=None) -> tuple[str, int, float]:
-    """润色文本（便捷函数）
-
-    Args:
-        text: 待润色的文本
-        matched_hotwords: [(hotword, score), ...] 来自 hot_phoneme 的检索结果
-        callback: 流式输出的回调函数
-        should_stop_check: 检查是否应该停止的函数
-
-    Returns:
-        (润色后的文本, 输出token数, 生成时间秒)
-    """
+async def llm_process_text(text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
+    """润色文本并直接输出（外部主入口）"""
     handler = get_handler()
-    return handler.process(text, matched_hotwords, callback, should_stop_check)
+    return await handler.process_and_output(text, return_result, paste, matched_hotwords)
 
 
 def clear_llm_history():
@@ -236,41 +286,27 @@ def clear_llm_history():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("LLM 处理器 - 测试模式（使用 OpenAI 库）")
+    print("LLM 处理器 - 测试模式")
     print("=" * 60)
 
-    handler = get_handler()
+    import asyncio
+    
+    async def run_test_cases():
+        handler = get_handler()
+        print(f"\n已加载角色: {list(handler.roles.keys())}")
 
-    print(f"\n已加载角色: {list(handler.roles.keys())}")
+        test_cases = [
+            "呃，我想查看一下当前目录的文件",
+            "命令 查看当前目录的文件",
+            "Python 读取文件",
+        ]
 
-    test_cases = [
-        "呃，我想查看一下当前目录的文件",
-        "命令 查看当前目录的文件",
-        "Python 读取文件",
-    ]
-
-    print("\n--- 测试案例 ---\n")
-
-    for test_text in test_cases:
-        print(f"输入: {test_text}")
-        print(f"输出: ", end='', flush=True)
-
-        result = polish_text(test_text, callback=lambda x: print(x, end='', flush=True))
-        print()
-        print("-" * 40)
-
-    print("\n--- 交互模式（输入 'quit' 退出）---\n")
-
-    while True:
-        try:
-            user_input = input(">>> ").strip()
-
-            if not user_input or user_input.lower() in ['quit', 'exit', '退出']:
-                break
-
-            result = polish_text(user_input, callback=lambda x: print(x, end='', flush=True))
+        print("\n--- 测试案例 ---\n")
+        for test_text in test_cases:
+            print(f"输入: {test_text}")
+            print(f"输出: ", end='', flush=True)
+            result = await llm_process_text(test_text)
             print()
+            print("-" * 40)
 
-        except KeyboardInterrupt:
-            print("\n\n再见！")
-            break
+    asyncio.run(run_test_cases())

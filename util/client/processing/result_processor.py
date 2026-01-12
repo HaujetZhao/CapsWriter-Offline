@@ -224,10 +224,13 @@ class ResultProcessor:
         original_text = text  # 保存原始识别结果
         delay = message['time_complete'] - message['time_submit']
 
-        logger.debug(
-            f"接收到识别结果，文本: {text[:50]}{'...' if len(text) > 50 else ''}, "
-            f"时延: {delay:.2f}s"
-        )
+        if message['is_final']:
+            logger.info(f"收到最终识别结果: {text}, 时延: {delay:.2f}s")
+        else:
+            logger.debug(
+                f"接收到识别结果，文本: {text[:50]}{'...' if len(text) > 50 else ''}, "
+                f"时延: {delay:.2f}s"
+            )
 
         # 如果非最终结果，继续等待
         if not message['is_final']:
@@ -300,6 +303,7 @@ class ResultProcessor:
             )
         else:
             await self._text_output.output(text, paste=paste)
+            self.state.last_output_text = text
 
         # 保存录音与写入 md 文件
         file_audio = None

@@ -299,13 +299,14 @@ class RectificationRAG:
             
         return results
 
-    def format_prompt(self, text: str, top_k: int = 5) -> str:
+    def format_prompt(self, text: str, top_k: int = 5, prefix: str = "纠错历史：") -> str:
         """
         生成提示词
 
         Args:
             text: 输入文本
             top_k: 最大结果数
+            prefix: 提示词前缀
 
         Returns:
             包含纠错历史的提示词段落，无匹配则返回空字符串
@@ -321,7 +322,7 @@ class RectificationRAG:
             logger.debug(f"纠错 RAG: 未检索到相关纠错历史")
             return ""
 
-        lines = ["纠错历史："]
+        lines = [prefix]
         for wrong, right, score in results:
             lines.append(f"- {wrong} => {right}")
 

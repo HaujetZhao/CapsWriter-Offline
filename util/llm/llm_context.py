@@ -19,9 +19,8 @@ logger = get_logger('client')
 class ContextManager:
     """对话上下文管理器"""
 
-    def __init__(self, max_length: int = 2000, forget_duration: int = 300):
+    def __init__(self, max_length: int = 2000):
         self.max_length = max_length
-        self.forget_duration = forget_duration
         self.history = []
         self.last_interaction = None
         self._lock = Lock()
@@ -48,29 +47,10 @@ class ContextManager:
     def get_history(self) -> List[Dict]:
         """获取对话历史"""
         with self._lock:
-            if self._is_expired():
-                self.history = []
-                return []
-
             return [
                 {'role': msg['role'], 'content': msg['content']}
                 for msg in self.history
             ]
-
-    def _is_expired(self) -> bool:
-        """检查历史是否过期
-
-        forget_duration=0 表示永不遗忘
-        """
-        # forget_duration 为 0 表示永不遗忘
-        if self.forget_duration == 0:
-            return False
-
-        if not self.last_interaction:
-            return False
-
-        elapsed = time.time() - self.last_interaction
-        return elapsed > self.forget_duration
 
     def _estimate_tokens(self, text: str) -> int:
         """估算文本的 token 数量（使用统一的常量）"""

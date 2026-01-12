@@ -46,53 +46,6 @@ class WatcherConstants:
 
 
 # ==================== 角色配置默认值 ====================
-class RoleConfigDefaults:
-    """角色配置的默认值"""
-
-    # 基本配置
-    DEFAULT_NAME = ''
-    DEFAULT_MATCH = True
-    DEFAULT_PROCESS = False
-
-    # API 配置
-    DEFAULT_PROVIDER = 'ollama'
-    DEFAULT_API_URL = ''
-    DEFAULT_API_KEY = ''
-    DEFAULT_MODEL = 'gemma3:4b'
-
-    # 上下文配置
-    DEFAULT_MAX_CONTEXT_LENGTH = 4096
-    DEFAULT_FORGET_DURATION = 600
-
-    # 功能开关
-    DEFAULT_ENABLE_HOTWORDS = False
-    DEFAULT_enable_rectify = False
-    DEFAULT_ENABLE_THINKING = False
-    DEFAULT_ENABLE_HISTORY = False
-    DEFAULT_ENABLE_READ_SELECTION = False
-    DEFAULT_SELECTION_MAX_LENGTH = 1000
-
-    # 输出配置
-    DEFAULT_OUTPUT_MODE = 'typing'
-    DEFAULT_SET_CLIPBOARD = False
-
-    # Toast 配置
-    DEFAULT_TOAST_INITIAL_WIDTH = 0.5
-    DEFAULT_TOAST_INITIAL_HEIGHT = 0
-    DEFAULT_TOAST_FONT_FAMILY = ''
-    DEFAULT_TOAST_FONT_SIZE = 14
-    DEFAULT_TOAST_FONT_COLOR = 'white'
-    DEFAULT_TOAST_BG_COLOR = '#075077'
-    DEFAULT_TOAST_DURATION = 3000
-
-    # 生成参数
-    DEFAULT_TEMPERATURE = 0.7
-    DEFAULT_TOP_P = 0.9
-    DEFAULT_MAX_TOKENS = 1024
-    DEFAULT_STOP = ''
-
-    # 默认角色名称
-    DEFAULT_ROLE_NAME = '默认'
 
 
 # ==================== API 配置 ====================

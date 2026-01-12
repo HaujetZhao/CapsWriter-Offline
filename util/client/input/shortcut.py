@@ -69,7 +69,7 @@ class ShortcutHandler:
     
     def _launch_task(self) -> None:
         """启动录音任务"""
-        logger.debug("启动录音任务")
+        logger.info("快捷键触发：开始录音")
         
         # 记录开始时间
         t1 = time.time()
@@ -105,7 +105,7 @@ class ShortcutHandler:
     
     def _finish_task(self) -> None:
         """完成录音任务"""
-        logger.debug("完成录音任务")
+        logger.info("快捷键释放：完成录音")
         
         self.state.stop_recording()
         self._status.stop()
@@ -158,7 +158,6 @@ class ShortcutHandler:
     def _hold_mode_handler(self, e: keyboard.KeyboardEvent) -> None:
         """长按模式事件处理"""
         if e.event_type == 'down' and not self.state.recording:
-            logger.debug("检测到长按模式：按下")
             self._launch_task()
             
         elif e.event_type == 'up' and self.state.recording:

@@ -60,6 +60,18 @@ def setup_client_components(base_dir):
             except ImportError as e:
                 logger.warning(f"无法导入纠错菜单处理器: {e}")
 
+        def copy_last_result():
+            """复制上一次输出结果回调"""
+            text = state.last_output_text
+            if text:
+                from util.llm.llm_clipboard import copy_to_clipboard
+                copy_to_clipboard(text)
+                from util.ui.toast import toast
+                toast("已复制上次输出结果", duration=2000)
+            else:
+                from util.ui.toast import toast
+                toast("复制失败：尚无输出结果", duration=2000, bg="#CC3333")
+
         icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
         enable_min_to_tray(
             'CapsWriter Client',
@@ -67,6 +79,7 @@ def setup_client_components(base_dir):
             logger=logger,
             exit_callback=request_exit_from_tray,
             more_options=[
+                ('📋 复制结果', copy_last_result),
                 ('✨ 添加热词', add_hotword),
                 ('🛠️ 添加纠错', add_rectify),
                 ('🧹 清除记忆', clear_memory),

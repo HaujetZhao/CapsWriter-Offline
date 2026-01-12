@@ -4,7 +4,7 @@ LLM 模块
 提供 LLM 相关的所有功能，包括角色管理、消息构建、上下文管理等"""
 
 # 核心处理器
-from .llm_handler import LLMHandler, get_handler, init_llm_system, polish_text
+from .llm_handler import LLMHandler, get_handler, init_llm_system
 
 # 角色配置和加载
 from .llm_role_config import RoleConfig
@@ -38,7 +38,6 @@ __all__ = [
     'LLMHandler',
     'get_handler',
     'init_llm_system',
-    'polish_text',
 
     # 角色管理
     'RoleConfig',
