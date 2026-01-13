@@ -1,0 +1,2 @@
+https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/Models/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-onnx.zip
+

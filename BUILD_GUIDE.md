@@ -134,32 +134,53 @@ pip install -r requirements-client.txt
 **依赖文件说明**:
 
 **服务端依赖** ([`requirements-server.txt`](requirements-server.txt)):
-```
-sherpa-onnx==1.12.20+cuda12.cudnn9  # 语音识别核心库
-rich                               # 控制台美化
-websockets                         # WebSocket 通信
-numpy                              # 数值计算
-typeguard==2.13.3                  # 类型检查
-kaldi-native-fbank==1.17           # 特征提取
-Pillow                             # 图像处理（托盘图标）
-pystray                            # 托盘图标
+```text
+# ASR 核心
+-f https://k2-fsa.github.io/sherpa/onnx/cuda-cn.html
+sherpa-onnx==1.12.20+cuda12.cudnn9
+kaldi-native-fbank==1.17
+numpy
+typeguard==2.13.3
+
+# 基础
+rich
+websockets
+
+# 托盘与图像
+pystray
+Pillow
 ```
 
 **客户端依赖** ([`requirements-client.txt`](requirements-client.txt)):
-```
-rich                               # 控制台美化
-keyboard                           # 全局快捷键
-pyclip                             # 剪贴板操作
-numpy                              # 数值计算
-sounddevice                        # 音频采集
-websockets                         # WebSocket 通信
-pypinyin                           # 拼音支持（热词）
-watchdog                           # 文件监视
-typer                              # 命令行工具
-srt                                # 字幕生成
-pyinstaller                        # 打包工具
-Pillow                             # 图像处理
-pystray                            # 托盘图标
+```text
+# 基础与 CLI
+rich
+typer
+colorama
+
+# 系统、输入与硬件
+keyboard
+pyclip
+sounddevice
+watchdog
+
+# 网络与 API
+websockets
+openai
+httpx
+
+# 数据处理
+numpy
+numba
+pypinyin
+srt
+
+# 托盘与图像
+pystray
+Pillow
+
+# 打包
+pyinstaller
 ```
 
 ### 步骤 3：清理旧的构建文件
@@ -178,7 +199,7 @@ rm -rf build dist
 # 完整打包（服务端 + 客户端）
 pyinstaller build.spec
 
-# 或者仅打包客户端（Win7 兼容）
+# 或者仅打包客户端（Win7 兼容需 Python3.8）
 pyinstaller build-client.spec
 ```
 
@@ -241,7 +262,7 @@ start_client.exe
 
 在 [`config.py`](config.py) 中定义版本号：
 ```python
-__version__ = '2.0'
+__version__ = '2.1'
 ```
 
 ### 2. 模型管理
@@ -320,12 +341,13 @@ excludes = [
 
 **5. 客户端无法连接服务端**
 - 检查防火墙设置
-- 确认端口 6014 未被占用
+- 确认端口 6016 未被占用
+
 
 ---
 
-**更新日期**: 2026-01-12
+**更新日期**: 2026-01-13
 **PyInstaller 版本**: 6.0+
 **Python 版本**: 3.8+
 **Sherpa-ONNX 版本**: 1.12.20
-**项目版本**: CapsWriter-Offline v2.0
+**项目版本**: CapsWriter-Offline v2.1

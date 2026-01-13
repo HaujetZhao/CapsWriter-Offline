@@ -223,7 +223,7 @@ class LLMFileWatcher(FileSystemEventHandler):
 
     def _print_all_roles(self):
         """打印所有已加载的角色信息"""
-        print(f"LLM 角色")
+        print(f"\nLLM 角色")
 
         roles = self._get_roles()
 

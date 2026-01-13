@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import threading
 import time
+import unicodedata
 from pathlib import Path
 from typing import Dict, Callable, Optional, TYPE_CHECKING, Any, Tuple
 
@@ -27,7 +28,7 @@ try:
     HOT_SIMILAR = ClientConfig.hot_similar
     RECTIFY_THRESH = ClientConfig.hot_rectify
 except ImportError:
-    HOT_THRESH = 0.7
+    HOT_THRESH = 0.8
     HOT_SIMILAR = 0.6
     RECTIFY_THRESH = 0.5
 
@@ -92,6 +93,24 @@ class HotwordManager:
         
         self._observer: Optional[Observer] = None
 
+    def _get_display_width(self, text: str) -> int:
+        """计算字符串的显示宽度（考虑中文字符占2个单位）"""
+        width = 0
+        for char in text:
+            if unicodedata.east_asian_width(char) in ('W', 'F', 'A'):
+                width += 2
+            else:
+                width += 1
+        return width
+
+    def _format_msg(self, label: str, filename: str, count: int) -> str:
+        """格式化对齐消息"""
+        w = self._get_display_width(label)
+        padding1 = " " * max(0, 8 - w)
+        w2 = self._get_display_width(filename)
+        padding2 = " " * max(0, 16 - w2)
+        return f"[bold cyan]{label}{padding1}：[/][cyan]{filename}{padding2}[/] 已更新[green]{count:3d}[/]条"
+
     def load_all(self) -> None:
         """初次加载所有资源"""
         logger.info("正在加载热词资源...")
@@ -118,18 +137,18 @@ class HotwordManager:
     def _load_hot(self) -> None:
         content = self._read_file('hot')
         num = self.phoneme_corrector.update_hotwords(content)
-        console.print(f"热词库 [cyan]hot.txt[/] 已更新 ({num}条)")
+        console.print(self._format_msg("热词库", "hot.txt", num))
 
     def _load_rule(self) -> None:
         content = self._read_file('rule')
         num = self.rule_corrector.update_rules(content)
-        console.print(f"规则库 [cyan]hot-rule.txt[/] 已更新 ({num}条)")
+        console.print(self._format_msg("规则库", "hot-rule.txt", num))
 
     def _load_rectify(self) -> None:
         # RectificationRAG 目前是自己加载的，保持其接口一致性
         self.rectify_rag.load_history()
         count = len(self.rectify_rag.records) if hasattr(self.rectify_rag, 'records') else 0
-        console.print(f"纠错历史 [cyan]hot-rectify.txt[/] 已更新 ({count}条)")
+        console.print(self._format_msg("纠错历史", "hot-rectify.txt", count))
 
     def get_phoneme_corrector(self) -> PhonemeCorrector:
         return self.phoneme_corrector

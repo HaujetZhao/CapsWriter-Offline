@@ -1,10 +1,13 @@
+# ASR core
 -f https://k2-fsa.github.io/sherpa/onnx/cuda-cn.html
 sherpa-onnx==1.12.20+cuda12.cudnn9
+numpy
 
+# basic
 rich
 websockets
-numpy
-typeguard==2.13.3
-kaldi-native-fbank==1.17
-Pillow
+
+# tray and image
 pystray
+Pillow
+

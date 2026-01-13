@@ -15,7 +15,7 @@ class ServerConfig:
     port = '6016'
 
     # 语音模型选择：'funasr_nano', 'sensevoice', 'paraformer'
-    model_type = 'paraformer'
+    model_type = 'funasr_nano'
 
     format_num = True       # 输出时是否将中文数字转为阿拉伯数字
     format_spell = True     # 输出时是否调整中英之间的空格

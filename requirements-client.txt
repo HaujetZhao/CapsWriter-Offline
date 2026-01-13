@@ -1,13 +1,30 @@
+# basic and cli
 rich
+typer
+colorama
+markdown
+
+# system, input, hardware
 keyboard
 pyclip
-numpy
 sounddevice
-websockets
-pypinyin
 watchdog
-typer
+
+# network and api 
+websockets
+openai
+httpx
+
+# data process
+numpy
+numba
+pypinyin
 srt
-pyinstaller
-Pillow
+
+# tray and image
 pystray
+Pillow
+tkhtmlview
+
+# build
+pyinstaller
