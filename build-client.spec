@@ -166,10 +166,9 @@ coll = COLLECT(
 my_files = [
     'config.py',
     'core_client.py',
-    'hot-en.txt',
-    'hot-zh.txt',
+    'hot.txt',
     'hot-rule.txt',
-    'keywords.txt',
+    'hot-rectify.txt',
     'readme.md'
 ]
 my_folders = ['assets', 'util', 'LLM']

@@ -19,7 +19,7 @@ class Logger:
 
         Args:
             name: 日志记录器名称（通常是 'server' 或 'client'）
-            log_dir: 日志文件目录，默认为项目根目录下的 log 文件夹
+            log_dir: 日志文件目录，默认为项目根目录下的 logs 文件夹
             level: 日志级别，可选值：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
             max_bytes: 单个日志文件最大大小，默认 10MB
             backup_count: 保留的日志文件数量，默认 5 个
@@ -52,7 +52,7 @@ class Logger:
         # 确定日志目录
         if log_dir is None:
             from config import BASE_DIR
-            log_dir = os.path.join(BASE_DIR, 'log')
+            log_dir = os.path.join(BASE_DIR, 'logs')
 
         # 创建日志目录
         Path(log_dir).mkdir(parents=True, exist_ok=True)

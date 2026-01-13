@@ -17,7 +17,7 @@ logger = get_logger('server')
 
 def save_error_pickle(stream_result, task_id: str, error: Exception) -> None:
     """
-    将出错的 stream.result 保存为 pickle 文件到 log 文件夹
+    将出错的 stream.result 保存为 pickle 文件到 logs 文件夹
     
     用于调试 UTF-8 解码错误等问题。
     
@@ -27,7 +27,7 @@ def save_error_pickle(stream_result, task_id: str, error: Exception) -> None:
         error: 发生的错误
     """
     try:
-        log_dir = Path("log")
+        log_dir = Path("logs")
         log_dir.mkdir(exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -49,3 +49,4 @@ def save_error_pickle(stream_result, task_id: str, error: Exception) -> None:
         
     except Exception as save_error:
         logger.error(f"保存错误 pickle 失败: {save_error}", exc_info=True)
+        console.print(f'[yellow]保存错误 pickle 失败: {save_error}')

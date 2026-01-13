@@ -276,7 +276,7 @@ __version__ = '2.1'
 
 打包脚本会自动创建目录连接符（需要管理员权限）：
 ```python
-link_folders = ['models', 'assets', 'util', 'LLM', '2026', 'log']
+link_folders = ['models', 'assets', 'util', 'LLM', '2026', 'logs']
 ```
 
 如果创建失败，会提示用户手动复制文件夹。
