@@ -5,7 +5,7 @@
 提供识别过程中的错误处理和调试数据保存功能。
 """
 
-import dill
+import pickle
 from pathlib import Path
 from datetime import datetime
 
@@ -15,38 +15,30 @@ from util.logger import get_logger
 logger = get_logger('server')
 
 
-def save_error_pickle(stream_result, task_id: str, error: Exception) -> None:
+def save_error_audio(samples, task_id: str, samplerate: int) -> None:
     """
-    将出错的 stream.result 保存为 pkl 文件到 logs 文件夹
+    将识别出错时的原始音频 samples 保存为 pkl 文件到 logs 文件夹
     
-    用于调试 UTF-8 解码错误等问题。
+    用于调试解码失败时的原始音频。
     
     Args:
-        stream_result: sherpa-onnx 的识别结果对象
+        samples: 原始音频数据 (numpy array)
         task_id: 任务ID
-        error: 发生的错误
+        samplerate: 采样率
     """
     try:
         log_dir = Path("logs")
         log_dir.mkdir(exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = log_dir / f"decode_error_{timestamp}_{task_id[:8]}.pkl"
-        
-        error_data = {
-            'task_id': task_id,
-            'error': str(error),
-            'error_type': type(error).__name__,
-            'stream_result': stream_result,
-            'timestamp': timestamp,
-        }
+        filename = log_dir / f"decode_error_audio_{timestamp}_{samplerate}Hz_{task_id[:8]}.pkl"
         
         with open(filename, 'wb') as f:
-            dill.dump(error_data, f)
+            pickle.dump(samples, f)
         
-        logger.info(f"已保存错误数据到: {filename}")
-        console.print(f'[yellow]已保存错误数据到: {filename}')
+        logger.info(f"已保存错误现场音频到: {filename}")
+        console.print(f'[yellow]已保存错误现场音频到: {filename}')
         
     except Exception as save_error:
-        logger.error(f"保存错误 pickle 失败: {save_error}", exc_info=True)
-        console.print(f'[yellow]保存错误 pickle 失败: {save_error}')
+        logger.error(f"保存错误音频失败: {save_error}", exc_info=True)
+        console.print(f'[yellow]保存错误音频失败: {save_error}')

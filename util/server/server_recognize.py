@@ -29,7 +29,7 @@ from util.server.text_merge import (
     tokens_to_text,
     remove_trailing_punctuation,
 )
-from util.server.error_handler import save_error_pickle
+from util.server.error_handler import save_error_audio
 
 logger = get_logger('server')
 
@@ -164,12 +164,10 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
             logger.debug(f"时间戳拼接: +{len(new_tokens)} tokens")
 
         except (UnicodeDecodeError, UnicodeError) as e:
+            save_error_audio(samples, task.task_id, task.samplerate)
             console.print(f'\n[red]编码错误: {e}')
             console.print('\n[yellow]完整 stream.result:')
             inspect(stream.result)
-            console.print()
-            logger.error(f"Token 编码错误: {e}")
-            save_error_pickle(stream.result, task.task_id, e)
             new_tokens = []
             new_timestamps = []
 
