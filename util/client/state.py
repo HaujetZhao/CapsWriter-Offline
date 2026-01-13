@@ -31,7 +31,7 @@ _theme = Theme({
     'markdown.code': 'cyan',
     'markdown.item.number': 'yellow'
 })
-console = Console(highlight=False, soft_wrap=False, theme=_theme)
+console = Console(highlight=False, soft_wrap=True, theme=_theme)
 
 
 @dataclass

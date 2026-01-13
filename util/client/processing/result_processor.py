@@ -270,7 +270,7 @@ class ResultProcessor:
         # 1. 显示完全匹配/已替换的热词
         if matched_hotwords:
             # 提取热词文本 (现为 (原词, 热词, 分数))
-            replaced_info = [f"{origin}->[green4]{hw}" for origin, hw, score in matched_hotwords]
+            replaced_info = [f"{origin}->[green4]{hw}[/]" for origin, hw, score in matched_hotwords]
             console.print(f'    完全匹配：{", ".join(replaced_info)}')
 
         # 2. 显示潜在热词（从上下文热词中排除已替换的）
