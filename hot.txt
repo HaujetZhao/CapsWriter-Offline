@@ -125,6 +125,7 @@ AMD
 Audition
 AutoCAD
 App
+Anthropic
 
 # B
 Bandizip
@@ -147,6 +148,8 @@ Creative Cloud
 Cubase
 ChatGPT
 CapsWriter
+Claude
+Claude Code
 
 # D
 Dell
