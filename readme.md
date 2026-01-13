@@ -1,6 +1,6 @@
 # CapsWriter-Offline (v2.1)
 
-![image-20240108115946521](assets/image-20240108115946521.png)
+![demo](assets/demo.png)
 
 > **按住 CapsLock 说话，松开就上屏。就这么简单。**
 
