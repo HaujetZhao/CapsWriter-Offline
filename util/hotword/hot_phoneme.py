@@ -13,7 +13,7 @@ import logging
 
 from .algo_phoneme import get_phoneme_info, Phoneme
 from .rag_fast import FastRAG
-from .algo_calc import fast_substring_score
+from .algo_calc import fast_substring_score, fuzzy_substring_score
 
 logger = logging.getLogger(__name__)
 
@@ -125,8 +125,8 @@ class PhonemeCorrector:
                             
                 if not is_end_ok: continue
 
-                # 2. 精细相似度计算 (调用 Numba 加速的 fast_substring_score)
-                current_score = fast_substring_score(hw_compare, sub_seg)
+                # 2. 精细相似度计算
+                current_score = fuzzy_substring_score(hw_compare, sub_seg)
 
                 # 记录匹配：从 info 七元组 [5], [6] 直接拿位置
                 char_start = sub_seg[0][5]

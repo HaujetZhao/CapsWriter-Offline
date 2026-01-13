@@ -243,7 +243,7 @@ def fast_substring_score(hw_info: List[Tuple], input_info: List[Tuple]) -> float
     if n == 0: return 0.0
     
     # 简单的线性比对（因为目前滑动窗口已经对齐了长度）
-    # 如果需要更复杂的编辑距离，可以使用类似 fuzzy_substring_distance 的逻辑
+    # 如果需要更复杂的编辑距离，可以使用类似 fuzzy_substring_score 的逻辑
     diff = 0.0
     for i in range(n):
         h_val, h_lang, _, _, h_tone = hw_info[i][:5]
@@ -273,13 +273,17 @@ def fast_substring_score(hw_info: List[Tuple], input_info: List[Tuple]) -> float
     return 1.0 - (diff / n)
 
 
-def fuzzy_substring_distance(main_seq: List[Phoneme], sub_seq: List[Phoneme]) -> float:
+def fuzzy_substring_distance(hw_info: List[Tuple], input_info: List[Tuple]) -> float:
     """
     计算子序列在主序列中的最小编辑距离（允许子序列匹配主序列的任意部分）
     使用滚动数组优化的动态规划实现
+
+    参数:
+        hw_info: 热词音素序列（info 元组列表）
+        input_info: 输入音素序列（info 元组列表）
     """
-    n = len(sub_seq)
-    m = len(main_seq)
+    n = len(hw_info)
+    m = len(input_info)
     if n == 0:
         return 0.0
     if m == 0:
@@ -292,7 +296,8 @@ def fuzzy_substring_distance(main_seq: List[Phoneme], sub_seq: List[Phoneme]) ->
         curr[0] = float(i)
 
         for j in range(1, m + 1):
-            cost = get_phoneme_cost(sub_seq[i-1], main_seq[j-1])
+            # 直接从元组计算代价（避免创建 Phoneme 对象）
+            cost = _get_tuple_cost(hw_info[i-1], input_info[j-1])
 
             curr[j] = min(
                 prev[j] + 1.0,
@@ -303,3 +308,86 @@ def fuzzy_substring_distance(main_seq: List[Phoneme], sub_seq: List[Phoneme]) ->
         prev, curr = curr, prev
 
     return min(prev)
+
+
+def fuzzy_substring_score(hw_info: List[Tuple], input_info: List[Tuple]) -> float:
+    """
+    计算子序列在主序列中的相似度分数（0-1之间）
+
+    基于编辑距离，将距离转换为相似度：
+    - 完全匹配 -> 1.0
+    - 完全不匹配 -> 0.0
+
+    参数:
+        hw_info: 热词音素序列（info 元组列表）
+        input_info: 输入音素序列（info 元组列表）
+
+    返回:
+        相似度分数 (0.0 - 1.0)
+    """
+    n = len(hw_info)
+    if n == 0:
+        return 0.0
+
+    # 计算最小编辑距离
+    distance = fuzzy_substring_distance(hw_info, input_info)
+
+    # 转换为相似度分数：距离越小，相似度越高
+    # 使用归一化：score = 1 - (distance / max_possible_distance)
+    # 最大可能距离是热词长度
+    score = 1.0 - (distance / n)
+
+    return max(0.0, min(1.0, score))
+
+
+def _get_tuple_cost(t1: Tuple, t2: Tuple) -> float:
+    """
+    计算两个音素元组的匹配代价
+
+    参数:
+        t1, t2: 音素 info 元组 (值, 语言, 字始, 字终, 声调, ...)
+    """
+    # 不同语言，直接返回不匹配
+    if t1[1] != t2[1]:
+        return 1.0
+
+    # 相同语言，比较 value
+    if t1[0] == t2[0]:
+        return 0.0
+
+    # 中文相似音素判断
+    if t1[1] == 'zh':
+        pair = {t1[0], t2[0]}
+        for s in SIMILAR_PHONEMES:
+            if pair.issubset(s):
+                return 0.5
+
+    # 英文单词字符级相似度
+    if t1[1] == 'en':
+        lcs_len = _lcs_length(t1[0], t2[0])
+        max_len = max(len(t1[0]), len(t2[0]))
+        if max_len > 0:
+            return 1.0 - (lcs_len / max_len)
+
+    return 1.0
+
+
+def _lcs_length(s1: str, s2: str) -> int:
+    """计算最长公共子序列长度"""
+    m, n = len(s1), len(s2)
+    if m == 0 or n == 0:
+        return 0
+
+    # 使用滚动数组优化
+    prev = [0] * (n + 1)
+    curr = [0] * (n + 1)
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i-1] == s2[j-1]:
+                curr[j] = prev[j-1] + 1
+            else:
+                curr[j] = max(prev[j], curr[j-1])
+        prev, curr = curr, prev
+
+    return prev[n]
