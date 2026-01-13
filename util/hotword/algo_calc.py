@@ -388,6 +388,106 @@ def _get_tuple_cost(t1: Tuple, t2: Tuple) -> float:
     return 1.0
 
 
+def fuzzy_substring_search_constrained(hw_info: List[Tuple], input_info: List[Tuple], threshold: float = 0.6) -> List[Tuple[float, int, int]]:
+    """
+    在输入序列中搜索热词的最佳匹配片段（边界约束版）
+
+    使用 DP 计算局部相似度，要求：
+    1. 起始位置必须是原句的词起始 (is_word_start)
+    2. 结束位置必须是原句的词结束 (is_word_end)
+    3. 允许长度在一定范围内缩放，不再死磕等长
+
+    参数:
+        hw_info: 热词音素 info 元组列表 (值, 语言, 字始, 字终, 声调, ...)
+        input_info: 输入文本音素 info 元组列表
+        threshold: 相似度阈值
+
+    返回:
+        List[(score, start_idx, end_idx)] - 匹配结果列表（按分数降序）
+    """
+    n = len(hw_info)
+    m = len(input_info)
+    if n == 0 or m == 0:
+        return []
+
+    # DP 矩阵: [n+1][m+1]
+    # dp[i][j] 表示 hw 前 i 个音素匹配以 input[j-1] 结尾的某个片段的最小距离
+    dp = [[float('inf')] * (m + 1) for _ in range(n + 1)]
+
+    # 路径记录，用于找起始点: (prev_i, prev_j)
+    path = [[(0, 0)] * (m + 1) for _ in range(n + 1)]
+
+    # 初始化第一行：允许从任何词起始边界开始匹配
+    # 如果 input_info[j] 是词起始，则我们可以在索引 j 处开始匹配 hw[0]
+    # 对应的 DP 状态是 dp[1][j+1]，其依赖于 dp[0][j]
+    for j in range(m + 1):
+        if j == 0:
+            dp[0][j] = 0.0
+            path[0][j] = (0, j)
+        elif j < m and input_info[j][2]:  # is_word_start
+            dp[0][j] = 0.0
+            path[0][j] = (0, j)
+
+    # 填充 DP
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            cost = _get_tuple_cost(hw_info[i-1], input_info[j-1])
+
+            # 候选路径：匹配、删除热词音素、插入额外音素
+            dist_match = dp[i-1][j-1] + cost
+            dist_del = dp[i-1][j] + 1.0    # 只有在匹配英文时我们宽容长度差异
+            dist_ins = dp[i][j-1] + 1.0
+
+            # 选最小并记录路径
+            min_dist = min(dist_match, dist_del, dist_ins)
+            dp[i][j] = min_dist
+            
+            if min_dist == dist_match:
+                path[i][j] = path[i-1][j-1]
+            elif min_dist == dist_del:
+                path[i][j] = path[i-1][j]
+            else:
+                path[i][j] = path[i][j-1]
+
+    # 收集结果
+    results = []
+    seen_ranges = set()
+
+    for j in range(1, m + 1):
+        # 约束：终点必须是词边界
+        if not input_info[j-1][3]:  # is_word_end
+            continue
+
+        dist = dp[n][j]
+        # 针对末尾差异做极简优化：如果是英文且差值只是一个音素，且该音素分值较低
+        # (如 Claude 多出来的空音素)，则稍微给予补偿
+        if n > 1 and dist > 0.5:
+             # 如果最后一个音素不匹配，且它在输入中是边界结束
+             pass # 未来可加入更精细的补偿
+             
+        if dist >= n * 0.8: continue  # 距离太大，强制过滤
+
+        score = 1.0 - (dist / n)
+        if score >= threshold:
+            start_idx = path[n][j][1]
+            end_idx = j # 它是 input 中的第 j 个，索引是 j-1
+            
+            # 返回音素层级的索引，不要在核心算法里死磕 char 索引
+            results.append((score, start_idx, end_idx))
+
+    # 按得分降序
+    results.sort(key=lambda x: x[0], reverse=True)
+    
+    # 区间排重（如果同一结束点有多个起始点，只留最优）
+    final_res = []
+    used_ends = {}
+    for score, s, e in results:
+        if e not in used_ends or score > used_ends[e][0]:
+            used_ends[e] = (score, s, e)
+    
+    return sorted(used_ends.values(), key=lambda x: x[0], reverse=True)
+
+
 def _lcs_length(s1: str, s2: str) -> int:
     """计算最长公共子序列长度"""
     m, n = len(s1), len(s2)

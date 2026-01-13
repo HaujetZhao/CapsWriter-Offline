@@ -5,17 +5,33 @@
 使用音素编辑距离进行模糊匹配，实现智能热词替换。
 """
 
-import threading
-from typing import List, Tuple, Dict, NamedTuple
-import time
-
 import logging
+import os
+import time
+import threading
+from typing import List, Tuple, Dict, Set, Optional, NamedTuple
+from collections import defaultdict
+from pathlib import Path
 
 from .algo_phoneme import get_phoneme_info, Phoneme
 from .rag_fast import FastRAG
-from .algo_calc import fast_substring_score, fuzzy_substring_score
+from .algo_calc import fast_substring_score, fuzzy_substring_score, fuzzy_substring_search_constrained
 
-logger = logging.getLogger(__name__)
+# 配置日志
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
+log_path = LOG_DIR / "hotword_corrector.log"
+
+logger = logging.getLogger("HotwordCorrector")
+logger.setLevel(logging.DEBUG)
+
+if not logger.handlers:
+    # 文件日志
+    fh = logging.FileHandler(log_path, encoding='utf-8', mode='a')
+    fh.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
 
 class MatchResult(NamedTuple):
@@ -28,8 +44,8 @@ class MatchResult(NamedTuple):
 class CorrectionResult(NamedTuple):
     """纠错结果，包含纠错后的文本和匹配的热词列表"""
     text: str                           # 纠错后的文本
-    matchs: List[Tuple[str, float]]  # [(热词, 分数), ...]
-    similars: List[Tuple[str, float]]  # [(热词, 分数), ...]
+    matchs: List[Tuple[str, str, float]]  # [(原词, 热词, 分数), ...]
+    similars: List[Tuple[str, str, float]]  # [(原词, 热词, 分数), ...]
     
 
 
@@ -84,66 +100,53 @@ class PhonemeCorrector:
         logger.debug(f"PhonemeCorrector 已更新 {len(new_hotwords)} 个热词，耗时 {time.time() - start_time:.3f}s")
         return len(new_hotwords)
 
-    def _find_matches(self, fast_results: List, input_processed: List[Tuple]) -> List[MatchResult]:
-        """精细匹配逻辑：滑动窗口、模糊打分、边界检查"""
+    def _find_matches(self, text: str, fast_results: List, input_processed: List[Tuple]) -> Tuple[List[MatchResult], List[Tuple[str, str, float]]]:
+        """精细匹配逻辑：边界约束的模糊搜索"""
         matches = []
         similars = []
-        input_len = len(input_processed)
-
-        logger.debug(f"[DEBUG] _find_matches: fast_results type={type(fast_results)}, len={len(fast_results)}")
-        logger.debug(f"[DEBUG] _find_matches: input_processed type={type(input_processed)}, len={len(input_processed)}")
-
-        for hw, score in fast_results:
-            # if score < self.threshold: continue
-            
-            # 获取热词的对比序列 (保持 info 七元组中的前五项：值, 语言, 字始, 字终, 声调)
+        
+        # 预先根据相似度阈值过滤 fast_results，减少重复计算
+        for hw, fast_score in fast_results:
             hw_phonemes = self.hotwords[hw]
             hw_compare = [p.info[:5] for p in hw_phonemes]
-            target_len = len(hw_compare)
-            if target_len > input_len: continue
-
-            # 滑动窗口查找
-            for i in range(input_len - target_len + 1):
-                sub_seg = input_processed[i : i + target_len]
+            
+            # 使用新算法：在输入序列中一站式搜索所有符合边界的最优区域
+            # 为 Similar 列表使用更宽松的 initial 阈值，确保能抓到压线匹配
+            search_threshold = min(self.threshold, self.similar_threshold) - 0.1
+            
+            # 搜索匹配
+            found_segments = fuzzy_substring_search_constrained(hw_compare, input_processed, threshold=search_threshold)
+            
+            for score, start_phon_idx, end_phon_idx in found_segments:
+                # 从 input_processed 直接拿 char 索引
+                char_start = input_processed[start_phon_idx][5]
+                char_end = input_processed[end_phon_idx-1][6]
                 
-                # 策略：要求首音协议（非英文强卡首音）
-                if sub_seg[0][1] != 'en' and sub_seg[0][0] != hw_compare[0][0]:
-                    continue
+                res = MatchResult(char_start, char_end, score, hw)
+                origin_val = text[char_start:char_end]
                 
-                # 1. 边界粗筛选
-                if not sub_seg[0][2]: continue  # 第一个音素必须是词起始
+                # 分类到 matches 和 similars
+                if score >= self.threshold:
+                    matches.append(res)
                 
-                # 最后一个音素检测
-                last_match_idx = i + target_len - 1
-                is_end_ok = False
-                if sub_seg[-1][3]: 
-                    is_end_ok = True
-                else:
-                    # 容错：如果是中文，允许热词比实际发音序列更短（如果后面跟着声调）
-                    next_idx = last_match_idx + 1
-                    if next_idx < input_len:
-                        next_info = input_processed[next_idx]
-                        if next_info[1] == 'zh' and next_info[4] and next_info[3]:
-                            is_end_ok = True
-                            
-                if not is_end_ok: continue
+                # 所有超过相似度阈值的都记入 similars（用于提示）
+                if score >= self.similar_threshold:
+                    similars.append((origin_val, hw, score))
 
-                # 2. 精细相似度计算
-                current_score = fuzzy_substring_score(hw_compare, sub_seg)
-
-                # 记录匹配：从 info 七元组 [5], [6] 直接拿位置
-                char_start = sub_seg[0][5]
-                char_end = sub_seg[-1][6]
-                similars.append(MatchResult(char_start, char_end, current_score, hw))
-                if current_score >= self.threshold:
-                    matches.append(MatchResult(char_start, char_end, current_score, hw))
-
-        # 潜在热词按得分降序排序、过滤、去重
-        seen = set()
-        similars.sort(key=lambda x: x.score, reverse=True)
-        similars = [p for p in similars if p.score >= self.similar_threshold]
-        similars = [m for m in similars if not (m.hotword in seen or seen.add(m.hotword))]
-        return matches, similars
+        # 潜在热词去重与排序 (不再简单按 seen_hw 排重，而是按分数和覆盖范围排序)
+        # 为潜在建议列表保留前 k 个最相关的不同热词
+        final_similars = []
+        seen_hw = set()
+        
+        # 按得分降序，同分按长度降序
+        similars.sort(key=lambda x: (x[2], len(x[1])), reverse=True)
+        
+        for origin, hw, score in similars:
+            if hw not in seen_hw:
+                final_similars.append((origin, hw, score))
+                seen_hw.add(hw)
+                
+        return matches, final_similars
 
     def _resolve_and_replace(self, text: str, matches: List[MatchResult]) -> Tuple[str, List[Tuple[str, float]], List[Tuple[str, float]]]:
         """冲突去重与文本替换"""
@@ -180,7 +183,7 @@ class PhonemeCorrector:
         for m in final_matches:
             result_list[m.start : m.end] = list(m.hotword)
             
-        return "".join(result_list), [(m.hotword, m.score) for m in final_matches], all_matched_info
+        return "".join(result_list), [(text[m.start:m.end], m.hotword, m.score) for m in final_matches], all_matched_info
 
     def correct(self, text: str, k: int = 10) -> CorrectionResult:
         """
@@ -222,13 +225,13 @@ class PhonemeCorrector:
                 raise
 
             # 精筛
-            matches, similars = self._find_matches(fast_results, input_processed)
+            matches, similars = self._find_matches(text, fast_results, input_processed)
 
         # 3. 冲突解决与替换
         new_text, final_hw_info, all_hw_info = self._resolve_and_replace(text, matches)
-        similars = [(m.hotword, m.score) for m in similars[:k]]
-
-        return CorrectionResult(text=new_text, matchs=final_hw_info, similars=similars)
+        
+        # similars 已经是 [(origin, hw, score), ...] 的元组列表
+        return CorrectionResult(text=new_text, matchs=final_hw_info, similars=similars[:k])
 
 
 if __name__ == "__main__":

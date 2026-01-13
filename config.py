@@ -49,8 +49,8 @@ class ClientConfig:
 
     hot = True           # 是否启用热词替换（统一 RAG 匹配）
     hot_thresh = 0.85    # RAG 替换热词阈值（高阈值，用于实际替换）
-    hot_similar = 0.5    # RAG 相似热词阈值（低阈值，用于 LLM 上下文）
-    hot_rectify = 0.5    # 纠错历史 RAG 匹配阈值（低阈值，用于 LLM 上下文）
+    hot_similar = 0.6    # RAG 相似热词阈值（低阈值，用于 LLM 上下文）
+    hot_rectify = 0.6    # 纠错历史 RAG 匹配阈值（低阈值，用于 LLM 上下文）
     hot_rule = True      # 是否启用自定义规则替换（基于正则表达式）
 
     llm_enabled = True           # 是否启用 LLM 润色功能，需要配置 LLM/ 目录下的角色文件

@@ -269,18 +269,18 @@ class ResultProcessor:
 
         # 1. 显示完全匹配/已替换的热词
         if matched_hotwords:
-            # 提取热词文本
-            replaced_names = [hw for hw, score in matched_hotwords]
-            console.print(f'    完全匹配：[green4]{", ".join(replaced_names)}')
+            # 提取热词文本 (现为 (原词, 热词, 分数))
+            replaced_info = [f"{origin}->[green4]{hw}" for origin, hw, score in matched_hotwords]
+            console.print(f'    完全匹配：{", ".join(replaced_info)}')
 
         # 2. 显示潜在热词（从上下文热词中排除已替换的）
         if potential_hotwords:
-            replaced_set = {hw for hw, score in matched_hotwords}
-            potential_matches = [(hw, score) for hw, score in potential_hotwords if hw not in replaced_set]
+            replaced_set = {hw for origin, hw, score in matched_hotwords}
+            potential_matches = [(origin, hw, score) for origin, hw, score in potential_hotwords if hw not in replaced_set]
             
             if potential_matches:
                 # 格式化潜在匹配列表，显示分数
-                potential_str = ", ".join([f"{hw}({score:.2f})" for hw, score in potential_matches[:5]])
+                potential_str = ", ".join([f"{origin}->{hw}({score:.2f})" for origin, hw, score in potential_matches[:5]])
                 if len(potential_matches) > 5:
                     potential_str += f" ... (共{len(potential_matches)}个)"
                 console.print(f'    潜在热词：[yellow]{potential_str}')
