@@ -5,7 +5,7 @@
 提供识别过程中的错误处理和调试数据保存功能。
 """
 
-import pickle
+import dill
 from pathlib import Path
 from datetime import datetime
 
@@ -17,7 +17,7 @@ logger = get_logger('server')
 
 def save_error_pickle(stream_result, task_id: str, error: Exception) -> None:
     """
-    将出错的 stream.result 保存为 pickle 文件到 logs 文件夹
+    将出错的 stream.result 保存为 pkl 文件到 logs 文件夹
     
     用于调试 UTF-8 解码错误等问题。
     
@@ -42,7 +42,7 @@ def save_error_pickle(stream_result, task_id: str, error: Exception) -> None:
         }
         
         with open(filename, 'wb') as f:
-            pickle.dump(error_data, f)
+            dill.dump(error_data, f)
         
         logger.info(f"已保存错误数据到: {filename}")
         console.print(f'[yellow]已保存错误数据到: {filename}')

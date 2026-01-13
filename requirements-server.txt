@@ -11,3 +11,6 @@ websockets
 pystray
 Pillow
 
+# debug
+dill
+
