@@ -113,7 +113,7 @@ class LLMHandler:
         """
         return self.role_detector.detect(text)
 
-    def process(self, role_config: RoleConfig, content: str, matched_hotwords=None, callback=None, should_stop_check=None) -> tuple[str, int, float]:
+    def process(self, role_config: RoleConfig, content: str, matched_hotwords=None, callback=None, should_stop_check=None) -> Tuple[str, int, float]:
         """执行实际的 LLM 模型调用（内部方法）
 
         Args:

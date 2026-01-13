@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Phoneme:
     """
     带语言属性的音素

@@ -9,7 +9,7 @@ LLM 处理引擎
 5. 精确的生成时间统计（从第一个 token 开始）
 """
 import time
-from typing import Callable, Optional, Dict, Any, List
+from typing import Callable, Optional, Dict, Any, List, Tuple
 from util.llm.llm_role_config import RoleConfig
 from util.llm.llm_interfaces import IContextManager
 from util.llm.llm_client_pool import ClientPool
@@ -40,7 +40,7 @@ class LLMProcessor:
         callback: Optional[Callable[[str], None]] = None,
         should_stop_check: Optional[Callable[[], bool]] = None,
         context_manager: Optional[IContextManager] = None
-    ) -> tuple[str, int, float]:
+    ) -> Tuple[str, int, float]:
         """
         执行 LLM 处理
 
@@ -162,7 +162,7 @@ class LLMProcessor:
         role_config: RoleConfig,
         context_manager: Optional[IContextManager],
         messages: List[Dict[str, str]]
-    ) -> tuple[str, int, float]:
+    ) -> Tuple[str, int, float]:
         """执行流式请求
 
         Returns:

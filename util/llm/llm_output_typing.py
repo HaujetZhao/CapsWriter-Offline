@@ -9,6 +9,7 @@ import asyncio
 import keyboard
 
 from config import ClientConfig as Config
+from util.tools.asyncio_to_thread import to_thread
 from util.client.processing.output import TextOutput
 from util.llm.llm_clipboard import paste_text
 from util.llm.llm_stop_monitor import reset, should_stop
@@ -35,7 +36,7 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
     try:
         if paste:
             # paste 方式：直接获取全文后一次性输出
-            polished_text, token_count, gen_time = await asyncio.to_thread(
+            polished_text, token_count, gen_time = await to_thread(
                 handler.process, role_config, content, matched_hotwords, None, should_stop
             )
             if should_stop():
@@ -78,7 +79,7 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
                     pending_buffer = trailing
 
             # 执行流式处理
-            polished_text, token_count, gen_time = await asyncio.to_thread(
+            polished_text, token_count, gen_time = await to_thread(
                 handler.process, role_config, content, matched_hotwords, stream_write_chunk, should_stop
             )
 

@@ -48,7 +48,7 @@ class HotwordDialog:
         self,
         default_text: str = "",
         title: str = "添加热词",
-        width: int = 400
+        width: int = 800
     ) -> DialogResult:
         """
         显示对话框
@@ -132,7 +132,7 @@ class HotwordDialog:
 
         # 按钮容器
         button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill="x")
+        button_frame.pack(pady=(10, 0))
 
         # 确定按钮
         confirm_btn = tk.Button(
@@ -148,7 +148,7 @@ class HotwordDialog:
             padx=15,
             pady=5
         )
-        confirm_btn.pack(side="right", padx=(5, 0))
+        confirm_btn.pack(side="left", padx=5, ipady=0)
 
         # 取消按钮
         cancel_btn = tk.Button(
@@ -164,7 +164,7 @@ class HotwordDialog:
             padx=15,
             pady=5
         )
-        cancel_btn.pack(side="right")
+        cancel_btn.pack(side="left", padx=5, ipady=0)
 
         # 居中并显示
         dialog.update_idletasks()

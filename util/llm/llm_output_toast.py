@@ -7,6 +7,7 @@ import asyncio
 import logging
 
 from util.client.processing.output import TextOutput
+from util.tools.asyncio_to_thread import to_thread
 from util.llm.llm_stop_monitor import reset, should_stop, create_stop_callback
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ async def handle_toast_mode(text: str, role_config=None, matched_hotwords=None, 
             toast_manager.update_toast(msg_id, ''.join(chunks))
 
         # 流式调用 LLM
-        polished_text, token_count, gen_time = await asyncio.to_thread(
+        polished_text, token_count, gen_time = await to_thread(
             handler.process, role_config, content, matched_hotwords, stream_toast_chunk, should_stop
         )
 

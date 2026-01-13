@@ -324,6 +324,8 @@ class RectifyDialog:
         )
         cancel_btn.pack(side="left", padx=5, ipady=0)  # ipady 增加垂直内部填充
 
+        update_dialog_height()  # 调用但忽略返回值
+
         # 设置焦点到第一个文本框
         original_text_widget.focus_set()
 

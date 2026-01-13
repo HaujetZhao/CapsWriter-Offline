@@ -3,7 +3,7 @@ LLM 错误处理和用户提示
 
 统一处理 LLM 异常，提供用户友好的错误提示
 """
-from typing import Optional
+from typing import Optional, Tuple
 from util.llm.llm_exceptions import (
     OpenAIErrorWrapper,
     AuthenticationErrorWrapper,
@@ -108,7 +108,7 @@ def show_error_notification(error: Exception, role_name: str = "LLM"):
 
 
 def handle_llm_error(error: Exception, original_text: str, role_name: str = "LLM",
-                     fallback_text: Optional[str] = None) -> tuple[str, bool]:
+                     fallback_text: Optional[str] = None) -> Tuple[str, bool]:
     """
     统一的 LLM 错误处理入口
 
