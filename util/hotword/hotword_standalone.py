@@ -523,104 +523,103 @@ def ollama_chat(messages: List[Dict], model: str = "gemma3:4b", stream: bool = T
 # 7. 数据准备与主流演示
 # =============================================================================
 
-if __name__ == "__main__":
-    # --- A. 数据准备 ---
-    hotwords_data = """
-    Claude
-    Bilibili
-    Microsoft
-    麦当劳
-    肯德基
-    VsCode
-    七浦路
-    """
+# --- A. 数据准备 ---
+hotwords_data = """
+Claude
+Bilibili
+Microsoft
+麦当劳
+肯德基
+VsCode
+七浦路
+"""
 
-    rectify_data = """
-    把那个锯子给我
-    把那个句子给我
-    ---
-    cloud code is good
-    Claude Code is good
-    """
+rectify_data = """
+把那个锯子给我
+把那个句子给我
+---
+cloud code is good
+Claude Code is good
+"""
 
-    cases = [
-        "我想去吃买当劳和肯得鸡",
-        "喜欢刷Bili Bili",
-        "请把那个锯子发给我一下",
-        "我很喜欢 cloud",
-        "西安是一个好地方",
-        "我刚才先了一下"
-    ]
+cases = [
+    "我想去吃买当劳和肯得鸡",
+    "喜欢刷Bili Bili",
+    "请把那个锯子发给我一下",
+    "我很喜欢 cloud",
+    "西安是一个好地方",
+    "我刚才先了一下"
+]
 
-    # --- B. 系统初始化 ---
-    corrector = PhonemeCorrector(threshold=0.8)
-    rectifier = RectificationRAG(threshold=0.5)
+# --- B. 系统初始化 ---
+corrector = PhonemeCorrector(threshold=0.8)
+rectifier = RectificationRAG(threshold=0.5)
 
-    # 加载演示数据 (也可通过 load_hotwords_file / load_rectify_file 加载外部文件)
-    corrector.update_hotwords(hotwords_data)
-    rectifier.load_rectify_text(rectify_data)
+# 加载演示数据 (也可通过 load_hotwords_file / load_rectify_file 加载外部文件)
+corrector.update_hotwords(hotwords_data)
+rectifier.load_rectify_text(rectify_data)
+
+# 尝试加载外部文件 (如果存在)
+corrector.load_hotwords_file("hot.txt")
+rectifier.load_rectify_file("hot-rectify.txt")
+
+# --- C. 执行综合纠错演示 ---
+print("\n" + "="*50)
+print("【 CapsWriter-Offline 综合纠错系统演示 】")
+print("="*50)
+
+for i, t in enumerate(cases):
+    print(f"\n\nCase {i+1}: '{t}'")
+    result = corrector.correct(t)
+    print(f"  [纠错结果] {result.text}")
+    if result.matchs: 
+        print(f"  [匹配热词]")
+        print("\n".join([f"    - ({score:.3f}) {wrong} => {right} " for wrong, right, score in result.matchs]))
+    if result.similars: 
+        print(f"  [潜在热词]")
+        print("\n".join([f"    - ({score:.3f}) {wrong} => {right} " for wrong, right, score in result.similars]))
+    rag_results = rectifier.search(t)
+    if rag_results:
+        print(f"  [历史纠错]")
+        print("\n".join([f"    - ({score:.3f}) {wrong} => {right} " for wrong, right, score in rag_results]))
+
+# --- D. 音素匹配调试演示 ---
+print("\n" + "="*50)
+print("【 Phoneme Debug 调试演示 】")
+print("="*50)
+test_pair("cloud", "claude")
+test_pair("vscode", "VS Code")
+test_pair("七福路", "七浦路")
+
+# --- E. LLM Prompt 组建与调用演示 ---
+print("\n" + "="*50)
+print("【 LLM 纠错演示 (Prompt 构建) 】")
+print("="*50)
+builder = PromptBuilder()
+case_text = "我很喜欢 cloud"
+result = corrector.correct(case_text)
+rag_matches = rectifier.search(case_text)
+prompt_msgs = builder.build(case_text, hotwords=result.similars, rectify_matches=rag_matches)
+
+print("组装后的 Prompt (Messages):")
+print(json.dumps(prompt_msgs, ensure_ascii=False, indent=2))
+
+# 如果 Ollama 在运行，可以取消下面注释进行真实测试
+# ollama_chat(prompt_msgs)
+
+# --- F. 性能测试 (FastRAG) ---
+print("\n" + "="*50)
+print("【 性能测试 (FastRAG) 】")
+print("="*50)
+if HAS_NUMBA:
+    print(f"Numba: Enabled")
+    # 预热
+    _ = corrector.fast_rag.search(get_phoneme_info("hello"), top_k=1)
     
-    # 尝试加载外部文件 (如果存在)
-    corrector.load_hotwords_file("hot.txt")
-    rectifier.load_rectify_file("hot-rectify.txt")
-
-    # --- C. 执行综合纠错演示 ---
-    print("\n" + "="*50)
-    print("【 CapsWriter-Offline 综合纠错系统演示 】")
-    print("="*50)
-
-    for i, t in enumerate(cases):
-        print(f"\n\nCase {i+1}: '{t}'")
-        result = corrector.correct(t)
-        print(f"  [纠错结果] {result.text}")
-        if result.matchs: 
-            print(f"  [匹配热词]")
-            print("\n".join([f"    - ({score:.3f}) {wrong} => {right} " for wrong, right, score in result.matchs]))
-        if result.similars: 
-            print(f"  [潜在热词]")
-            print("\n".join([f"    - ({score:.3f}) {wrong} => {right} " for wrong, right, score in result.similars]))
-        rag_results = rectifier.search(t)
-        if rag_results:
-            print(f"  [历史纠错]")
-            print("\n".join([f"    - ({score:.3f}) {wrong} => {right} " for wrong, right, score in rag_results]))
-
-    # --- D. 音素匹配调试演示 ---
-    print("\n" + "="*50)
-    print("【 Phoneme Debug 调试演示 】")
-    print("="*50)
-    test_pair("cloud", "claude")
-    test_pair("vscode", "VS Code")
-    test_pair("七福路", "七浦路")
-
-    # --- E. LLM Prompt 组建与调用演示 ---
-    print("\n" + "="*50)
-    print("【 LLM 纠错演示 (Prompt 构建) 】")
-    print("="*50)
-    builder = PromptBuilder()
-    case_text = "我很喜欢 cloud"
-    result = corrector.correct(case_text)
-    rag_matches = rectifier.search(case_text)
-    prompt_msgs = builder.build(case_text, hotwords=result.similars, rectify_matches=rag_matches)
-
-    print("组装后的 Prompt (Messages):")
-    print(json.dumps(prompt_msgs, ensure_ascii=False, indent=2))
-    
-    # 如果 Ollama 在运行，可以取消下面注释进行真实测试
-    # ollama_chat(prompt_msgs)
-
-    # --- F. 性能测试 (FastRAG) ---
-    print("\n" + "="*50)
-    print("【 性能测试 (FastRAG) 】")
-    print("="*50)
-    if HAS_NUMBA:
-        print(f"Numba: Enabled")
-        # 预热
-        _ = corrector.fast_rag.search(get_phoneme_info("hello"), top_k=1)
-        
-        start = time.time()
-        for _ in range(100):
-            _ = corrector.fast_rag.search(get_phoneme_info("这是一段用于测试检索速度的长文本，看看能跑多快"), top_k=5)
-        elapsed = time.time() - start
-        print(f"100 次长文本检索耗时: {elapsed:.4f}s (约 {100/elapsed:.1f} 次/秒)")
-    else:
-        print("Numba: Disabled (Speed will be much lower)")
+    start = time.time()
+    for _ in range(100):
+        _ = corrector.fast_rag.search(get_phoneme_info("这是一段用于测试检索速度的长文本，看看能跑多快"), top_k=5)
+    elapsed = time.time() - start
+    print(f"100 次长文本检索耗时: {elapsed:.4f}s (约 {100/elapsed:.1f} 次/秒)")
+else:
+    print("Numba: Disabled (Speed will be much lower)")
