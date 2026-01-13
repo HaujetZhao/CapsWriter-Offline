@@ -33,30 +33,30 @@ class LifecycleManager:
     def __init__(self):
         if self._initialized:
             return
-            
+
         self._initialized = True
         self._is_shutting_down = False
-        self._shutdown_event = asyncio.Event()
+        self._shutdown_event = None  # 延迟到 initialize 中创建
         self._cleanup_callbacks: List[Callable] = []
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        
+
         # 默认 Logger (Console), init 时可覆盖
         self.logger = logging.getLogger('lifecycle')
         self._exit_on_signal = False
         self._last_sigint_time = 0.0
-        
+
         # 注册 atexit 作为最后一道防线
         atexit.register(self._atexit_handler)
 
     # ... (initialize method unchanged) ...
 
-    def initialize(self, 
-                   loop: asyncio.AbstractEventLoop = None, 
+    def initialize(self,
+                   loop: asyncio.AbstractEventLoop = None,
                    logger: logging.Logger = None,
                    exit_on_signal: bool = False):
         """
         初始化管理器
-        
+
         Args:
             loop: 事件循环
             logger: 日志记录器（传入 Client 或 Server 的 logger）
@@ -69,10 +69,14 @@ class LifecycleManager:
                 self._loop = asyncio.get_running_loop()
             except RuntimeError:
                 pass
-        
+
+        # 在当前事件循环中创建 Event
+        if self._loop and not self._shutdown_event:
+            self._shutdown_event = asyncio.Event()
+
         if logger:
             self.logger = logger
-            
+
         self._exit_on_signal = exit_on_signal
 
         self._register_signals()
@@ -131,22 +135,24 @@ class LifecycleManager:
         self.logger.info(f"收到退出请求 (Reason: {reason})，开始关闭流程...")
 
         # 1. 设置 Asyncio 事件，通知主循环退出
-        if self._loop and not self._loop.is_closed():
+        if self._loop and not self._loop.is_closed() and self._shutdown_event:
             try:
                 self._loop.call_soon_threadsafe(self._shutdown_event.set)
             except RuntimeError:
                 # 循环可能已经关闭
                 pass
-        elif self._shutdown_event:
-             # 如果没有 loop 引用，但有 event (sync context?)
-             # 通常 event 需要 loop，所以这里主要是防御性编程
-            pass
 
         # 2. 如果没有运行在 asyncio loop 中，或者需要立即清理（比如非 async 程序），
         # 可以在这里做一些同步处理。但为了安全，我们通常依赖主循环响应 event 后调用 cleanup。
 
     async def wait_for_shutdown(self):
         """等待退出信号 (Coroutine)"""
+        if not self._shutdown_event:
+            self.logger.warning("Shutdown event not initialized, creating...")
+            if not self._loop:
+                self._loop = asyncio.get_running_loop()
+            self._shutdown_event = asyncio.Event()
+
         await self._shutdown_event.wait()
         self.logger.info("Shutdown event set, resuming execution...")
 
