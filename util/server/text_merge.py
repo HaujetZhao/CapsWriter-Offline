@@ -72,59 +72,101 @@ def merge_by_text(
     error_tolerance: int = TextMerge.ERROR_TOLERANCE
 ) -> str:
     """
-    基于文本重叠进行拼接（不依赖时间戳）
+    基于文本重叠进行鲁棒拼接
     
-    通过在 prev_text 末尾和 new_text 开头寻找重叠来去重拼接。
-    支持容错匹配：允许 error_tolerance 个字符错误。
-    
-    容错场景举例：
-    - 音频截断在字的中间，导致开头/末尾有错字
-    - 前后语境不同导致的生成错误
+    算法优化：
+    不再要求重叠必须在 prev_text 的绝对末尾。
+    而是在 prev_text 的末尾窗口内寻找 new_text 的最长匹配前缀。
+    如果发现匹配，则以匹配点为界进行拼接，丢弃 prev_text 匹配点之后的“尾部噪音”。
     
     Args:
         prev_text: 之前累积的文本
         new_text: 新识别的文本
-        overlap_chars: 在末尾/开头查找重叠的字符数
-        error_tolerance: 允许的错误字符数
-        
-    Returns:
-        合并后的文本
+        overlap_chars: 查找重叠的后端窗口大小
+        error_tolerance: 容错字符数
     """
     if not prev_text:
         return new_text
     if not new_text:
         return prev_text
     
-    # 去除 prev_text 末尾的标点符号（用于匹配）
-    prev_for_match = prev_text.rstrip(Punctuation.ALL)
-    # 去除 new_text 开头的标点符号（用于匹配）
-    new_stripped_count = 0
-    new_for_match = new_text
-    while new_for_match and new_for_match[0] in Punctuation.ALL:
-        new_for_match = new_for_match[1:]
-        new_stripped_count += 1
+    # 1. 预处理：提取用于匹配的纯文本（去掉两端标点）
+    prev_clean = prev_text.rstrip(Punctuation.ALL)
     
-    # 取 prev_for_match 末尾 N 个字符
-    tail = prev_for_match[-overlap_chars:] if len(prev_for_match) >= overlap_chars else prev_for_match
+    # 记录 new_text 开头被去掉的标点数量，用于最终拼接
+    new_match_start = 0
+    while new_match_start < len(new_text) and new_text[new_match_start] in Punctuation.ALL:
+        new_match_start += 1
+    new_clean = new_text[new_match_start:]
     
-    # 先尝试精确匹配
-    for match_len in range(min(len(tail), len(new_for_match)), 0, -1):
-        if tail[-match_len:] == new_for_match[:match_len]:
-            # 匹配成功，计算实际需要保留的 prev_text 长度
-            # prev_text 保留到匹配点（去掉末尾标点和重叠部分）
-            keep_len = len(prev_for_match) - match_len
-            logger.debug(f"文本拼接: 精确匹配 {match_len} 字符")
-            return prev_text[:keep_len] + new_text[new_stripped_count:]
+    if not prev_clean or not new_clean:
+        return prev_text + new_text
+
+    # 2. 确定搜索窗口（prev_text 的末尾部分）
+    search_window = prev_clean[-overlap_chars:]
+    window_offset = len(prev_clean) - len(search_window)
+
+    # 3. 寻找最长匹配重叠
+    # 策略：不仅搜 new_clean 的绝对开头，还允许跳过 new_clean 开头的几个字（处理开头截断不准）
+    max_skip_new = 10  # 允许跳过新片段开头的字数
+    max_to_check = min(len(search_window), len(new_clean))
+    min_exact_len = 2
+    min_fuzzy_len = error_tolerance + 2
+
+    best_match_skip_new = -1
+    best_match_pos_in_window = -1
+    best_match_len = 0
+
+    # 3.1 尝试【精确匹配】
+    # 优先级：匹配越长越好 > 跳过越少越好 > 越靠近 prev 尾部越好
+    for match_len in range(max_to_check, min_exact_len - 1, -1):
+        for skip_new in range(min(max_skip_new, len(new_clean) - match_len + 1)):
+            target_prefix = new_clean[skip_new : skip_new + match_len]
+            idx = search_window.rfind(target_prefix)
+            if idx != -1:
+                best_match_skip_new = skip_new
+                best_match_pos_in_window = idx
+                best_match_len = match_len
+                break
+        if best_match_len > 0:
+            break
+            
+    # 3.2 如果没找到精确匹配，且开启了容错，则尝试【模糊匹配】
+    if best_match_len == 0 and error_tolerance > 0:
+        for match_len in range(max_to_check, min_fuzzy_len - 1, -1):
+            for skip_new in range(min(max_skip_new, len(new_clean) - match_len + 1)):
+                target_prefix = new_clean[skip_new : skip_new + match_len]
+                found_idx = -1
+                for i in range(len(search_window) - match_len, -1, -1):
+                    if _fuzzy_match(search_window[i:i+match_len], target_prefix, error_tolerance):
+                        found_idx = i
+                        break
+                if found_idx != -1:
+                    best_match_skip_new = skip_new
+                    best_match_pos_in_window = found_idx
+                    best_match_len = match_len
+                    break
+            if best_match_len > 0:
+                break
+
+    # 4. 执行拼接
+    if best_match_len > 0:
+        # prev_text 保留到匹配开始的地方
+        keep_prev_len = window_offset + best_match_pos_in_window
+        
+        # 衔接点：跳过 new_text 开头的标点以及我们认为多余的 skip_new 个噪音字
+        res_prev = prev_clean[:keep_prev_len]
+        res_new = new_text[new_match_start + best_match_skip_new:]
+        
+        discard_prev = len(prev_clean) - keep_prev_len - best_match_len
+        logger.debug(
+            f"文本拼接成功: 匹配长度 {best_match_len}, "
+            f"丢弃 prev 尾部噪音 {discard_prev} 字, "
+            f"跳过 new 开头噪音 {best_match_skip_new} 字"
+        )
+        return res_prev + res_new
     
-    # 精确匹配失败，尝试模糊匹配
-    if error_tolerance > 0:
-        match_len = _find_fuzzy_overlap(tail, new_for_match, error_tolerance)
-        if match_len > 0:
-            keep_len = len(prev_for_match) - match_len
-            logger.debug(f"文本拼接: 模糊匹配 {match_len} 字符 (容错={error_tolerance})")
-            return prev_text[:keep_len] + new_text[new_stripped_count:]
-    
-    # 未找到重叠，直接拼接
+    # 5. 未找到匹配，兜底逻辑
     logger.debug("文本拼接: 未找到重叠，直接拼接")
     return prev_text + new_text
 
