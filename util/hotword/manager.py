@@ -25,9 +25,11 @@ try:
     from config import ClientConfig
     HOT_THRESH = ClientConfig.hot_thresh
     HOT_SIMILAR = ClientConfig.hot_similar
+    RECTIFY_THRESH = ClientConfig.hot_rectify
 except ImportError:
     HOT_THRESH = 0.7
     HOT_SIMILAR = 0.6
+    RECTIFY_THRESH = 0.5
 
 try:
     from util.logger import get_logger
@@ -61,7 +63,8 @@ class HotwordManager:
     def __init__(self, 
                  hotword_files: Optional[Dict[str, Path]] = None,
                  threshold: float = 0.7,
-                 similar_threshold: Optional[float] = None):
+                 similar_threshold: Optional[float] = None,
+                 rectify_threshold: float = 0.5):
         """
         初始化
         Args:
@@ -77,11 +80,15 @@ class HotwordManager:
         
         self.threshold = threshold
         self.similar_threshold = similar_threshold
+        self.rectify_threshold = rectify_threshold
         
         # 初始化各个组件
         self.phoneme_corrector = PhonemeCorrector(threshold=threshold, similar_threshold=similar_threshold)
         self.rule_corrector = RuleCorrector()
-        self.rectify_rag = RectificationRAG(str(self.files.get('rectify', 'hot-rectify.txt')))
+        self.rectify_rag = RectificationRAG(
+            str(self.files.get('rectify', 'hot-rectify.txt')),
+            threshold=rectify_threshold
+        )
         
         self._observer: Optional[Observer] = None
 
@@ -234,7 +241,8 @@ class _HotwordFileHandler(FileSystemEventHandler):
 
 def get_hotword_manager(hotword_files: Optional[Dict[str, Path]] = None, 
                         threshold: float = 0.7, 
-                        similar_threshold: Optional[float] = None) -> HotwordManager:
+                        similar_threshold: Optional[float] = None,
+                        rectify_threshold: float = 0.5) -> HotwordManager:
     """
     获取热词管理器单例实例。
     第一次调用时可以传入配置参数，后续调用将返回已存在的实例。
@@ -245,6 +253,7 @@ def get_hotword_manager(hotword_files: Optional[Dict[str, Path]] = None,
         _manager = HotwordManager(
             hotword_files=hotword_files,
             threshold=threshold,
-            similar_threshold=similar_threshold
+            similar_threshold=similar_threshold,
+            rectify_threshold=rectify_threshold
         )
     return _manager
