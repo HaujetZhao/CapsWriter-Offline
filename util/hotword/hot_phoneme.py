@@ -135,9 +135,11 @@ class PhonemeCorrector:
                 if current_score >= self.threshold:
                     matches.append(MatchResult(char_start, char_end, current_score, hw))
 
-        # 潜在热词按得分降序排序、过滤
+        # 潜在热词按得分降序排序、过滤、去重
+        seen = set()
         similars.sort(key=lambda x: x.score, reverse=True)
         similars = [p for p in similars if p.score >= self.similar_threshold]
+        similars = [m for m in similars if not (m.hotword in seen or seen.add(m.hotword))]
         return matches, similars
 
     def _resolve_and_replace(self, text: str, matches: List[MatchResult]) -> Tuple[str, List[Tuple[str, float]], List[Tuple[str, float]]]:
