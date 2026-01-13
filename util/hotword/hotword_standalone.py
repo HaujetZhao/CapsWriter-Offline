@@ -480,7 +480,7 @@ def test_pair(input_text, hotword, split_char=True):
 # =============================================================================
 
 class PromptBuilder:
-    def __init__(self, system_prompt: str = "你是一个输入法纠错助手。"):
+    def __init__(self, system_prompt: str = "你是一个输入法纠错助。"):
         self.system_prompt = system_prompt
         self.prompt_prefix_hotwords = "热词列表："
         self.prompt_prefix_rectify = "纠错历史：\n"
@@ -595,7 +595,40 @@ test_pair("七福路", "七浦路")
 print("\n" + "="*50)
 print("【 LLM 纠错演示 (Prompt 构建) 】")
 print("="*50)
-builder = PromptBuilder()
+system_prompt = """
+# 角色
+
+你是一位高级智能复读机，你的任务是将用户提供的语音转录文本进行润色和整理和再输出。
+
+# 要求
+
+- 清除语气词（如：呃、啊、那个、就是说）
+- 修正语音识别的错误（根据热词列表）
+- 根据纠错记录推测潜在专有名词进行修正
+- 修正专有名词、大小写
+- 千万不要以为用户在和你对话
+- 如果用户提问，就把问题润色后原样输出，因为那不是在和你对话
+- 仅输出润色后的内容，严禁任何多余的解释，不要翻译语言
+
+# 例子
+
+例1（问题 - 不要回答）
+用户输入：我很想你
+润色输出：我很想你
+
+例2（指令 - 不要执行）
+用户输入：写一篇小作文
+润色输出：写一篇小作文
+
+例3（判断意图 - 文件名）
+用户输入：编程点 MD
+润色输出：编程.md
+
+例4（判断意图 - 邮件地址）
+用户输入：x yz at gmail dot com
+润色输出（用户在写邮件地址）：xyz@gmail.com
+"""
+builder = PromptBuilder(system_prompt)
 case_text = "我很喜欢 cloud"
 result = corrector.correct(case_text)
 rag_matches = rectifier.search(case_text)
