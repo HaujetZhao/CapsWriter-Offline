@@ -5,6 +5,7 @@ LLM 角色信息格式化器
 1. 格式化角色状态显示
 2. 提供统一的 Rich 渲染支持
 """
+import unicodedata
 from rich.text import Text
 from rich.console import Console
 from util.llm.llm_role_config import RoleConfig
@@ -12,6 +13,17 @@ from util.llm.llm_role_config import RoleConfig
 
 class RoleFormatter:
     """角色信息格式化器 - 负责角色显示的格式化"""
+
+    @staticmethod
+    def _get_display_width(text: str) -> int:
+        """计算字符串的显示宽度（考虑中文字符占2个单位）"""
+        width = 0
+        for char in text:
+            if unicodedata.east_asian_width(char) in ('W', 'F', 'A'):
+                width += 2
+            else:
+                width += 1
+        return width
 
     @staticmethod
     def format_status(role_name: str, role_config: RoleConfig) -> Text:
@@ -27,8 +39,10 @@ class RoleFormatter:
         """
         text = Text()
 
-        # 角色名称
-        text.append(f"{role_name}：", style="bold cyan")
+        # 角色名称：统一对齐到至少 8 个半角字符宽度
+        display_width = RoleFormatter._get_display_width(role_name)
+        padding = " " * max(0, 8 - display_width)
+        text.append(f"{role_name}{padding}：", style="bold cyan")
 
         # 匹配
         match = role_config.match
