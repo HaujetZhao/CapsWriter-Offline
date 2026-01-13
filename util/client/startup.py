@@ -66,11 +66,11 @@ def setup_client_components(base_dir):
             if text:
                 from util.llm.llm_clipboard import copy_to_clipboard
                 copy_to_clipboard(text)
-                from util.ui.toast import toast
-                toast("已复制上次输出结果", duration=2000)
-            else:
-                from util.ui.toast import toast
-                toast("复制失败：尚无输出结果", duration=2000, bg="#CC3333")
+            #     from util.ui.toast import toast
+            #     toast("已复制上次输出结果", duration=2000)
+            # else:
+            #     from util.ui.toast import toast
+            #     toast("复制失败：尚无输出结果", duration=2000, bg="#CC3333")
 
         icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
         enable_min_to_tray(
