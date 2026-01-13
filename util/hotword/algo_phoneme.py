@@ -120,7 +120,7 @@ def split_mixed_label(input_str: str) -> List[str]:
             s = s[1:]
             continue
             
-        # 匹配连续的英文字母
+        # 匹配连续的英文字母 (只匹配 ASCII 字母)
         match = re.match(r'[a-z]+', s)
         if match:
             tokens.append(match.group(0))
@@ -218,8 +218,8 @@ def get_phoneme_info(text: str, ascii_split_char: bool = True) -> List[Phoneme]:
         if '\u4e00' <= char <= '\u9fff':
             # 处理中文片段
             pos = _process_zh(text, pos, phoneme_seq)
-        elif char.isalnum():
-            # 处理英文/数字片段
+        elif 'a' <= char.lower() <= 'z' or '0' <= char <= '9':
+            # 处理英文/数字片段 (严格判定 ASCII 字母和数字)
             pos = _process_en_num(text, pos, phoneme_seq, ascii_split_char)
         else:
             # 其他字符（空格、标点）：跳过，保持音素流连续以便匹配
@@ -271,7 +271,8 @@ def _process_en_num(text: str, pos: int, seq: List[Phoneme], split_char: bool) -
     start_pos = pos
     while pos < len(text):
         char = text[pos]
-        if not char.isalnum(): break
+        low_char = char.lower()
+        if not ('a' <= low_char <= 'z' or '0' <= char <= '9'): break
         
         # 处理逻辑拆分边界 (驼峰 aA, 字母数字 a1, 数字字母 1a)
         if pos > start_pos:
