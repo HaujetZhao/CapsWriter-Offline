@@ -150,6 +150,16 @@ def find_best_match(main_seq: List[Phoneme], sub_seq: List[Phoneme]) -> Tuple[fl
         start_index: 匹配在 main_seq 中的起始索引 (inclusive)
         end_index: 匹配在 main_seq 中的结束索引 (exclusive)
     """
+    # DEBUG
+    import logging
+    logger = logging.getLogger('client')
+    logger.debug(f"[DEBUG] find_best_match: main_seq type={type(main_seq)}, len={len(main_seq)}")
+    logger.debug(f"[DEBUG] find_best_match: sub_seq type={type(sub_seq)}, len={len(sub_seq)}")
+    if main_seq:
+        logger.debug(f"[DEBUG] find_best_match: main_seq[0] type={type(main_seq[0])}, value={main_seq[0]}")
+    if sub_seq:
+        logger.debug(f"[DEBUG] find_best_match: sub_seq[0] type={type(sub_seq[0])}, value={sub_seq[0]}")
+
     n = len(sub_seq)
     m = len(main_seq)
     if n == 0:
@@ -159,7 +169,13 @@ def find_best_match(main_seq: List[Phoneme], sub_seq: List[Phoneme]) -> Tuple[fl
 
     # 预计算字边界：只允许从这些位置开始匹配
     # 使用 Phoneme 对象的 is_word_start 属性，无需重复计算
-    valid_starts = [j for j in range(m) if main_seq[j].is_word_start]
+    try:
+        valid_starts = [j for j in range(m) if main_seq[j].is_word_start]
+        logger.debug(f"[DEBUG] find_best_match: valid_starts={valid_starts[:5]}...")
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to build valid_starts: {e}")
+        logger.error(f"[ERROR] main_seq details: {[(type(item), item) for item in main_seq[:5]]}")
+        raise
 
     # DP 矩阵: rows=n+1, cols=m+1
     dp = [[0.0] * (m + 1) for _ in range(n + 1)]

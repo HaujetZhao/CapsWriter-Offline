@@ -213,14 +213,21 @@ class FastRAG:
         检索相关热词（高层编排）
         """
         if not input_phonemes: return []
-        
+
+        # DEBUG
+        from util.logger import get_logger
+        logger = get_logger('client')
+        logger.debug(f"[DEBUG] FastRAG.search: input_phonemes type={type(input_phonemes)}, len={len(input_phonemes)}")
+        if input_phonemes:
+            logger.debug(f"[DEBUG] FastRAG.search: input_phonemes[0] type={type(input_phonemes[0])}, value={input_phonemes[0]}")
+
         # 1. 编码输入并获取候选
         input_codes = self.index.encode_input(input_phonemes)
         candidates = self.index.get_candidates(input_phonemes)
-        
+
         # 2. 遍历打分与过滤
         results = self._score_candidates(input_codes, candidates)
-        
+
         # 3. 排序并截断
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:top_k]

@@ -252,20 +252,24 @@ class RectificationRAG:
         fragment_details = []
         for fragment, frag_phonemes in record.fragment_phonemes.items():
             if not frag_phonemes: continue
-            
+
+            # 转换 Phoneme 对象为 info 元组（因为 fuzzy_substring_distance 期望元组列表）
+            input_info = [p.info for p in input_phonemes]
+            frag_info = [p.info for p in frag_phonemes]
+
             # 计算相似度 (1 - 归一化编辑距离)
-            min_dist = fuzzy_substring_distance(input_phonemes, frag_phonemes)
-            score = 1.0 - (min_dist / len(frag_phonemes))
-            
+            min_dist = fuzzy_substring_distance(frag_info, input_info)
+            score = 1.0 - (min_dist / len(frag_info))
+
             fragment_details.append({
                 'fragment': fragment,
                 'score': round(score, 3),
-                'phonemes': len(frag_phonemes)
+                'phonemes': len(frag_info)
             })
-            
+
         if not fragment_details:
             return 0.0, []
-            
+
         # 按得分排序，记录得分为最高片段分
         fragment_details.sort(key=lambda x: x['score'], reverse=True)
         return fragment_details[0]['score'], fragment_details

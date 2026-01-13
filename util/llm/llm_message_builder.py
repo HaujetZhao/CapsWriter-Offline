@@ -84,10 +84,18 @@ class MessageBuilder:
 
         # 3.1 热词列表
         if role_config.enable_hotwords and hotwords:
-            words = [hw for hw, _ in hotwords]
-            if words:
-                context_parts.append(f"{role_config.prompt_prefix_hotwords}[{', '.join(words)}]")
-                logger.debug(f"[消息构建] 已添加热词列表")
+            logger.debug(f"[DEBUG] hotwords type={type(hotwords)}, len={len(hotwords)}")
+            if hotwords:
+                logger.debug(f"[DEBUG] hotwords[0] type={type(hotwords[0])}, value={hotwords[0]}")
+            try:
+                words = [hw for hw, _ in hotwords]
+                if words:
+                    context_parts.append(f"{role_config.prompt_prefix_hotwords}[{', '.join(words)}]")
+                    logger.debug(f"[消息构建] 已添加热词列表")
+            except Exception as e:
+                logger.error(f"[ERROR] Failed to process hotwords: {e}")
+                logger.error(f"[ERROR] hotwords details: {[(type(hw), hw) for hw in hotwords[:5]]}")
+                raise
 
         # 3.2 纠错历史 (从 RAG 获取原始数据并在本地格式化)
         if role_config.enable_rectify:
@@ -148,7 +156,7 @@ class MessageBuilder:
 
             debug_msg = [
                 f"\n{'='*70}",
-                f"[LLM 请求] 角色: {role_name}",
+                f"[LLM 请求] 角色: {role_name if role_name else '默认'}",
                 f"  上下文统计:",
                 f"    历史消息数: {history_count} 条",
                 f"    总 Token 数: {total_tokens} / {max_context} ({usage_percent:.1f}%)",
@@ -175,7 +183,7 @@ class MessageBuilder:
 
             info_msg = [
                 f"\n{'='*70}",
-                f"[LLM 请求] 角色: {role_name}",
+                f"[LLM 请求] 角色: {role_name if role_name else '默认'}",
                 f"{content}",
                 f"{'='*70}\n"
             ]
