@@ -166,8 +166,8 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         except (UnicodeDecodeError, UnicodeError) as e:
             save_error_audio(samples, task.task_id, task.samplerate)
             console.print(f'\n[red]编码错误: {e}')
-            console.print('\n[yellow]完整 stream.result:')
-            inspect(stream.result)
+            # console.print('\n[yellow]完整 stream.result:')
+            # inspect(stream.result)
             new_tokens = []
             new_timestamps = []
 
