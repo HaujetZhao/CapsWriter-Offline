@@ -11,3 +11,5 @@ websockets
 pystray
 Pillow
 
+markdown
+tkhtmlview
