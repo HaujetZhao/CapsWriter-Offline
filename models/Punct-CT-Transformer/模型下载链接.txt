@@ -2,4 +2,4 @@ https://github.com/k2-fsa/sherpa-onnx/releases/download/punctuation-models/sherp
 
 或：
 
-https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/Models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12.zip
+https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12.zip

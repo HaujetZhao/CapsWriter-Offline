@@ -2,4 +2,4 @@ https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-s
 
 或
 
-https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/Models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.zip
+https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.zip

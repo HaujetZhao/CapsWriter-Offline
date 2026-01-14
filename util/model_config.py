@@ -13,19 +13,19 @@ class ModelDownloadLinks:
     """模型下载链接配置"""
 
     # FunASR-nano 模型（推荐，速度快）
-    funasr_nano = "https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/Models/sherpa-onnx-funasr-nano-int8-2025-12-30.zip"
+    funasr_nano = "https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/models/sherpa-onnx-funasr-nano-int8-2025-12-30.zip"
 
     # SenseVoice 模型（多语言支持）
-    sensevoice = "https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/Models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.zip"
+    sensevoice = "https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.zip"
 
     # Paraformer 模型（HuggingFace下载链接）
-    paraformer = "https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/Models/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-onnx.zip"
+    paraformer = "https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/models/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-onnx.zip"
 
     # FireRed 模型（大模型，速度慢，不推荐用于实时语音输入，未实施）
     firered = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-fire-red-asr-large-zh_en-2025-02-16.tar.bz2"
 
     # 标点模型
-    punct = "https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/Models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12.zip"
+    punct = "https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/models/sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12.zip"
 
 
 class ModelPaths:
