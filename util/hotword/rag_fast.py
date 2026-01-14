@@ -81,6 +81,7 @@ if HAS_NUMBA:
 # =============================================================================
 
 from .algo_phoneme import Phoneme
+from .algo_calc import SIMILAR_PHONEMES
 
 class PhonemeEncoder:
     """将音素字符串编码为整数，用于 Numba 加速"""
@@ -157,17 +158,33 @@ class PhonemeIndex:
         input_codes = set()
         
         for p in input_phonemes:
-            if p.value in self.encoder.phoneme_to_code:
-                input_codes.add(self.encoder.phoneme_to_code[p.value])
+            val = p.value
+            code = self.encoder.phoneme_to_code.get(val)
+            if code is not None:
+                input_codes.add(code)
+            
+            # [核心增强] 如果是中文，也把相似的音素加入搜索范围，以防首音素识别错误
+            if p.lang != 'zh':
+                continue
+
+            for s_set in SIMILAR_PHONEMES:
+                if val not in s_set:
+                    continue
+                for sim_val in s_set:
+                    sim_code = self.encoder.phoneme_to_code.get(sim_val)
+                    if sim_code is None:
+                        continue
+                    input_codes.add(sim_code)
 
         # 收集候选
         candidates = []
         seen = set()
         for code in input_codes:
             for hw, codes in self.index.get(code, []):
-                if hw not in seen:
-                    candidates.append((hw, codes))
-                    seen.add(hw)
+                if hw in seen:
+                    continue
+                candidates.append((hw, codes))
+                seen.add(hw)
 
         return candidates
     

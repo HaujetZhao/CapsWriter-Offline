@@ -25,6 +25,13 @@ SIMILAR_PHONEMES = [
     {'f', 'h'},
     # 常见易混韵母
     {'ai', 'ei'},
+    {'o', 'uo'},
+    {'e', 'ie'},
+    # 清浊音/送气不送气 (在某些语境下音近)
+    {'p', 't'},
+    {'p', 'b'},
+    {'t', 'd'},
+    {'k', 'g'},
 ]
 
 def lcs_length(s1: str, s2: str) -> int:
@@ -373,6 +380,9 @@ def _get_tuple_cost(t1: Tuple, t2: Tuple) -> float:
 
     # 中文相似音素判断
     if t1[1] == 'zh':
+        if t1[4]:  # is_tone
+             return 0.5
+             
         pair = {t1[0], t2[0]}
         for s in SIMILAR_PHONEMES:
             if pair.issubset(s):

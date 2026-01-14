@@ -173,6 +173,7 @@ logs/
 
 LLM/大助理.py
 LLM/高级翻译.py
+diag*.py
 test_*.py 
 test_*.ipynb 
 test_*.md 

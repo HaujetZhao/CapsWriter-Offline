@@ -163,7 +163,13 @@ def get_phoneme_info(text: str, split_char: bool = True) -> List[Phoneme]:
 # 2. 相似度算法 (algo_calc)
 # =============================================================================
 
-SIMILAR_PHONEMES = [{'an', 'ang'}, {'en', 'eng'}, {'in', 'ing'}, {'ian', 'iang'}, {'uan', 'uang'}, {'z', 'zh'}, {'c', 'ch'}, {'s', 'sh'}, {'l', 'n'}, {'f', 'h'}, {'ai', 'ei'}]
+SIMILAR_PHONEMES = [
+    {'an', 'ang'}, {'en', 'eng'}, {'in', 'ing'}, {'ian', 'iang'}, {'uan', 'uang'},
+    {'z', 'zh'}, {'c', 'ch'}, {'s', 'sh'},
+    {'l', 'n'}, {'f', 'h'},
+    {'ai', 'ei'}, {'o', 'uo'}, {'e', 'ie'},
+    {'p', 't'}, {'p', 'b'}, {'t', 'd'}, {'k', 'g'}
+]
 
 def _lcs_length(s1: str, s2: str) -> int:
     m, n = len(s1), len(s2)
@@ -276,17 +282,38 @@ class FastRAG:
             self.hotword_count += 1
     def search(self, input_phs: List[Phoneme], top_k: int = 10) -> List[Tuple[str, float]]:
         if not input_phs: return []
-        input_codes = self._encode_seq([p.value for p in input_phs]); unique = set(input_codes)
+        input_codes = set(self._encode_seq([p.value for p in input_phs]))
+        
+        for p in input_phs:
+            val = p.value
+            if p.lang != 'zh':
+                continue
+            for s_set in SIMILAR_PHONEMES:
+                if val not in s_set:
+                    continue
+                for sim_val in s_set:
+                    sim_code = self.ph_to_code.get(sim_val)
+                    if sim_code is not None:
+                        input_codes.add(sim_code)
+
+        # 收集候选
         candidates = []
         seen = set()
-        for c in unique:
+        codes_list = sorted(list(input_codes))
+        for c in codes_list:
             for hw, codes in self.index.get(c, []):
-                if hw not in seen: candidates.append((hw, codes)); seen.add(hw)
+                if hw in seen:
+                    continue
+                candidates.append((hw, codes))
+                seen.add(hw)
+
+        # 搜索
+        input_arr = np.array(codes_list, dtype=np.int32) if HAS_NUMPY else codes_list
         results = []
         for hw, h_codes in candidates:
-            if len(h_codes) > len(input_codes) + 3: continue
-            if HAS_NUMBA and HAS_NUMPY: dist = _fuzzy_substring_numba(input_codes, h_codes)
-            else: dist = self._python_dist(input_codes, h_codes)
+            if len(h_codes) > len(input_arr) + 3: continue
+            if HAS_NUMBA and HAS_NUMPY: dist = _fuzzy_substring_numba(input_arr, h_codes)
+            else: dist = self._python_dist(input_arr, h_codes)
             score = 1.0 - (dist / len(h_codes))
             if score >= self.threshold: results.append((hw, round(score, 3)))
         results.sort(key=lambda x: x[1], reverse=True)
@@ -590,6 +617,7 @@ print("="*50)
 test_pair("cloud", "claude")
 test_pair("vscode", "VS Code")
 test_pair("七福路", "七浦路")
+test_pair("拓维信息", "破为信息")
 
 # --- E. LLM Prompt 组建与调用演示 ---
 print("\n" + "="*50)
