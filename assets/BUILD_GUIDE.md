@@ -84,7 +84,7 @@ pyinstaller build-client.spec
 
 ## 🔧 打包配置选项
 
-在 [`build.spec`](build.spec) 中可以配置以下选项：
+在 [`build.spec`](../build.spec) 中可以配置以下选项：
 
 ### CUDA Provider 支持
 
@@ -133,7 +133,7 @@ pip install -r requirements-client.txt
 
 **依赖文件说明**:
 
-**服务端依赖** ([`requirements-server.txt`](requirements-server.txt)):
+**服务端依赖** ([`requirements-server.txt`](../requirements-server.txt)):
 ```text
 # ASR 核心
 -f https://k2-fsa.github.io/sherpa/onnx/cuda-cn.html
@@ -151,7 +151,7 @@ pystray
 Pillow
 ```
 
-**客户端依赖** ([`requirements-client.txt`](requirements-client.txt)):
+**客户端依赖** ([`requirements-client.txt`](../requirements-client.txt)):
 ```text
 # 基础与 CLI
 rich
@@ -260,7 +260,7 @@ start_client.exe
 
 ### 1. 版本管理
 
-在 [`config.py`](config.py) 中定义版本号：
+在 [`config.py`](../config.py) 中定义版本号：
 ```python
 __version__ = '2.1'
 ```
@@ -316,8 +316,8 @@ excludes = [
 - [Sherpa-ONNX 文档](https://k2-fsa.github.io/sherpa/onnx/)
 
 ### 项目相关
-- [CapsWriter-Offline README](readme.md)
-- [开发指南](CLAUDE.md)
+- [CapsWriter-Offline README](../readme.md)
+- [开发指南](../CLAUDE.md)
 
 ## 🔍 故障排查
 

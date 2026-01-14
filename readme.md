@@ -25,13 +25,13 @@
 
 -   **语音输入**：按住 `CapsLock` 键说话，松开即输入，默认去除末尾逗句号。支持对讲机模式和单击录音模式。
 -   **文件转录**：音视频文件往客户端一丢，字幕 (`.srt`)、文本 (`.txt`)、时间戳 (`.json`) 统统都有。
+-   **数字 ITN**：自动将「十五六个」转为「15~16个」，支持各种复杂数字格式。
 -   **热词替换**：在 `hot.txt` 记下你的专业术语，支持拼音模糊匹配。
 -   **正则替换**：在 `hot-rule.txt` 用正则或简单等号规则，精准强制替换。
--   **纠错记录**：在 `hot-rectify.txt` 记下对识别结果的纠错，辅助LLM润色。
--   **数字 ITN**：自动将「十五六个」转为「15~16个」，支持各种复杂数字格式。
--   **LLM 角色**：预置了润色、翻译、代码助手等角色，能读取你鼠标选中的文字。语音开头先说角色的名字，即可调用。
--   **托盘菜单**：右键托盘图标即可快速切换模型、打开配置、查看日志。
--   **C/S 架构**：服务端与客户端分离，Win7 老电脑跑不了模型，但最少能用客户端输入。
+-   **纠错记录**：在 `hot-rectify.txt` 记录对识别结果的纠错，可辅助LLM润色。
+-   **LLM 角色**：预置了润色、翻译、代码助手等角色，当识别结果的开头匹配任一角色名字时，将交由该角色处理。
+-   **托盘菜单**：右键托盘图标即可添加热词、复制结果、清除LLM记忆。
+-   **C/S 架构**：服务端与客户端分离，虽然 Win7 老电脑跑不了服务端模型，但最少能用客户端输入。
 -   **日记归档**：按日期保存你的每一句语音及其识别结果。
 -   **录音保存**：所有语音均保存为本地音频文件，隐私安全，永不丢失。
 
@@ -89,7 +89,13 @@ A: 到 `年/月/assets` 文件夹中检查录音文件，听听录音效果，�
 A: 可在 `hot.txt` 中添加正确词汇（托盘菜单右键有快捷添加），或者在 `hot-rule.txt` 中用正则表达式强制替换。
 
 **Q: 如何使用 LLM 角色？**  
-A: 在 `LLM` 文件夹中编辑角色文件，配置好后，当语音识别的开头几个字匹配到角色名字时，就会将识别结果交给角色处理后输出，就像你和Siri或小爱同学对话一样。你可以用 Ollama 部署一个本地的 gemma3:4b，也可以获得 Deepseek 的 API 后，填入角色文件的配置。
+A: 只需要在语音的**开头**说出角色名。例如，你配置了一个名为「翻译」的角色，录音时说「翻译，今天天气好」，翻译角色就会接手识别结果，在翻译后输出。它就像是一个随时待命的插件，你喊它名字，它就干活。你可以配置它们直接打字输出，或者在 TOAST 弹窗中显示。
+
+**Q: LLM 角色可以读取屏幕内容？**  
+A: 是的。如果你的 AI 角色开启了 `enable_read_selection`，你可以先用鼠标选中屏幕上的一段文字，然后按住快捷键说：“翻译一下”，LLM 就会识别你的指令，将选中文字进行翻译。
+
+**Q: LLM 角色模型怎么选？**  
+A: 你可以在 `LLM` 文件夹里为每个角色配置后端。既可以用 Ollama 部署本地轻量模型（如 gemma3:4b, qwen3:4b 等），也可以填写 DeepSeek 等在线大模型的 API Key。
 
 **Q: 想要隐藏黑窗口？**  
 A: 点击托盘菜单即可隐藏黑窗口。
@@ -107,8 +113,8 @@ A: 更改 `config.py` 中的 `model_type` 模型类型，或更改 `util/model_c
 
 | 项目名称 | 说明 | 体验地址 |
 | :--- | :--- | :--- |
-| [**IME_Indicator**](https://github.com/HaujetZhao/IME_Indicator) | Windows 输入法中英状态指示器 | [GitHub](https://github.com/HaujetZhao/IME_Indicator) |
-| [**Rust-Tray**](https://github.com/HaujetZhao/Rust-Tray) | 将控制台最小化到托盘图标的工具 | [GitHub](https://github.com/HaujetZhao/Rust-Tray) |
+| [**IME_Indicator**](https://github.com/HaujetZhao/IME_Indicator) | Windows 输入法中英状态指示器 | [下载即用](https://github.com/HaujetZhao/IME_Indicator/releases/latest/download/IME-Indicator.exe) |
+| [**Rust-Tray**](https://github.com/HaujetZhao/Rust-Tray) | 将控制台最小化到托盘图标的工具 | [下载即用](https://github.com/HaujetZhao/Rust-Tray/releases/latest/download/Tray.exe) |
 | [**Gallery-Viewer**](https://github.com/HaujetZhao/Gallery-Viewer-HTML) | 网页端图库查看器，纯 HTML 实现 | [点击即用](https://haujetzhao.github.io/Gallery-Viewer-HTML/) |
 | [**全景图片查看器**](https://github.com/HaujetZhao/Panorama-Viewer-HTML) | 单个网页实现全景照片、视频查看 | [点击即用](https://haujetzhao.github.io/Panorama-Viewer-HTML/) |
 | [**图标生成器**](https://github.com/HaujetZhao/Font-Awesome-Icon-Generator-HTML) | 使用 Font-Awesome 生成网站 Icon | [点击即用](https://haujetzhao.github.io/Font-Awesome-Icon-Generator-HTML/) |
