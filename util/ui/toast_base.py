@@ -364,6 +364,7 @@ class ToastWindowBase(ABC):
             self.md_label = HTMLLabel(
                 self.window,
                 html=full_html,
+                wrap="char",
                 background=self.bg,
                 padx=DEFAULT_PADDING_X,
                 pady=DEFAULT_PADDING_Y
