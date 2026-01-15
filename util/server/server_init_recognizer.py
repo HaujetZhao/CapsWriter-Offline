@@ -1,5 +1,4 @@
 import time
-import sherpa_onnx
 from multiprocessing import Queue
 import signal
 import atexit
