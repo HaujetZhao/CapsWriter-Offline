@@ -63,6 +63,16 @@ PB
 PDF
 DPI
 
+#阿里
+Alibaba
+Paraformer
+SenseVoice
+CosyVoice
+FunASR
+FunASR-nano
+ModelScope
+
+
 # Apple
 Apple
 Apple Watch
