@@ -108,14 +108,16 @@ class PhonemeEncoder:
 
 class PhonemeIndex:
     """
-    首音素倒排索引
+    多音素倒排索引
     
-    按首音素分桶，检索时只匹配相关桶，减少 90% 计算量
+    按热词前几个音素分桶，检索时只匹配音素在输入中出现过的热词，减少计算量。
+    - 中文：索引前两个音素（声母+韵母，即第一个字的完整拼音）
+    - 英文：索引前两个音素（容错首音素识别错误，如 klaude -> Claude）
     """
     
     def __init__(self):
         self.encoder = PhonemeEncoder()
-        # {首音素编码: [(热词原文, 音素编码数组), ...]}
+        # {音素编码: [(热词原文, 音素编码数组), ...]}
         self.index: Dict[int, List[Tuple[str, np.ndarray]]] = defaultdict(list)
         self.all_hotwords: List[Tuple[str, np.ndarray]] = []
         
@@ -128,14 +130,11 @@ class PhonemeIndex:
         phoneme_strs = [p.value for p in phonemes]
         codes = self.encoder.encode_sequence(phoneme_strs)
         
-        # 索引策略决策
-        # 默认只索引首个音素 (适用于中文，区分度高)
-        indices = [0]
-        
-        # 策略优化：如果是英文，索引前两个音素以容错 (如 klaude -> Claude)
-        if phonemes[0].lang == 'en':
-            limit = min(len(codes), 2)
-            indices = list(range(limit))
+        # 索引策略：统一索引前两个音素
+        # - 中文：声母+韵母（第一个字的完整拼音）
+        # - 英文：前两个音素（容错首音素识别错误，如 klaude -> Claude）
+        limit = min(len(codes), 2)
+        indices = list(range(limit))
             
         # 收集去重后的 target_codes
         target_codes = {codes[i] for i in indices if i < len(codes)}
@@ -149,12 +148,12 @@ class PhonemeIndex:
         """
         获取候选热词
 
-        只返回首音素在输入中出现过的热词
+        只返回索引音素在输入中出现过的热词
 
         Args:
             input_phonemes: 输入音素序列 (List[Phoneme])
         """
-        # 获取输入中所有唯一的音素（作为潜在首音素）
+        # 获取输入中所有唯一的音素（作为潜在索引音素）
         input_codes = set()
         
         for p in input_phonemes:
@@ -163,7 +162,7 @@ class PhonemeIndex:
             if code is not None:
                 input_codes.add(code)
             
-            # [核心增强] 如果是中文，也把相似的音素加入搜索范围，以防首音素识别错误
+            # [核心增强] 如果是中文，也把相似的音素加入搜索范围，以防索引音素识别错误
             if p.lang != 'zh':
                 continue
 

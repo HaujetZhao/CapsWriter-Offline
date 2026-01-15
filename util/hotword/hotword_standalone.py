@@ -276,8 +276,8 @@ class FastRAG:
         for hw, phs in hotwords.items():
             if not phs: continue
             codes = self._encode_seq([p.value for p in phs])
-            indices = [0]
-            if phs[0].lang == 'en': indices = list(range(min(len(codes), 2)))
+            # 统一索引前两个音素（中文：声母+韵母，英文：前两位容错）
+            indices = list(range(min(len(codes), 2)))
             for i in indices: self.index[codes[i]].append((hw, codes))
             self.hotword_count += 1
     def search(self, input_phs: List[Phoneme], top_k: int = 10) -> List[Tuple[str, float]]:
