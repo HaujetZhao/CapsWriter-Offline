@@ -207,8 +207,8 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         process_time = result.time_complete - task.time_submit
         logger.info(
             f"识别完成: task={task.task_id[:8]}, "
-            f"duration={result.duration:.2f}s, "
-            f"process_time={process_time:.3f}s, "
+            f"duration={result.duration:.2f}(s), "
+            f"process_time={process_time:.3f}(s), "
             f"RTF={process_time/result.duration:.3f}"
         )
         logger.debug(f"最终文本: {result.text[:100]}...")
