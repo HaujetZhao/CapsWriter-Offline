@@ -13,16 +13,16 @@
 ## 架构细节与流程 (Architecture & Workflows)
 
 ### 1. 识别全链路 (Recognition Flow)
-- **采集**: Client 监听 CapsLock。按键时长 > **0.3s (Threshold)** 触发录音，**实时流式**通过 WebSocket 发送。
+- **采集**: Client 监听 CapsLock。按下就开始收集录音chunk，超过 **0.3s (Threshold)** 不松则触发识别，**实时流式**通过 WebSocket 发送。
 - **切片 (Slicing)**: Client 配置 `mic_seg_duration` (25s) 和 `mic_seg_overlap` (2s)。Server 仅基于时间切片，**禁用 VAD** 以保留完整上下文。
 - **Server 处理**:
     - **双重结果**: 同时计算 `text` (简单文本拼接, Robust) 和 `text_accu` (基于 Token 时间戳去重, Precision)。
-    - **拼接算法**: 优先使用 **Token 时间戳去重** ([`util/server/text_merge.py`](util/server/text_merge.py))，无时间戳则降级为 **模糊文本匹配**。
+    - **拼接算法**: `text_accu`使用 **Token 时间戳去重** ([`util/server/text_merge.py`](util/server/text_merge.py))，`text` 使用 **模糊文本匹配**。
 - **Client 后处理**:
     - **触发**: 用户**松开按键** -> Server 返回 IsFinal 结果。
     - **热词 (RAG)**: 基于 **音素 (Phoneme)** 的两阶段模糊检索，匹配 `hot.txt`（统一中英文热词）。
-    - **LLM 润色**: 根据角色配置进行智能修正和润色。
-    - **上屏**: 模拟键盘输入或写入剪贴板 ("松开即出")。
+    - **LLM 润色**: 根据角色配置进行智能润色或回答。
+    - **上屏**: 模拟键盘输入或Toast显示。
 
 ### 2. 客户端模式 (Client Modes)
 - **听写 (Dictation)**: 默认模式。按住快捷键 -> 流式识别 -> 松开上屏。
@@ -57,7 +57,6 @@
 ### 5. 历史归档 (Diary)
 - **按日期归档**: `年份/月份/日期.md`。
 - **音频**: 原始录音存入 `年份/月份/assets/`，Markdown 中自动生成 HTML 音频控件链接。
-- **关键词日记**: 识别结果以关键词开头时，归档到 `年份/月份/关键词-日期.md`。
 
 ## 关键路径 (Key Paths)
 - **配置**: [`config.py`](config.py) (根目录).
@@ -78,7 +77,7 @@
     - [`util/server/`](util/server/) - 服务端工具（WebSocket、识别、拼接）
     - [`util/llm/`](util/llm/) - LLM 处理（角色、上下文、输出）
     - [`util/hotword/`](util/hotword/) - 热词管理（RAG、规则、纠错）
-- **日志**: `log/client.log` & `log/server.log` (排查问题唯一入口).
+- **日志**: `logs/client.log` & `logs/server.log` (排查问题唯一入口).
 - **协议**: [`util/protocol.py`](util/protocol.py).
 
 ## 打包与部署 (Build)
@@ -88,7 +87,7 @@
 - **PyInstaller 6.0+**: 使用现代化打包配置，支持 CUDA provider 可选收集。
 
 ## 模型支持 (Models)
-- **FunASR-Nano**: 轻量级模型，速度快（推荐）。
+- **FunASR-Nano**: 最准，速度稍慢。
     - 下载: `sherpa-onnx-funasr-nano-int8-2025-12-30.tar.bz2`
 - **SenseVoice**: 多语言支持（中英日韩粤）。
     - 下载: `sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2`

@@ -59,6 +59,7 @@ class APIConfig:
         'deepseek': 'https://api.deepseek.com/v1',
         'moonshot': 'https://api.moonshot.cn/v1',
         'zhipu': 'https://open.bigmodel.cn/api/paas/v4',
+        'volcengine': 'https://ark.cn-beijing.volces.com/api/v3',
         'cerebras': 'https://api.cerebras.ai/v1',
     }
 

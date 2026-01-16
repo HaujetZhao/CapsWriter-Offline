@@ -63,7 +63,7 @@ class ClientConfig:
     enable_tray = True          # 客户端默认启用托盘图标功能
 
     # 日志配置
-    log_level = 'DEBUG'          # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+    log_level = 'INFO'          # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
 
     mic_seg_duration = 25           # 麦克风听写时分段长度：15秒
     mic_seg_overlap = 2             # 麦克风听写时分段重叠：2秒
