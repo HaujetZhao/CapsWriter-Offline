@@ -197,15 +197,16 @@ class ClientState:
         # 更新状态
         self.last_output_text = text
         
-        # UDP 广播到本地回环地址（如果启用）
-        if Config.udp_broadcast:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                    message = text.encode('utf-8')
-                    sock.sendto(message, ('127.255.255.255', Config.udp_broadcast_port))
-                    logger.debug(f"UDP 广播输出文本到 127.255.255.255:{Config.udp_broadcast_port}, 长度: {len(text)}")
-            except Exception as e:
-                logger.warning(f"UDP 广播失败: {e}")
+        # UDP 广播到配置的目标地址（如果启用）
+        if Config.udp_broadcast and Config.udp_broadcast_targets:
+            message = text.encode('utf-8')
+            for addr, port in Config.udp_broadcast_targets:
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                        sock.sendto(message, (addr, port))
+                        logger.debug(f"UDP 发送输出文本到 {addr}:{port}, 长度: {len(text)}")
+                except Exception as e:
+                    logger.warning(f"UDP 发送输出文本到 {addr}:{port} 失败: {e}")
 
 
 # 全局状态实例

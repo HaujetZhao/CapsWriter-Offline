@@ -71,8 +71,11 @@ class ClientConfig:
     file_seg_duration = 25      # 转录文件时分段长度
     file_seg_overlap = 2        # 转录文件时分段重叠
 
-    udp_broadcast = True        # 是否启用 UDP 广播输出结果到本地回环地址
-    udp_broadcast_port = 6017   # UDP 广播端口
+    udp_broadcast = True                # 是否启用 UDP 广播输出结果
+    udp_broadcast_targets = [           # UDP 广播目标地址列表，格式: (地址, 端口)
+        ('127.255.255.255', 6017),      # 本地回环广播
+        # ('192.168.1.255', 6017),      # 局域网广播（示例，按需启用）
+    ]
 
     udp_control = False             # 是否启用 UDP 控制录音（外部程序发送 START/STOP 命令）
     udp_control_addr = '127.0.0.1'  # UDP 控制监听地址（'0.0.0.0' 允许外部访问）
