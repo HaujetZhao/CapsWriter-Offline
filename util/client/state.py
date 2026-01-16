@@ -66,6 +66,7 @@ class ClientState:
     stream_manager: Any = None
     processor: Any = None
     mouse_handler: Any = None
+    udp_controller: Any = None
 
     recording: bool = False
     recording_start_time: float = 0.0
@@ -201,8 +202,8 @@ class ClientState:
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                     message = text.encode('utf-8')
-                    sock.sendto(message, ('127.255.255.255', Config.udp_port))
-                    logger.debug(f"UDP 广播输出文本到 127.255.255.255:{Config.udp_port}, 长度: {len(text)}")
+                    sock.sendto(message, ('127.255.255.255', Config.udp_broadcast_port))
+                    logger.debug(f"UDP 广播输出文本到 127.255.255.255:{Config.udp_broadcast_port}, 长度: {len(text)}")
             except Exception as e:
                 logger.warning(f"UDP 广播失败: {e}")
 

@@ -124,7 +124,15 @@ def setup_client_components(base_dir):
     state.shortcut_handler = shortcut_handler
     shortcut_handler.bind()
 
-    # 7. 鼠标 X2 键控制（可选）
+    # 7. UDP 控制（可选）
+    if Config.udp_control:
+        from util.client.input.udp_control import UDPController
+        logger.info(f"正在启用 UDP 控制，端口: {Config.udp_control_port}")
+        udp_controller = UDPController(shortcut_handler)
+        state.udp_controller = udp_controller
+        udp_controller.start()
+
+    # 8. 鼠标 X2 键控制（可选）
     if Config.mouse_x2_enabled:
         from util.client.input import MouseHandler
         logger.info("正在启用鼠标 X2 键控制...")
@@ -132,7 +140,7 @@ def setup_client_components(base_dir):
         state.mouse_handler = mouse_handler
         mouse_handler.start()
 
-    # 8. 内存清理
+    # 9. 内存清理
     if system() == 'Windows':
         empty_current_working_set()
 
