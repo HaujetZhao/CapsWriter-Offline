@@ -31,20 +31,58 @@ class ClientConfig:
     addr = '127.0.0.1'          # Server 地址
     port = '6016'               # Server 端口
 
-    shortcut     = 'caps lock'  # 控制录音的快捷键，默认是 CapsLock
-    hold_mode    = True         # 长按模式，按下录音，松开停止，像对讲机一样用。
-                                # 改为 False，则关闭长按模式，也就是单击模式
-                                #       即：单击录音，再次单击停止
-                                #       且：长按会执行原本的单击功能
-    suppress     = False        # 是否阻塞按键事件（让其它程序收不到这个按键消息）
-    restore_key  = True         # 录音完成，松开按键后，是否自动再按一遍，以恢复 CapsLock 或 Shift 等按键之前的状态
-    threshold    = 0.3          # 按下快捷键后，触发语音识别的时间阈值
+    # 快捷键配置列表
+    # 支持多个快捷键同时工作，每个快捷键配置说明：
+    # - key: 快捷键名称（pynput 格式，如 'caps_lock', 'f12', 'space'）
+    # - type: 'keyboard' 或 'mouse'
+    # - suppress: 是否阻塞按键事件
+    # - restore: 录音完成后是否恢复按键状态（仅对 CapsLock 等切换键有效）
+    # - hold_mode: True=长按模式，False=单击模式
+    # - threshold: 触发阈值（秒）
+    # - enabled: 是否启用
+    shortcuts = [
+        {
+            'key': 'caps_lock',
+            'type': 'keyboard',
+            'suppress': False,
+            'restore': True,
+            'hold_mode': True,
+            'threshold': 0.3,
+            'enabled': True
+        },
+        # 可添加更多快捷键，例如：
+        # {
+        #     'key': 'f12',
+        #     'type': 'keyboard',
+        #     'suppress': False,
+        #     'restore': False,
+        #     'hold_mode': True,
+        #     'threshold': 0.3,
+        #     'enabled': False
+        # },
+        {
+            'key': 'x2',
+            'type': 'mouse',
+            'suppress': True,
+            'restore': False,
+            'hold_mode': True,
+            'threshold': 0.3,
+            'enabled': True
+        },
+    ]
+
+    # 兼容性配置（已废弃，保留用于向后兼容警告）
+    shortcut     = 'caps lock'  # 已废弃，请使用 shortcuts 配置
+    hold_mode    = True         # 已废弃，请使用 shortcuts 配置
+    suppress     = False        # 已废弃，请使用 shortcuts 配置
+    restore_key  = True         # 已废弃，请使用 shortcuts 配置
+    threshold    = 0.3          # 已废弃，请使用 shortcuts 配置
     paste        = False        # 是否以写入剪切板然后模拟 Ctrl-V 粘贴的方式输出结果
     restore_clip = True         # 模拟粘贴后是否恢复剪贴板
 
-    # 鼠标前进键(X2)控制
-    mouse_x2_enabled = True     # 是否启用鼠标前进键控制录音（默认关闭）
-    mouse_x2_suppress = True    # 是否阻塞鼠标事件（防止触发浏览器前进等功能）
+    # 鼠标前进键(X2)控制（已废弃，请使用 shortcuts 配置）
+    mouse_x2_enabled = False    # 已废弃，请使用 shortcuts 配置
+    mouse_x2_suppress = True    # 已废弃，请使用 shortcuts 配置
 
     save_audio = True           # 是否保存录音文件
     audio_name_len = 20         # 将录音识别结果的前多少个字存储到录音文件名中，建议不要超过200

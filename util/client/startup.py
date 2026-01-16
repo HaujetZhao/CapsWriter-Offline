@@ -11,7 +11,8 @@ from util.client.ui import TipsDisplay
 from util.hotword import get_hotword_manager
 from util.llm.llm_handler import init_llm_system
 from util.client.audio import AudioStreamManager
-from util.client.input import ShortcutHandler
+from util.client.input.shortcut_config import Shortcut
+from util.client.input.shortcut_manager import ShortcutManager
 from util.tools.empty_working_set import empty_current_working_set
 
 logger = get_logger('client')
@@ -118,27 +119,25 @@ def setup_client_components(base_dir):
     state.stream_manager = stream_manager
     stream_manager.open()
 
-    # 6. 快捷键
-    logger.info(f"正在绑定快捷键: {Config.shortcut}")
-    shortcut_handler = ShortcutHandler(state)
-    state.shortcut_handler = shortcut_handler
-    shortcut_handler.bind()
+    # 6. 快捷键管理器（统一管理键盘和鼠标快捷键）
+    # 从 Config.shortcuts 列表创建 Shortcut 对象
+    shortcuts = [Shortcut(**sc) for sc in Config.shortcuts]
+    logger.info(f"正在初始化快捷键管理器，共 {len(shortcuts)} 个快捷键")
+
+    shortcut_manager = ShortcutManager(state, shortcuts)
+    state.shortcut_manager = shortcut_manager
+    shortcut_manager.start()
+
+    # 为了兼容性，同时保留旧的 shortcut_handler 引用
+    state.shortcut_handler = shortcut_manager
 
     # 7. UDP 控制（可选）
     if Config.udp_control:
         from util.client.input.udp_control import UDPController
         logger.info(f"正在启用 UDP 控制，端口: {Config.udp_control_port}")
-        udp_controller = UDPController(shortcut_handler)
+        udp_controller = UDPController(shortcut_manager)
         state.udp_controller = udp_controller
         udp_controller.start()
-
-    # 8. 鼠标 X2 键控制（可选）
-    if Config.mouse_x2_enabled:
-        from util.client.input import MouseHandler
-        logger.info("正在启用鼠标 X2 键控制...")
-        mouse_handler = MouseHandler(shortcut_handler, suppress=Config.mouse_x2_suppress)
-        state.mouse_handler = mouse_handler
-        mouse_handler.start()
 
     # 9. 内存清理
     if system() == 'Windows':

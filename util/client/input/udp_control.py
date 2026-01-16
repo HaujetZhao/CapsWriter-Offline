@@ -19,7 +19,7 @@ from config import ClientConfig as Config
 from util.logger import get_logger
 
 if TYPE_CHECKING:
-    from util.client.input.shortcut import ShortcutHandler
+    from util.client.input.shortcut_manager import ShortcutManager
 
 logger = get_logger('client')
 
@@ -31,14 +31,14 @@ class UDPController:
     在后台线程监听 UDP 端口，接收控制命令来开始/停止录音。
     """
     
-    def __init__(self, shortcut_handler: ShortcutHandler):
+    def __init__(self, shortcut_manager: ShortcutManager):
         """
         初始化 UDP 控制器
-        
+
         Args:
-            shortcut_handler: 快捷键处理器实例，用于调用录音控制方法
+            shortcut_manager: 快捷键管理器实例，用于调用录音控制方法
         """
-        self.handler = shortcut_handler
+        self.manager = shortcut_manager
         self.running = False
         self._thread = None
         self._sock = None
@@ -93,26 +93,32 @@ class UDPController:
     def _handle_command(self, command: str, addr: tuple) -> None:
         """
         处理接收到的命令
-        
+
         Args:
             command: 命令字符串 (START/STOP)
             addr: 发送方地址
         """
-        state = self.handler.state
-        
+        state = self.manager.state
+
         if command == 'START':
             if not state.recording:
                 logger.info(f"UDP 控制：开始录音 (来自 {addr[0]}:{addr[1]})")
-                self.handler._launch_task()
+                # 使用第一个可用的快捷键任务启动录音
+                if self.manager.tasks:
+                    first_task = next(iter(self.manager.tasks.values()))
+                    first_task.launch()
             else:
                 logger.debug("UDP 控制：忽略 START 命令（已在录音中）")
-        
+
         elif command == 'STOP':
             if state.recording:
                 logger.info(f"UDP 控制：停止录音 (来自 {addr[0]}:{addr[1]})")
-                self.handler._finish_task()
+                # 停止所有录音任务
+                for task in self.manager.tasks.values():
+                    if task.is_recording:
+                        task.finish()
             else:
                 logger.debug("UDP 控制：忽略 STOP 命令（未在录音）")
-        
+
         else:
             logger.warning(f"UDP 控制：未知命令 '{command}' (来自 {addr[0]}:{addr[1]})")
