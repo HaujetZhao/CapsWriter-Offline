@@ -68,10 +68,10 @@ class UDPController:
         try:
             self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self._sock.bind(('127.0.0.1', Config.udp_control_port))
+            self._sock.bind((Config.udp_control_addr, Config.udp_control_port))
             self._sock.settimeout(0.5)
             
-            logger.debug(f"UDP 控制器绑定到 127.0.0.1:{Config.udp_control_port}")
+            logger.debug(f"UDP 控制器绑定到 {Config.udp_control_addr}:{Config.udp_control_port}")
             
             while self.running:
                 try:

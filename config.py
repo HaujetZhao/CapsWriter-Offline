@@ -74,6 +74,7 @@ class ClientConfig:
     udp_broadcast = True        # 是否启用 UDP 广播输出结果到本地回环地址
     udp_broadcast_port = 6017   # UDP 广播端口
 
-    udp_control = False         # 是否启用 UDP 控制录音（外部程序发送 START/STOP 命令）
-    udp_control_port = 6018     # UDP 控制监听端口
+    udp_control = False             # 是否启用 UDP 控制录音（外部程序发送 START/STOP 命令）
+    udp_control_addr = '127.0.0.1'  # UDP 控制监听地址（'0.0.0.0' 允许外部访问）
+    udp_control_port = 6018         # UDP 控制监听端口
 
