@@ -154,7 +154,7 @@ class ToastWindowBase(ABC):
             self._start_destroy_timer()
 
     def _bind_common_events(self) -> None:
-        """绑定通用事件（拖动、鼠标进入/离开、滚轮、ESC）"""
+        """绑定通用事件（拖动、鼠标进入/离开、滚轮、ESC、复制）"""
         self.window.bind('<ButtonPress-1>', self._on_drag_start)
         self.window.bind('<ButtonRelease-1>', self._on_drag_stop)
         self.window.bind('<B1-Motion>', self._on_drag_motion)
@@ -164,6 +164,7 @@ class ToastWindowBase(ABC):
         self.window.bind('<MouseWheel>', self._on_mouse_wheel)
         self.window.bind('<Button-4>', self._on_mouse_wheel)  # Linux 向上滚动
         self.window.bind('<Button-5>', self._on_mouse_wheel)  # Linux 向下滚动
+        self.window.bind('<Control-c>', self._on_copy)        # Ctrl+C 复制
 
     def _calculate_actual_width(self) -> int:
         """计算实际窗口宽度
@@ -269,6 +270,23 @@ class ToastWindowBase(ABC):
         except tk.TclError as e:
             logger.warning(f"滚动事件处理失败: {e}")
             return "break"
+
+    def _on_copy(self, _event: tk.Event) -> str:
+        """复制完整文本到剪贴板
+
+        Args:
+            _event: 事件对象（未使用）
+
+        Returns:
+            "break" 阻止事件继续传播
+        """
+        try:
+            self.window.clipboard_clear()
+            self.window.clipboard_append(self.full_text)
+            logger.info("已复制 Toast 内容到剪贴板")
+        except Exception as e:
+            logger.error(f"复制到剪贴板失败: {e}")
+        return "break"
 
     # --------------------------------------------------------
     # 窗口销毁
