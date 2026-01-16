@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+import socket
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -182,6 +183,28 @@ class ClientState:
         if file_path:
             logger.debug(f"获取音频文件: task_id={task_id}, path={file_path}")
         return file_path
+
+    def set_output_text(self, text: str) -> None:
+        """
+        设置最近一次输出文本并通过 UDP 广播（如果启用）
+        
+        Args:
+            text: 输出文本内容
+        """
+        from config import ClientConfig as Config
+        
+        # 更新状态
+        self.last_output_text = text
+        
+        # UDP 广播到本地回环地址（如果启用）
+        if Config.udp_broadcast:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                    message = text.encode('utf-8')
+                    sock.sendto(message, ('127.255.255.255', Config.udp_port))
+                    logger.debug(f"UDP 广播输出文本到 127.255.255.255:{Config.udp_port}, 长度: {len(text)}")
+            except Exception as e:
+                logger.warning(f"UDP 广播失败: {e}")
 
 
 # 全局状态实例

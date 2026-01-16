@@ -21,6 +21,7 @@ from util.client.processing.output import TextOutput
 from util.tools.window_detector import get_active_window_info
 from util.logger import get_logger
 from util.common.lifecycle import lifecycle
+from util.client.state import get_state
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
@@ -308,7 +309,7 @@ class ResultProcessor:
             )
         else:
             await self._text_output.output(text, paste=paste)
-            self.state.last_output_text = text
+            get_state().set_output_text(text)
 
         # 保存录音与写入 md 文件
         file_audio = None

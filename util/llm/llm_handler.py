@@ -184,9 +184,9 @@ class LLMHandler:
             result_text = TextOutput.strip_punc(text)
             await output_text(result_text, paste)
             
-            # 更新全局状态
+            # 更新全局状态并 UDP 广播
             from util.client.state import get_state
-            get_state().last_output_text = result_text
+            get_state().set_output_text(result_text)
 
             if return_result:
                 return LLMResult(result=result_text, role_name=None, processed=False, 
@@ -200,9 +200,9 @@ class LLMHandler:
             result_text = TextOutput.strip_punc(content)
             await output_text(result_text, paste)
             
-            # 更新全局状态
+            # 更新全局状态并 UDP 广播
             from util.client.state import get_state
-            get_state().last_output_text = result_text
+            get_state().set_output_text(result_text)
 
             if return_result:
                 return LLMResult(result=result_text, role_name=display_name, processed=False,
@@ -219,7 +219,7 @@ class LLMHandler:
         # 更新全局状态（即便是中断了，也记录已经输出的部分）
         if result:
             from util.client.state import get_state
-            get_state().last_output_text = result
+            get_state().set_output_text(result)
 
         if return_result:
             return LLMResult(

@@ -71,3 +71,5 @@ class ClientConfig:
     file_seg_duration = 25           # 转录文件时分段长度
     file_seg_overlap = 2             # 转录文件时分段重叠
 
+    udp_broadcast = True         # 是否启用 UDP 广播输出结果到本地回环地址
+    udp_port = 6017              # UDP 广播端口
