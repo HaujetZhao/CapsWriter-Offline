@@ -42,6 +42,10 @@ class ClientConfig:
     paste        = False         # 是否以写入剪切板然后模拟 Ctrl-V 粘贴的方式输出结果
     restore_clip = True         # 模拟粘贴后是否恢复剪贴板
 
+    # 鼠标前进键(X2)控制
+    mouse_x2_enabled = True    # 是否启用鼠标前进键控制录音（默认关闭）
+    mouse_x2_suppress = True    # 是否阻塞鼠标事件（防止触发浏览器前进等功能）
+
     save_audio = True           # 是否保存录音文件
     audio_name_len = 20         # 将录音识别结果的前多少个字存储到录音文件名中，建议不要超过200
 
@@ -59,7 +63,7 @@ class ClientConfig:
     enable_tray = True          # 客户端默认启用托盘图标功能
 
     # 日志配置
-    log_level = 'INFO'          # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+    log_level = 'DEBUG'          # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
 
     mic_seg_duration = 25           # 麦克风听写时分段长度：15秒
     mic_seg_overlap = 2             # 麦克风听写时分段重叠：2秒

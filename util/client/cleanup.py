@@ -32,6 +32,14 @@ def cleanup_client_resources():
         except Exception as e:
             logger.warning(f"停止快捷键监听时发生错误: {e}")
 
+    # 停止鼠标监听器
+    if state.mouse_handler:
+        try:
+            state.mouse_handler.stop()
+            logger.debug("鼠标监听已停止")
+        except Exception as e:
+            logger.warning(f"停止鼠标监听时发生错误: {e}")
+
     # 停止音频流
     if state.stream_manager:
         try:

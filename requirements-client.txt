@@ -6,6 +6,7 @@ markdown
 
 # system, input, hardware
 keyboard
+pynput
 pyclip
 sounddevice
 watchdog

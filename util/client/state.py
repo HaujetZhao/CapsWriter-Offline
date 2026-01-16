@@ -64,6 +64,7 @@ class ClientState:
     shortcut_handler: Any = None
     stream_manager: Any = None
     processor: Any = None
+    mouse_handler: Any = None
 
     recording: bool = False
     recording_start_time: float = 0.0

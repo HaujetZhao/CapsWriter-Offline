@@ -124,9 +124,18 @@ def setup_client_components(base_dir):
     state.shortcut_handler = shortcut_handler
     shortcut_handler.bind()
 
-    # 7. 内存清理
+    # 7. 鼠标 X2 键控制（可选）
+    if Config.mouse_x2_enabled:
+        from util.client.input import MouseHandler
+        logger.info("正在启用鼠标 X2 键控制...")
+        mouse_handler = MouseHandler(shortcut_handler, suppress=Config.mouse_x2_suppress)
+        state.mouse_handler = mouse_handler
+        mouse_handler.start()
+
+    # 8. 内存清理
     if system() == 'Windows':
         empty_current_working_set()
 
     logger.info("客户端初始化完成，等待语音输入...")
     return state
+
