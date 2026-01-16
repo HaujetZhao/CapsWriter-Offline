@@ -69,10 +69,10 @@ async def handle_toast_mode(text: str, role_config=None, matched_hotwords=None, 
 
         if should_stop():
             toast_manager.close_toast(msg_id)
-            return (TextOutput.strip_punc(''.join(chunks) or content), token_count, gen_time)
+            return (''.join(chunks) or content, token_count, gen_time)
         else:
             toast_manager.finish_toast(msg_id)
-            return (TextOutput.strip_punc(polished_text or content), token_count, gen_time)
+            return (polished_text or content, token_count, gen_time)
 
     except Exception as e:
         if msg_id: toast_manager.close_toast(msg_id)

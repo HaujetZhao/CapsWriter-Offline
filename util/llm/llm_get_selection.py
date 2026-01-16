@@ -13,8 +13,10 @@ import pyclip
 import keyboard
 from util.logger import get_logger
 from util.llm.llm_clipboard import safe_paste
+from util.client.state import get_state
 
 logger = get_logger('client')
+state = get_state()
 
 
 # 全局变量：记录每个角色最后一次使用的选中文字
@@ -56,7 +58,7 @@ def get_selected_text(role_config) -> str:
         pyclip.copy(original_clipboard)
 
         # 如果内容没有变化，说明没有选中文字，返回空字符串
-        if selected_text == original_clipboard:
+        if selected_text == original_clipboard or selected_text == state.last_output_text:
             return ""
 
         # 检查长度限制
