@@ -51,7 +51,8 @@ class ToastWindowText(ToastWindowBase):
         initial_height: int = 0,
         streaming: bool = False,
         stop_callback: Optional[Callable[[], None]] = None,
-        markdown: bool = False
+        markdown: bool = False,
+        editable: bool = False
     ) -> None:
         """创建基于 Text 组件的浮动消息窗口
         
@@ -68,12 +69,13 @@ class ToastWindowText(ToastWindowBase):
             streaming: 是否为流式输出模式
             stop_callback: 窗口关闭时的回调函数
             markdown: 是否启用 Markdown 渲染
+            editable: Markdown 渲染后是否允许编辑
         """
         # 初始化基类
         super().__init__(
             parent_root, text, font_size, font_family, bg, fg,
             duration, initial_width, initial_height, streaming,
-            stop_callback, markdown
+            stop_callback, markdown, editable
         )
 
         # 创建字体对象用于计算行高

@@ -46,6 +46,7 @@ async def handle_toast_mode(text: str, role_config=None, matched_hotwords=None, 
             streaming=True,
             window_type='text',
             markdown=True,
+            editable=role_config.toast_editable,
             stop_callback=lambda: task_stop_event.set()
         )
 

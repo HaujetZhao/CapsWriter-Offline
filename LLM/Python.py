@@ -35,6 +35,7 @@ toast_font_size = 23                    # 字体大小
 toast_font_color = 'white'              # 字体颜色
 toast_bg_color = '#075077'              # 背景颜色
 toast_duration = 3000                   # 显示时长（毫秒）
+toast_editable = False                  # 是否可编辑（Markdown 渲染后）
 
 # ==================== 生成参数 ====================
 temperature = 0.7                       # 温度（0-2，越高越随机）

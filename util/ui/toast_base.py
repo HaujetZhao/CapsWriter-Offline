@@ -89,7 +89,8 @@ class ToastWindowBase(ABC):
         initial_height: int,
         streaming: bool,
         stop_callback: Optional[Callable[[], None]],
-        markdown_enabled: bool
+        markdown_enabled: bool,
+        editable: bool = False
     ) -> None:
         """初始化 Toast 窗口基类
         
@@ -106,12 +107,14 @@ class ToastWindowBase(ABC):
             streaming: 是否为流式输出模式
             stop_callback: 窗口关闭时的回调函数
             markdown_enabled: 是否启用 Markdown 渲染
+            editable: Markdown 渲染后是否允许编辑
         """
         # 保存基本属性
         self.parent_root = parent_root
         self.stop_callback = stop_callback
         self.streaming = streaming
         self.markdown = markdown_enabled
+        self.editable = editable
         self.duration = duration
         self.initial_width = initial_width
         self.initial_height = initial_height
@@ -179,6 +182,28 @@ class ToastWindowBase(ABC):
         else:
             # 绝对值（像素）
             return int(self.initial_width)
+
+    @staticmethod
+    def _invert_color(hex_color: str) -> str:
+        """计算十六进制颜色的反色
+        
+        Args:
+            hex_color: 十六进制颜色值（如 '#075077'）
+            
+        Returns:
+            反色的十六进制颜色值
+        """
+        # 去掉 # 前缀
+        hex_color = hex_color.lstrip('#')
+        # 解析 RGB 值
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        # 计算反色
+        inv_r = 255 - r
+        inv_g = 255 - g
+        inv_b = 255 - b
+        return f"#{inv_r:02x}{inv_g:02x}{inv_b:02x}"
 
     # --------------------------------------------------------
     # 鼠标事件处理
@@ -272,7 +297,9 @@ class ToastWindowBase(ABC):
             return "break"
 
     def _on_copy(self, _event: tk.Event) -> str:
-        """复制完整文本到剪贴板
+        """复制文本到剪贴板
+        
+        优先复制选中的文本（如果有），否则复制全部内容。
 
         Args:
             _event: 事件对象（未使用）
@@ -281,9 +308,27 @@ class ToastWindowBase(ABC):
             "break" 阻止事件继续传播
         """
         try:
+            text_to_copy = None
+            
+            # 如果有 md_label，检查是否有选中文本
+            if hasattr(self, 'md_label') and self.md_label:
+                try:
+                    # Text 组件使用 tag_ranges("sel") 检查选区
+                    sel_ranges = self.md_label.tag_ranges("sel")
+                    if sel_ranges:
+                        # 有选中文本，获取选中内容
+                        text_to_copy = self.md_label.get(sel_ranges[0], sel_ranges[1])
+                        logger.info("已复制选中的文本到剪贴板")
+                except tk.TclError:
+                    pass  # 没有选区或其他错误
+            
+            # 如果没有选中文本，复制全部内容
+            if text_to_copy is None:
+                text_to_copy = self.full_text
+                logger.info("已复制 Toast 全部内容到剪贴板")
+            
             self.window.clipboard_clear()
-            self.window.clipboard_append(self.full_text)
-            logger.info("已复制 Toast 内容到剪贴板")
+            self.window.clipboard_append(text_to_copy)
         except Exception as e:
             logger.error(f"复制到剪贴板失败: {e}")
         return "break"
@@ -388,6 +433,26 @@ class ToastWindowBase(ABC):
                 pady=DEFAULT_PADDING_Y
             )
             self.md_label.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+            
+            # 根据 editable 参数设置是否可编辑
+            # DISABLED 状态下仍可选择文字，但无法编辑
+            # NORMAL 状态下可以选择和编辑文字
+            if self.editable:
+                self.md_label.config(state=tk.NORMAL)
+                
+                # 设置光标颜色为背景色的反色
+                cursor_color = self._invert_color(self.bg)
+                self.md_label.config(insertbackground=cursor_color, insertwidth=2)
+            # 否则保持 HTMLLabel 默认的 DISABLED 状态
+            
+            # 设置选中文字的高亮样式（DISABLED 状态下默认选中样式不可见）
+            select_bg = "#3399ff"
+            select_fg = "white"
+            self.md_label.config(selectbackground=select_bg, selectforeground=select_fg)
+            
+            # HTMLLabel 使用 tag 设置文字样式，需要为所有 tag 也设置选中样式
+            for tag in self.md_label.tag_names():
+                self.md_label.tag_config(tag, selectbackground=select_bg, selectforeground=select_fg)
 
             # 现在 Markdown 组件已经显示，再销毁原有组件
             self._destroy_content_widget()

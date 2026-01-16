@@ -81,6 +81,7 @@ class ToastMessage:
     window_type: Literal['text', 'label'] = 'text'
     stop_callback: Optional[Callable[[], None]] = None
     markdown: bool = False
+    editable: bool = False  # Markdown 渲染后是否允许编辑
 
 
 # ============================================================
@@ -181,7 +182,8 @@ class ToastMessageManager:
                     msg.initial_height,
                     streaming=msg.streaming,
                     stop_callback=msg.stop_callback,
-                    markdown=msg.markdown
+                    markdown=msg.markdown,
+                    editable=msg.editable
                 )
 
                 # 保存消息ID到窗口对象
