@@ -63,6 +63,18 @@ PB
 PDF
 DPI
 
+#AI
+Sonnet
+Opus
+int4
+int8
+fp16
+fp32
+
+
+#IDE
+VS Code
+
 #阿里
 Alibaba
 Paraformer

@@ -81,6 +81,9 @@ def create_file_list(dist_folder, output_file='file_list.txt'):
         return files, None
 
     for root, dirs, filenames in os.walk(dist_path):
+        # 排除不需要打包的文件夹
+        dirs[:] = [d for d in dirs if d not in ('__pycache__', '.vscode', '.git')]
+
         for filename in filenames:
             file_path = os.path.join(root, filename)
             if should_include_file(file_path):
