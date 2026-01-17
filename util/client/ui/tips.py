@@ -19,6 +19,36 @@ from util.logger import get_logger
 logger = get_logger('client')
 
 
+def _format_shortcut_name(key: str) -> str:
+    """
+    格式化快捷键名称用于显示
+
+    Args:
+        key: 快捷键名称（如 'caps_lock', 'f12'）
+
+    Returns:
+        str: 格式化后的名称（如 'CapsLock', 'F12'）
+    """
+    # 将下划线替换为空格，然后标题化
+    return key.replace('_', ' ').title()
+
+
+def _get_shortcuts_display() -> str:
+    """
+    获取所有启用快捷键的显示字符串
+
+    Returns:
+        str: 格式化的快捷键列表，用逗号分隔
+    """
+    enabled_shortcuts = [sc for sc in Config.shortcuts if sc.get('enabled', True)]
+    if not enabled_shortcuts:
+        return '未配置快捷键'
+
+    # 格式化每个快捷键名称
+    formatted = [_format_shortcut_name(sc['key']) for sc in enabled_shortcuts]
+    return '、'.join(formatted)
+
+
 class TipsDisplay:
     """
     提示信息显示器
@@ -29,9 +59,11 @@ class TipsDisplay:
     @staticmethod
     def show_mic_tips() -> None:
         """显示麦克风模式的启动提示"""
+        shortcuts_display = _get_shortcuts_display()
+
         console.rule('[bold #d55252]CapsWriter Offline Client')
         console.print(f'\n版本：[bold green]{__version__}')
-        
+
         markdown = f'''
 
 项目地址：https://github.com/HaujetZhao/CapsWriter-Offline
@@ -42,7 +74,7 @@ class TipsDisplay:
 
 1. 运行 **Server** 端，它作为「大脑」负责 AI 推理，约占用 1.5G 内存。
 2. 运行 **Client** 端，它作为「耳朵」负责听音和打字上屏。
-3. 按住 `{Config.shortcut}` 键说话，松开即输入。
+3. 按住快捷键（`{shortcuts_display}`）说话，松开即输入。
 4. 将音视频文件拖动到 **Client** 端 exe 文件后松开，可转录生成字幕。
 
 
@@ -58,19 +90,19 @@ class TipsDisplay:
 
 注意事项：
 
-1. 默认快捷键是 `{Config.shortcut}`，可在 `config.py` 中修改。
+1. 当前快捷键：`{shortcuts_display}`，可在 `config.py` 中修改。
 2. 如需在管理员权限运行的程序（如任务管理器、游戏）中输入，请**以管理员权限运行客户端**。
 3. 识别结果默认去除末尾逗句号。
 4. 录音保存功能：若检测到 `FFmpeg`，会以 `mp3` 压缩保存；否则保存为 `wav` 。
         '''
-        
+
         console.print(Markdown(markdown), highlight=True)
         console.rule()
         console.print(f'\n当前基文件夹：[cyan underline]{os.getcwd()}')
         console.print(f'\n服务端地址： [cyan underline]{Config.addr}:{Config.port}')
-        console.print(f'\n当前所用快捷键：[green4]{Config.shortcut}')
+        console.print(f'\n当前所用快捷键：[green4]{shortcuts_display}')
         console.line()
-        
+
         logger.debug("已显示麦克风模式启动提示")
     
     @staticmethod

@@ -194,6 +194,8 @@ class ShortcutManager:
 
     def _init_tasks(self) -> None:
         """初始化所有快捷键任务"""
+        from config import ClientConfig as Config
+
         for shortcut in self.shortcuts:
             if not shortcut.enabled:
                 continue
@@ -201,6 +203,8 @@ class ShortcutManager:
             task = ShortcutTask(shortcut, self.state)
             task._manager_ref = lambda: self  # 弱引用，用于回调
             task.pool = self._pool
+            # 使用统一的阈值（或快捷键特定的阈值）
+            task.threshold = shortcut.get_threshold(Config.threshold)
             self.tasks[shortcut.key] = task
 
     def _schedule_restore(self, key: str) -> None:
@@ -313,7 +317,7 @@ class ShortcutManager:
                         duration = time.time() - task.recording_start_time
                         logger.debug(f"[{key_name}] 松开，持续时间: {duration:.2f}s")
 
-                        if duration < shortcut.threshold:
+                        if duration < task.threshold:
                             task.cancel()
                             # 短按且 suppress=True：补发按键
                             if shortcut.suppress:
@@ -338,7 +342,7 @@ class ShortcutManager:
 
     def _count_down(self, task: ShortcutTask) -> None:
         """倒计时（单击模式）"""
-        time.sleep(task.shortcut.threshold)
+        time.sleep(task.threshold)
         task.event.set()
 
     def _manage_task(self, task: ShortcutTask) -> None:
@@ -348,7 +352,7 @@ class ShortcutManager:
         if not was_recording:
             task.launch()
 
-        if task.event.wait(timeout=task.shortcut.threshold * 0.8):
+        if task.event.wait(timeout=task.threshold * 0.8):
             if task.is_recording and was_recording:
                 task.finish()
         else:
@@ -414,7 +418,7 @@ class ShortcutManager:
                 if shortcut.hold_mode:
                     if task.is_recording:
                         duration = time.time() - task.recording_start_time
-                        if duration < shortcut.threshold:
+                        if duration < task.threshold:
                             task.cancel()
                         else:
                             task.finish()

@@ -7,7 +7,7 @@
 """
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, Optional
 
 
 @dataclass
@@ -21,7 +21,7 @@ class Shortcut:
         suppress: 是否阻塞按键事件（让其它程序收不到这个按键消息）
         restore: 录音完成后是否自动恢复按键状态（仅对有状态的键有效，如 CapsLock, Shift）
         hold_mode: 长按模式。True=按下录音松开停止；False=单击开始再次单击停止
-        threshold: 按下快捷键后触发语音识别的时间阈值（秒），用于防止误触
+        threshold: 按下快捷键后触发语音识别的时间阈值（秒），用于防止误触。None 表示使用 Config.threshold
         enabled: 是否启用此快捷键
     """
     key: str
@@ -29,7 +29,7 @@ class Shortcut:
     suppress: bool = False
     restore: bool = True
     hold_mode: bool = True
-    threshold: float = 0.3
+    threshold: Optional[float] = None  # None 表示使用 Config.threshold
     enabled: bool = True
 
     # 鼠标特定配置
@@ -42,6 +42,18 @@ class Shortcut:
             self.key = self._normalize_key(self.key)
         elif self.type == 'mouse':
             self.key = self.mouse_button
+
+    def get_threshold(self, default_threshold: float = 0.3) -> float:
+        """
+        获取快捷键的阈值
+
+        Args:
+            default_threshold: 默认阈值
+
+        Returns:
+            float: 阈值（秒）
+        """
+        return self.threshold if self.threshold is not None else default_threshold
 
     @staticmethod
     def _normalize_key(key: str) -> str:

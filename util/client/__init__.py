@@ -23,7 +23,7 @@ from util.client.websocket_manager import WebSocketManager
 from util.client.audio import AudioRecorder, AudioStreamManager, AudioFileManager
 
 # 输入模块
-from util.client.input import ShortcutHandler
+from util.client.input import Shortcut, ShortcutManager
 
 # 处理模块
 from util.client.processing import ResultProcessor, HotwordManager, TextOutput
@@ -50,7 +50,8 @@ __all__ = [
     'AudioFileManager',
     
     # 输入
-    'ShortcutHandler',
+    'Shortcut',
+    'ShortcutManager',
     
     # 处理
     'ResultProcessor',
