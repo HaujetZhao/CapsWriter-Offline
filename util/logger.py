@@ -69,8 +69,8 @@ class Logger:
 
         # 创建格式化器
         formatter = logging.Formatter(
-            fmt='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            fmt='%(asctime)s.%(msecs)03d - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+            datefmt='%H:%M:%S'
         )
 
         # 文件处理器（带轮转）
