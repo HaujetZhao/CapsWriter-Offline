@@ -23,7 +23,7 @@ from util.logger import get_logger
 from util.tools.my_status import Status
 
 if TYPE_CHECKING:
-    from util.client.input.shortcut_config import Shortcut
+    from util.client.shortcut.shortcut_config import Shortcut
     from util.client.state import ClientState
     from util.client.audio.recorder import AudioRecorder
 
@@ -147,7 +147,7 @@ class ShortcutTask:
 
         # 通知管理器执行 restore
         # 防自捕获：管理器会设置 flag 再发送按键
-        from util.client.input.shortcut_manager import ShortcutManager
+        from util.client.shortcut.shortcut_manager import ShortcutManager
         if hasattr(self, '_manager_ref'):
             manager = self._manager_ref()
             if manager:

@@ -8,8 +8,9 @@
 - state: 客户端状态管理
 - websocket_manager: WebSocket 连接管理
 - audio/: 音频相关（录制、流、文件管理）
-- input/: 输入处理（快捷键）
-- processing/: 结果处理（热词、输出）
+- shortcut/: 快捷键处理（原 input/）
+- output/: 结果处理和输出（原 processing/）
+- udp/: UDP 控制
 - transcribe/: 文件转录
 - diary/: 日记写入
 - ui/: 用户界面
@@ -22,11 +23,11 @@ from util.client.websocket_manager import WebSocketManager
 # 音频模块
 from util.client.audio import AudioRecorder, AudioStreamManager, AudioFileManager
 
-# 输入模块
-from util.client.input import Shortcut, ShortcutManager
+# 快捷键模块
+from util.client.shortcut import Shortcut, ShortcutManager
 
-# 处理模块
-from util.client.processing import ResultProcessor, HotwordManager, TextOutput
+# 输出模块
+from util.client.output import ResultProcessor, TextOutput
 
 # 转录模块
 from util.client.transcribe import FileTranscriber, SrtAdjuster
@@ -49,13 +50,12 @@ __all__ = [
     'AudioStreamManager',
     'AudioFileManager',
     
-    # 输入
+    # 快捷键
     'Shortcut',
     'ShortcutManager',
     
-    # 处理
+    # 输出
     'ResultProcessor',
-    'HotwordManager',
     'TextOutput',
     
     # 转录
@@ -68,3 +68,4 @@ __all__ = [
     # UI
     'TipsDisplay',
 ]
+

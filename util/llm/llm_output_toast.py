@@ -6,7 +6,7 @@ LLM Toast 输出模式
 import asyncio
 import logging
 
-from util.client.processing.output import TextOutput
+from util.client.output.text_output import TextOutput
 from util.tools.asyncio_to_thread import to_thread
 from util.llm.llm_stop_monitor import reset, should_stop, create_stop_callback
 

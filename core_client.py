@@ -71,7 +71,7 @@ async def main_mic() -> None:
     _main_task = asyncio.current_task()
 
     from util.client.state import console
-    from util.client.processing import ResultProcessor
+    from util.client.output import ResultProcessor
     from util.client.startup import setup_client_components
 
     logger.info("=" * 50)

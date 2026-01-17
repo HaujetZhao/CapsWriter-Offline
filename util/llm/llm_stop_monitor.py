@@ -2,14 +2,16 @@
 LLM 输出中断监控
 
 监听用户按下中断键（默认 ESC），停止 LLM 流式输出
+
+使用 pynput GlobalHotKeys 替代 keyboard 库
 """
-import keyboard
 import logging
 import threading
 from typing import Optional
 from config import ClientConfig as Config
+from util.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger('client')
 
 
 # 全局事件：用于通知 LLM 停止输出（用于手动按 ESC 键的情况）
@@ -17,6 +19,9 @@ _stop_event = threading.Event()
 
 # 线程局部存储：每个任务独立的停止标志
 _thread_local = threading.local()
+
+# 全局快捷键管理器引用
+_hotkey_manager = None
 
 
 def should_stop() -> bool:
@@ -58,6 +63,7 @@ def create_stop_callback() -> 'threading.Event':
 
 def on_stop_pressed():
     """用户按下中断键时的回调"""
+    logger.debug("检测到 ESC 键按下，停止 LLM 输出")
     _stop_event.set()
 
     # 如果有 toast，关闭它
@@ -73,7 +79,35 @@ def on_stop_pressed():
 
 def start_monitor():
     """启动中断键监控（在模块导入时自动调用）"""
-    keyboard.add_hotkey(Config.llm_stop_key, on_stop_pressed)
+    global _hotkey_manager
+    
+    try:
+        from util.client.shortcut.global_hotkey import get_global_hotkey_manager
+        
+        _hotkey_manager = get_global_hotkey_manager()
+        
+        # 将 Config.llm_stop_key 转换为 pynput 格式
+        # 默认是 'esc'，pynput 格式是 '<esc>'
+        stop_key = Config.llm_stop_key.lower().strip()
+        if not stop_key.startswith('<'):
+            stop_key = f'<{stop_key}>'
+        
+        _hotkey_manager.register(stop_key, on_stop_pressed)
+        _hotkey_manager.start()
+        logger.debug(f"LLM 中断键监控已启动: {stop_key}")
+    except Exception as e:
+        logger.warning(f"启动 LLM 中断键监控失败: {e}")
+
+
+def stop_monitor():
+    """停止中断键监控"""
+    global _hotkey_manager
+    if _hotkey_manager:
+        try:
+            _hotkey_manager.stop()
+            logger.debug("LLM 中断键监控已停止")
+        except Exception as e:
+            logger.warning(f"停止 LLM 中断键监控失败: {e}")
 
 
 # 自动启动监控

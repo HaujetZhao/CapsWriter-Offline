@@ -11,8 +11,8 @@ from util.client.ui import TipsDisplay
 from util.hotword import get_hotword_manager
 from util.llm.llm_handler import init_llm_system
 from util.client.audio import AudioStreamManager
-from util.client.input.shortcut_config import Shortcut
-from util.client.input.shortcut_manager import ShortcutManager
+from util.client.shortcut.shortcut_config import Shortcut
+from util.client.shortcut.shortcut_manager import ShortcutManager
 from util.tools.empty_working_set import empty_current_working_set
 
 logger = get_logger('client')
@@ -133,7 +133,7 @@ def setup_client_components(base_dir):
 
     # 7. UDP 控制（可选）
     if Config.udp_control:
-        from util.client.input.udp_control import UDPController
+        from util.client.udp.udp_control import UDPController
         logger.info(f"正在启用 UDP 控制，端口: {Config.udp_control_port}")
         udp_controller = UDPController(shortcut_manager)
         state.udp_controller = udp_controller

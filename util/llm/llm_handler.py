@@ -172,7 +172,7 @@ class LLMHandler:
         import time
         from util.llm.llm_output_typing import handle_typing_mode, output_text
         from util.llm.llm_output_toast import handle_toast_mode
-        from util.client.processing.output import TextOutput
+        from util.client.output.text_output import TextOutput
 
         start_time = time.time()
         
