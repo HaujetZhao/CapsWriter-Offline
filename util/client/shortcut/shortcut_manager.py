@@ -197,7 +197,8 @@ class ShortcutManager:
         self._restoring_keys.add(key)
 
         def do_restore():
-            # 标志清理由 _check_restoring 在收到 KEYUP 消息时完成
+            import time
+            time.sleep(0.05)  # 延迟 50ms
             if key == 'caps_lock':
                 controller = keyboard.Controller()
                 controller.press(keyboard.Key.caps_lock)
