@@ -6,7 +6,7 @@ LLM Typing 输出模式
 - paste=False: 实时流式 write，每个字都打出来
 """
 import asyncio
-import keyboard
+from pynput import keyboard
 
 from config import ClientConfig as Config
 from util.tools.asyncio_to_thread import to_thread
@@ -73,7 +73,8 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
                     trailing = full_current
 
                 if content_to_write:
-                    keyboard.write(content_to_write)
+                    controller = keyboard.Controller()
+                    controller.type(content_to_write)
                     pending_buffer = trailing
                 else:
                     pending_buffer = trailing
@@ -90,7 +91,8 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
             if not chunks:
                 # 降级
                 final_text = TextOutput.strip_punc(content)
-                keyboard.write(final_text)
+                controller = keyboard.Controller()
+                controller.type(final_text)
                 return (final_text, 0, 0.0)
             
             # 注意：末尾的 pending_buffer 包含的是垃圾字符，按设计要求不输出
@@ -108,4 +110,5 @@ async def output_text(text: str, paste: bool = None):
     if paste:
         await paste_text(text, restore_clipboard=Config.restore_clip)
     else:
-        keyboard.write(text)
+        controller = keyboard.Controller()
+        controller.type(text)

@@ -11,7 +11,7 @@ import asyncio
 import platform
 from typing import Optional
 
-import keyboard
+from pynput import keyboard
 import pyclip
 
 from config import ClientConfig as Config
@@ -104,9 +104,10 @@ class TextOutput:
     def _type_text(self, text: str) -> None:
         """
         通过模拟打字方式输出文本
-        
+
         Args:
             text: 要输出的文本
         """
         logger.debug(f"使用打字方式输出文本，长度: {len(text)}")
-        keyboard.write(text)
+        controller = keyboard.Controller()
+        controller.type(text)
