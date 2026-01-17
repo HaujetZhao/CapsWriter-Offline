@@ -237,6 +237,15 @@ class ResultProcessor:
         if not message['is_final']:
             return
 
+        # 繁体转换
+        if Config.traditional_convert:
+            try:
+                from util.zhconv import convert as zhconv_convert
+                text = zhconv_convert(text, Config.traditional_locale)
+                logger.debug(f"繁体转换后: {text[:50]}{'...' if len(text) > 50 else ''}")
+            except Exception as e:
+                logger.warning(f"繁体转换失败: {e}")
+
         # 热词替换
         # 1. 音素纠错
         correction_result = self._hotword_manager.get_phoneme_corrector().correct(text, k=10)

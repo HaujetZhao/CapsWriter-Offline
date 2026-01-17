@@ -77,6 +77,9 @@ class ClientConfig:
 
     trash_punc = '，。,.'       # 识别结果要消除的末尾标点
 
+    traditional_convert = False     # 是否将识别结果转换为繁体中文
+    traditional_locale = 'zh-hant'  # 繁体地区：'zh-hant'（标准繁体）, 'zh-tw'（台湾繁体）, 'zh-hk'（香港繁体）
+
     hot = True                  # 是否启用热词替换（统一 RAG 匹配）
     hot_thresh = 0.85           # RAG 替换热词阈值（高阈值，用于实际替换）
     hot_similar = 0.6           # RAG 相似热词阈值（低阈值，用于 LLM 上下文）
