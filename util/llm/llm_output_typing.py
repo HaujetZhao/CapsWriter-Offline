@@ -11,7 +11,7 @@ import keyboard
 from config import ClientConfig as Config
 from util.tools.asyncio_to_thread import to_thread
 from util.client.output.text_output import TextOutput
-from util.client.shortcut.clipboard import paste_text
+from util.client.clipboard import paste_text
 from util.llm.llm_stop_monitor import reset, should_stop
 from util.logger import get_logger
 

@@ -82,7 +82,7 @@ def start_monitor():
     global _hotkey_manager
     
     try:
-        from util.client.shortcut.global_hotkey import get_global_hotkey_manager
+        from util.client.global_hotkey import get_global_hotkey_manager
         
         _hotkey_manager = get_global_hotkey_manager()
         

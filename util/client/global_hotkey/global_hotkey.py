@@ -5,8 +5,8 @@
 使用 pynput GlobalHotKeys 实现全局快捷键监听，替代 keyboard 库。
 
 使用示例:
-    from util.client.shortcut.global_hotkey import GlobalHotkeyManager
-    
+    from util.client.global_hotkey import GlobalHotkeyManager
+
     manager = GlobalHotkeyManager()
     manager.register('<esc>', lambda: print('ESC pressed'))
     manager.start()

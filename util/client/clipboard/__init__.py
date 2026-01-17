@@ -1,29 +1,28 @@
+# coding: utf-8
 """
-LLM 剪贴板工具
+剪贴板子模块
 
 提供统一的剪贴板操作接口，包括：
 1. 安全读取剪贴板（支持多种编码）
 2. 安全写入剪贴板
 3. 剪贴板保存/恢复上下文管理器
 4. 粘贴文本（模拟 Ctrl+V）
-
-此模块为向后兼容保留，实际实现已移至 util.client.clipboard
 """
-# 从新位置导入，保持向后兼容
-from util.client.clipboard import (
+
+from util.client.clipboard.clipboard import (
     safe_paste,
     safe_copy,
-    paste_text,
-    save_and_restore_clipboard,
     copy_to_clipboard,
-    CLIPBOARD_ENCODINGS
+    save_and_restore_clipboard,
+    paste_text,
+    CLIPBOARD_ENCODINGS,
 )
 
 __all__ = [
     'safe_paste',
     'safe_copy',
-    'paste_text',
-    'save_and_restore_clipboard',
     'copy_to_clipboard',
-    'CLIPBOARD_ENCODINGS'
+    'save_and_restore_clipboard',
+    'paste_text',
+    'CLIPBOARD_ENCODINGS',
 ]
