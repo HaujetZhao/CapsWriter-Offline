@@ -266,7 +266,8 @@ class ShortcutManager:
         for shortcut in self.shortcuts:
             if shortcut.enabled:
                 mode = "长按" if shortcut.hold_mode else "单击"
-                logger.info(f"  [{shortcut.key}] {mode}模式, 阻塞:{shortcut.suppress}, restore:{shortcut.restore}")
+                toggle = "可恢复" if shortcut.is_toggle_key() else "普通键"
+                logger.info(f"  [{shortcut.key}] {mode}模式, 阻塞:{shortcut.suppress}, {toggle}")
 
     def stop(self) -> None:
         """停止所有监听器和清理资源"""

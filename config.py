@@ -32,36 +32,18 @@ class ClientConfig:
     port = '6016'               # Server 端口
 
     # 快捷键配置列表
-    # 支持多个快捷键同时工作，每个快捷键配置说明：
-    # - key: 快捷键名称（pynput 格式，如 'caps_lock', 'f12', 'space'）
-    # - type: 'keyboard' 或 'mouse'
-    # - suppress: 是否阻塞按键事件
-    # - restore: 录音完成后是否恢复按键状态（仅对 CapsLock 等切换键有效）
-    # - hold_mode: True=长按模式，False=单击模式
-    # - enabled: 是否启用
     shortcuts = [
         {
-            'key': 'caps_lock',
-            'type': 'keyboard',
-            'suppress': False,
-            'restore': True,
-            'hold_mode': True,
-            'enabled': True
+            'key': 'caps_lock',     # 监听大写锁定键
+            'type': 'keyboard',     # 是键盘快捷键
+            'suppress': True,      # 不阻塞按键（但录音结束会补发）
+            'hold_mode': True,      # 长按模式
+            'enabled': True         # 启用此快捷键
         },
-        # 可添加更多快捷键，例如：
-        # {
-        #     'key': 'f12',
-        #     'type': 'keyboard',
-        #     'suppress': False,
-        #     'restore': False,
-        #     'hold_mode': True,
-        #     'enabled': False
-        # },
         {
             'key': 'x2',
             'type': 'mouse',
             'suppress': True,
-            'restore': False,
             'hold_mode': True,
             'enabled': True
         },
@@ -109,4 +91,40 @@ class ClientConfig:
     udp_control = False             # 是否启用 UDP 控制录音（外部程序发送 START/STOP 命令）
     udp_control_addr = '127.0.0.1'  # UDP 控制监听地址（'0.0.0.0' 允许外部访问）
     udp_control_port = 6018         # UDP 控制监听端口
+
+
+# 快捷键配置说明
+"""
+快捷键配置字段说明：
+  key        - 按键名称（见下方可用按键列表）
+  type       - 输入类型：'keyboard'（键盘）或 'mouse'（鼠标）
+  suppress   - 是否阻塞按键（True=阻塞，False=不阻塞）
+  hold_mode  - 长按模式（True=按下录音松开停止，False=单击开始再次单击停止）
+  enabled    - 是否启用此快捷键
+
+阻塞模式说明：
+  - 阻塞模式  ：长按录音识别，短按（<0.3秒）则自动补发按键，不影响单击功能
+  - 非阻塞模式：对于 CapsLock/NumLock/ScrollLock 这类切换键，松开时会自动补发，以恢复按键状态
+
+可用按键名称：
+  字母数字：a - z, 0 - 9（大键盘）, numpad0 - numpad9（小键盘）
+  符号键：   , . / \ ` ' - = [ ] ; '
+  小键盘：decimal(小数点), numpad_add(+), numpad_subtract(-),
+           numpad_multiply(*), numpad_divide(/), numpad_enter
+  功能键：f1 - f24
+  控制键: ctrl, ctrl_r,
+          shift, shift_r,
+          alt, alt_r,
+          cmd, cmd_r
+  特殊键：space, enter, tab, backspace, delete, insert, home, end
+          page_up, page_down, esc, caps_lock, num_lock, scroll_lock
+          print_screen, pause, menu
+  方向键：up, down, left, right
+  鼠标键：x1, x2
+
+示例配置：
+  {'key': 'caps_lock', 'type': 'keyboard', 'suppress': False, 'hold_mode': True, 'enabled': True}, 
+  {'key': 'f12', 'type': 'keyboard', 'suppress': True, 'hold_mode': True, 'enabled': True}, 
+  {'key': 'x2', 'type': 'mouse', 'suppress': True, 'hold_mode': True, 'enabled': True}, 
+"""
 

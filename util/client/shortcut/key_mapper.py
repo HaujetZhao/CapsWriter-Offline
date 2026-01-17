@@ -6,9 +6,32 @@
 """
 
 from pynput import keyboard
+from pynput._util.win32 import KeyTranslator
 from util.logger import get_logger
 
 logger = get_logger('client')
+
+# 创建键盘翻译器实例（用于 VK 到字符的转换）
+_key_translator = KeyTranslator()
+
+# 特殊键 VK 映射（从 pynput 复制）
+_SPECIAL_KEYS = {
+    key.value.vk: key
+    for key in keyboard.Key
+}
+
+# 小键盘按键映射（VK -> 名称）
+NUMPAD_KEYS = {
+    0x60: 'numpad0',  0x61: 'numpad1',  0x62: 'numpad2',  0x63: 'numpad3',
+    0x64: 'numpad4',  0x65: 'numpad5',  0x66: 'numpad6',  0x67: 'numpad7',
+    0x68: 'numpad8',  0x69: 'numpad9',
+    0x6A: 'numpad_multiply',  # *
+    0x6B: 'numpad_add',       # +
+    0x6C: 'numpad_separator', # （通常未使用）
+    0x6D: 'numpad_subtract',  # -
+    0x6E: 'numpad_decimal',   # 小数点
+    0x6F: 'numpad_divide',    # /
+}
 
 # Windows 键盘消息常量
 WM_KEYDOWN = 0x0100
@@ -28,28 +51,12 @@ KEY_UP_MESSAGES = (WM_KEYUP, WM_SYSKEYUP)
 KEY_DOWN_MESSAGES = (WM_KEYDOWN, WM_SYSKEYDOWN)
 MOUSE_MESSAGES = (WM_XBUTTONDOWN, WM_XBUTTONUP)
 
-# 虚拟键码映射表
-VK_CODE_MAP = {
-    0x14: 'caps_lock',
-    0x20: 'space',
-    0x09: 'tab',
-    0x0D: 'enter',
-    0x1B: 'esc',
-    0x2E: 'delete',
-    0x08: 'backspace',
-    # F1-F12
-    0x70: 'f1', 0x71: 'f2', 0x72: 'f3', 0x73: 'f4',
-    0x74: 'f5', 0x75: 'f6', 0x76: 'f7', 0x77: 'f8',
-    0x78: 'f9', 0x79: 'f10', 0x7A: 'f11', 0x7B: 'f12',
-    # 字母 A-Z
-    **{0x41 + i: chr(0x41 + i).lower() for i in range(26)},
-    # 数字 0-9
-    **{0x30 + i: str(i) for i in range(10)},
+# 可恢复的切换键（需要录音完成后恢复状态的锁键）
+RESTORABLE_KEYS = {
+    'caps_lock',    # 大写锁定
+    'num_lock',     # 数字键盘锁定
+    'scroll_lock',  # 滚动锁定
 }
-
-# 按键码范围
-VK_NUMBER_RANGE = (0x30, 0x39)  # 0-9
-VK_LETTER_RANGE = (0x41, 0x5A)  # A-Z
 
 
 class KeyMapper:
@@ -91,17 +98,21 @@ class KeyMapper:
         Returns:
             str: 按键名称（与 Shortcut.key 格式一致）
         """
-        # 首先查表
-        if vk in VK_CODE_MAP:
-            return VK_CODE_MAP[vk]
+        # 首先检查是否是特殊键（pynput Key 枚举）
+        if vk in _SPECIAL_KEYS:
+            return _SPECIAL_KEYS[vk].name
 
-        # 数字 0-9
-        if VK_NUMBER_RANGE[0] <= vk <= VK_NUMBER_RANGE[1]:
-            return str(vk - VK_NUMBER_RANGE[0])
+        # 检查是否是小键盘按键
+        if vk in NUMPAD_KEYS:
+            return NUMPAD_KEYS[vk]
 
-        # 字母 A-Z
-        if VK_LETTER_RANGE[0] <= vk <= VK_LETTER_RANGE[1]:
-            return chr(vk).lower()
+        # 使用 pynput 的 KeyTranslator 获取字符（字母、数字、符号键）
+        try:
+            params = _key_translator(vk, is_press=True)
+            if 'char' in params and params['char'] is not None:
+                return params['char']
+        except Exception:
+            pass
 
         # 未知键码，返回 vk_ 格式
         return f'vk_{vk}'

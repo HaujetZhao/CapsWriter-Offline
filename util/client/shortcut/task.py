@@ -119,17 +119,18 @@ class ShortcutTask:
             self.state.loop
         )
 
-        # 执行 restore
-        if self.shortcut.restore:
+        # 执行 restore（可恢复按键 + 非阻塞模式）
+        # 阻塞模式下按键不会发送到系统，状态不会改变，不需要恢复
+        if self.shortcut.is_toggle_key() and not self.shortcut.suppress:
             self._restore_key()
 
     def _restore_key(self) -> None:
         """恢复按键状态（防自捕获逻辑由 ShortcutManager 处理）"""
-        if not self.shortcut.is_toggle_key():
-            return
-
         # 通知管理器执行 restore
         # 防自捕获：管理器会设置 flag 再发送按键
         manager = self._manager_ref()
         if manager:
+            logger.debug(f"[{self.shortcut.key}] 自动恢复按键状态 (suppress={self.shortcut.suppress})")
             manager.schedule_restore(self.shortcut.key)
+        else:
+            logger.warning(f"[{self.shortcut.key}] manager 引用丢失，无法 restore")
