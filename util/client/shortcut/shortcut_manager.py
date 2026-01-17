@@ -189,6 +189,10 @@ class ShortcutManager:
         # 线程池
         self._pool = ThreadPoolExecutor(max_workers=4)
 
+        # 常驻 controller（用于异步补发按键，避免重复创建）
+        self._keyboard_controller = keyboard.Controller()
+        self._mouse_controller = mouse.Controller()
+
         # 初始化快捷键任务
         self._init_tasks()
 
@@ -319,10 +323,10 @@ class ShortcutManager:
 
                         if duration < task.threshold:
                             task.cancel()
-                            # 短按且 suppress=True：补发按键
+                            # 短按且 suppress=True：异步补发按键
                             if shortcut.suppress:
-                                self._emulating_keys.add(key_name)  # 先设置标志
-                                self._emulate_key(key_name)  # 同步发送按键
+                                logger.debug(f"[{key_name}] 安排异步补发按键")
+                                self._pool.submit(self._async_emulate_key, key_name)
                         else:
                             task.finish()
                 else:
@@ -393,6 +397,12 @@ class ShortcutManager:
             xbutton = (data.mouseData >> 16) & 0xFFFF
             button_name = 'x1' if xbutton == XBUTTON1 else 'x2'
 
+            # 防自捕获：检查是否正在模拟鼠标按键
+            if button_name in self._emulating_keys:
+                if msg == WM_XBUTTONUP:
+                    self._emulating_keys.discard(button_name)  # 松开时清除标志
+                return True  # 放行（按下时不清除标志）
+
             # 查找匹配的快捷键
             if button_name not in self.tasks:
                 return True
@@ -418,8 +428,17 @@ class ShortcutManager:
                 if shortcut.hold_mode:
                     if task.is_recording:
                         duration = time.time() - task.recording_start_time
+                        logger.debug(f"[{button_name}] 松开按键，持续时间: {duration:.3f}s")
                         if duration < task.threshold:
+                            cancel_start = time.perf_counter()
                             task.cancel()
+                            cancel_time = (time.perf_counter() - cancel_start) * 1000
+                            logger.debug(f"[{button_name}] task.cancel() 耗时: {cancel_time:.2f}ms")
+
+                            # 短按且 suppress=True：异步补发鼠标按键
+                            if shortcut.suppress:
+                                logger.debug(f"[{button_name}] 安排异步补发鼠标按键")
+                                self._pool.submit(self._async_emulate_mouse_click, button_name)
                         else:
                             task.finish()
                 else:
@@ -440,25 +459,51 @@ class ShortcutManager:
 
     # ========== 辅助方法 ==========
 
-    def _emulate_key(self, key_name: str) -> None:
+    def _async_emulate_key(self, key_name: str) -> None:
         """
-        模拟完整的按键事件（按下+松开）
+        异步补发按键（在线程池中调用）
 
         Args:
             key_name: 按键名称（如 'caps_lock', 'f12'）
         """
         try:
-            controller = keyboard.Controller()
-            key_obj = self._name_to_key(key_name)
+            self._emulating_keys.add(key_name)
 
+            key_obj = self._name_to_key(key_name)
             if key_obj is not None:
-                controller.press(key_obj)
-                controller.release(key_obj)
+                self._keyboard_controller.press(key_obj)
+                self._keyboard_controller.release(key_obj)
                 logger.debug(f"[{key_name}] 补发按键成功")
             else:
                 logger.warning(f"[{key_name}] 无法识别的按键，跳过补发")
         except Exception as e:
             logger.error(f"[{key_name}] 补发按键失败: {e}")
+
+    def _async_emulate_mouse_click(self, button_name: str) -> None:
+        """
+        异步补发鼠标按键（在线程池中调用）
+
+        Args:
+            button_name: 鼠标按键名称（'x1' 或 'x2'）
+        """
+        try:
+            self._emulating_keys.add(button_name)
+
+            # pynput 鼠标按键对象映射
+            button_map = {
+                'x1': mouse.Button.x1,
+                'x2': mouse.Button.x2
+            }
+
+            if button_name in button_map:
+                button = button_map[button_name]
+                self._mouse_controller.press(button)
+                self._mouse_controller.release(button)
+                logger.debug(f"[{button_name}] 补发鼠标按键成功")
+            else:
+                logger.warning(f"[{button_name}] 无法识别的鼠标按键，跳过补发")
+        except Exception as e:
+            logger.error(f"[{button_name}] 补发鼠标按键失败: {e}")
 
     @staticmethod
     def _name_to_key(key_name: str):
