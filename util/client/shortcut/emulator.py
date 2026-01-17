@@ -12,9 +12,9 @@ from util.client.shortcut.key_mapper import KeyMapper
 logger = get_logger('client')
 
 
-class KeyEmulator:
+class ShortcutEmulator:
     """
-    按键模拟器
+    快捷键模拟器
 
     使用常驻的 controller 对象，避免重复创建开销
     """

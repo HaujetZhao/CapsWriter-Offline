@@ -17,7 +17,7 @@ from pynput import keyboard, mouse
 from util.logger import get_logger
 from util.client.shortcut.key_mapper import *
 from util.client.shortcut.key_mapper import KeyMapper
-from util.client.shortcut.emulator import KeyEmulator
+from util.client.shortcut.emulator import ShortcutEmulator
 from util.client.shortcut.event_handler import ShortcutEventHandler
 from util.client.shortcut.task import ShortcutTask
 
@@ -58,7 +58,10 @@ class ShortcutManager:
         self._pool = ThreadPoolExecutor(max_workers=4)
 
         # 按键模拟器
-        self._emulator = KeyEmulator()
+        self._emulator = ShortcutEmulator()
+
+        # 按键恢复状态追踪
+        self._restoring_keys = set()
 
         # 事件处理器
         self._event_handler = ShortcutEventHandler(self.tasks, self._pool, self._emulator)
@@ -183,11 +186,40 @@ class ShortcutManager:
         else:
             task.finish()
 
-    # ========== 防自捕获检查 ==========
+    # ========== 按键恢复管理 ==========
 
-    def _schedule_restore(self, key: str) -> None:
-        """安排按键恢复（委托给 event_handler）"""
-        self._event_handler.schedule_restore(key)
+    def schedule_restore(self, key: str) -> None:
+        """
+        安排按键恢复（延迟执行，避免在事件处理中阻塞）
+
+        Args:
+            key: 要恢复的按键
+
+        注意：标志清除只在按键释放事件中处理（_check_restoring），
+        避免在线程中提前清除导致主线程收到重复消息。
+        """
+        from pynput import keyboard
+
+        self._restoring_keys.add(key)
+
+        def do_restore():
+            # 标志清理由 _check_restoring 在收到 KEYUP 消息时完成
+            if key == 'caps_lock':
+                controller = keyboard.Controller()
+                controller.press(keyboard.Key.caps_lock)
+                controller.release(keyboard.Key.caps_lock)
+
+        self._pool.submit(do_restore)
+
+    def is_restoring(self, key: str) -> bool:
+        """检查是否正在恢复指定按键"""
+        return key in self._restoring_keys
+
+    def clear_restoring_flag(self, key: str) -> None:
+        """清除恢复标志"""
+        self._restoring_keys.discard(key)
+
+    # ========== 防自捕获检查 ==========
 
     def _check_emulating(self, key_name: str, msg: int, is_mouse: bool = False) -> bool:
         """检查是否正在模拟按键"""
@@ -206,11 +238,11 @@ class ShortcutManager:
 
     def _check_restoring(self, key_name: str, msg: int) -> bool:
         """检查是否正在恢复按键"""
-        if not self._event_handler.is_restoring(key_name):
+        if not self.is_restoring(key_name):
             return False
 
         if msg in (WM_KEYUP, WM_SYSKEYUP):
-            self._event_handler.clear_restoring_flag(key_name)
+            self.clear_restoring_flag(key_name)
 
         return True  # 放行
 

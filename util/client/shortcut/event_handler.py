@@ -25,43 +25,11 @@ class ShortcutEventHandler:
         Args:
             tasks: 快捷键任务字典
             pool: 线程池
-            emulator: 按键模拟器
+            emulator: 快捷键模拟器
         """
         self.tasks = tasks
         self.pool = pool
         self.emulator = emulator
-        self._restoring_keys = set()
-
-    def schedule_restore(self, key: str) -> None:
-        """
-        安排按键恢复（延迟执行，避免在事件处理中阻塞）
-
-        Args:
-            key: 要恢复的按键
-        """
-        from pynput import keyboard
-
-        self._restoring_keys.add(key)
-
-        def do_restore():
-            time.sleep(0.01)
-            try:
-                if key == 'caps_lock':
-                    controller = keyboard.Controller()
-                    controller.press(keyboard.Key.caps_lock)
-                    controller.release(keyboard.Key.caps_lock)
-            finally:
-                self._restoring_keys.discard(key)
-
-        self.pool.submit(do_restore)
-
-    def is_restoring(self, key: str) -> bool:
-        """检查是否正在恢复指定按键"""
-        return key in self._restoring_keys
-
-    def clear_restoring_flag(self, key: str) -> None:
-        """清除恢复标志"""
-        self._restoring_keys.discard(key)
 
     def handle_keydown(self, key_name, task) -> None:
         """处理按键按下事件"""

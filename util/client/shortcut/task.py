@@ -134,4 +134,4 @@ class ShortcutTask:
         if hasattr(self, '_manager_ref'):
             manager = self._manager_ref()
             if manager:
-                manager._schedule_restore(self.shortcut.key)
+                manager.schedule_restore(self.shortcut.key)
