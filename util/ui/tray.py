@@ -10,25 +10,25 @@
 - 最小化时自动隐藏到托盘
 - 双击托盘图标显示/隐藏窗口
 - 托盘菜单退出程序
+
+注意：pystray 在 Linux 无 GUI 环境下无法导入，因此采用延迟导入。
 """
 
 import os
 import sys
 import time
 import threading
-import ctypes
-from ctypes import wintypes
+import platform
 from typing import Optional
-
-from PIL import Image, ImageDraw
-import pystray
-from pystray import MenuItem as item
 
 # 日志记录器（由主程序传入）
 _logger = None
 
 # 退出回调函数（由主程序传入）
 _exit_callback = None
+
+# 是否可用（在 enable_min_to_tray 时检测）
+_tray_available = None
 
 def _set_logger(logger):
     """设置日志记录器"""
@@ -46,15 +46,75 @@ def _set_exit_callback(callback):
 def _get_exit_callback():
     return _exit_callback
 
-# Windows API 常量
-user32 = ctypes.windll.user32
-kernel32 = ctypes.windll.kernel32
+
+def _check_tray_available() -> bool:
+    """
+    检查托盘功能是否可用
+    
+    Returns:
+        bool: 是否可用
+    """
+    global _tray_available
+    
+    if _tray_available is not None:
+        return _tray_available
+    
+    # 非 Windows 系统不支持
+    if platform.system() != 'Windows':
+        _tray_available = False
+        return False
+    
+    # 尝试导入 pystray
+    try:
+        import pystray
+        from PIL import Image
+        _tray_available = True
+    except ImportError as e:
+        log = _get_logger()
+        if log:
+            log.warning(f"托盘功能不可用: {e}")
+        _tray_available = False
+    except Exception as e:
+        log = _get_logger()
+        if log:
+            log.warning(f"托盘功能检测失败: {e}")
+        _tray_available = False
+    
+    return _tray_available
+
+
+# Windows API（延迟初始化）
+_win_api_initialized = False
+user32 = None
+kernel32 = None
 
 SW_HIDE = 0
 SW_RESTORE = 9
 SW_SHOW = 5
 SC_CLOSE = 0xF060
 MF_BYCOMMAND = 0x00000000
+
+
+def _init_win_api():
+    """初始化 Windows API"""
+    global _win_api_initialized, user32, kernel32
+    
+    if _win_api_initialized:
+        return
+    
+    if platform.system() != 'Windows':
+        return
+    
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        _win_api_initialized = True
+    except Exception as e:
+        log = _get_logger()
+        if log:
+            log.warning(f"Windows API 初始化失败: {e}")
+
 
 # 全局变量
 _tray_instance: Optional['_TraySystem'] = None
@@ -63,11 +123,16 @@ _lock = threading.Lock()
 
 def _get_console_hwnd() -> int:
     """获取控制台窗口句柄"""
+    _init_win_api()
+    if kernel32 is None:
+        return 0
     return kernel32.GetConsoleWindow()
 
 
 def _disable_close_button(hwnd: int) -> None:
     """禁用窗口的关闭按钮"""
+    if user32 is None:
+        return
     h_menu = user32.GetSystemMenu(hwnd, False)
     if h_menu:
         user32.DeleteMenu(h_menu, SC_CLOSE, MF_BYCOMMAND)
@@ -75,20 +140,26 @@ def _disable_close_button(hwnd: int) -> None:
 
 def _enable_close_button(hwnd: int) -> None:
     """恢复窗口的关闭按钮"""
+    if user32 is None:
+        return
     user32.GetSystemMenu(hwnd, True)
 
 
 def _is_window_minimized(hwnd: int) -> bool:
     """检查窗口是否最小化"""
+    if user32 is None:
+        return False
     return user32.IsIconic(hwnd) != 0
 
 
 def _is_window_visible(hwnd: int) -> bool:
     """检查窗口是否可见"""
+    if user32 is None:
+        return False
     return user32.IsWindowVisible(hwnd) != 0
 
 
-def _create_icon(icon_path: Optional[str] = None) -> Image.Image:
+def _create_icon(icon_path: Optional[str] = None):
     """
     创建托盘图标
     
@@ -100,6 +171,8 @@ def _create_icon(icon_path: Optional[str] = None) -> Image.Image:
     Returns:
         PIL Image 对象
     """
+    from PIL import Image, ImageDraw
+    
     # 如果图标文件存在，直接加载
     if icon_path and os.path.exists(icon_path):
         try:
@@ -146,6 +219,10 @@ class _TraySystem:
     """托盘系统内部类"""
     
     def __init__(self, name: Optional[str] = None, icon_path: Optional[str] = None, more_options: list = None):
+        # 延迟导入 pystray
+        import pystray
+        from pystray import MenuItem as item
+        
         self.hwnd = _get_console_hwnd()
         self.should_exit = False
         self.title = name if name else (os.path.basename(sys.argv[0]) or "Console App")
@@ -176,7 +253,7 @@ class _TraySystem:
 
     def toggle_window(self) -> None:
         """切换窗口显示状态"""
-        if not self.hwnd:
+        if not self.hwnd or user32 is None:
             return
 
         if _is_window_visible(self.hwnd):
@@ -188,7 +265,7 @@ class _TraySystem:
     def monitor_loop(self) -> None:
         """监控线程：检测最小化操作"""
         while not self.should_exit:
-            if self.hwnd:
+            if self.hwnd and user32:
                 # 窗口可见且最小化 -> 隐藏到托盘
                 if _is_window_visible(self.hwnd) and _is_window_minimized(self.hwnd):
                     user32.ShowWindow(self.hwnd, SW_HIDE)
@@ -208,7 +285,7 @@ class _TraySystem:
             log.debug("已设置托盘退出标志")
 
         # 2. 恢复窗口关闭按钮并显示窗口
-        if self.hwnd:
+        if self.hwnd and user32:
             _enable_close_button(self.hwnd)
             user32.ShowWindow(self.hwnd, SW_RESTORE)
             if log:
@@ -258,6 +335,7 @@ def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = No
     启用最小化到托盘功能
 
     如果检测不到控制台窗口（如 .pyw 运行），则不执行任何操作。
+    如果在 Linux 等无 GUI 环境下运行，也会跳过。
 
     Args:
         name: 托盘图标显示的名称，默认使用程序名称
@@ -276,8 +354,16 @@ def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = No
     if exit_callback is not None:
         _set_exit_callback(exit_callback)
 
+    # 检查托盘功能是否可用
+    if not _check_tray_available():
+        log = _get_logger()
+        if log:
+            log.info("托盘功能不可用，跳过启用")
+        return
+
     # DPI 感知设置
     try:
+        import ctypes
         ctypes.windll.shcore.SetProcessDpiAwareness(2)
     except Exception:
         pass

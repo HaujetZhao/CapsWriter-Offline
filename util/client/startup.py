@@ -5,7 +5,6 @@ from platform import system
 from util.client.state import get_state
 from util.logger import get_logger
 from config import ClientConfig as Config
-from util.ui.tray import enable_min_to_tray
 from util.client.cleanup import request_exit_from_tray
 from util.client.ui import TipsDisplay
 from util.hotword import get_hotword_manager
@@ -16,6 +15,65 @@ from util.client.shortcut.shortcut_manager import ShortcutManager
 from util.tools.empty_working_set import empty_current_working_set
 
 logger = get_logger('client')
+
+
+def _setup_tray(state, base_dir):
+    """
+    初始化托盘图标（延迟导入，支持无 GUI 环境）
+    """
+    try:
+        from util.ui.tray import enable_min_to_tray
+    except ImportError as e:
+        logger.warning(f"托盘模块导入失败，跳过托盘功能: {e}")
+        return
+
+    def restart_audio():
+        if state.stream_manager:
+            state.stream_manager.reopen()
+            logger.info("用户请求重启音频")
+
+    def clear_memory():
+        from util.llm.llm_handler import clear_llm_history
+        clear_llm_history()
+        from util.ui.toast import toast
+        toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
+
+    def add_hotword():
+        try:
+            from util.ui.hotword_menu_handler import on_add_hotword
+            on_add_hotword()
+        except ImportError as e:
+            logger.warning(f"无法导入热词菜单处理器: {e}")
+
+    def add_rectify():
+        try:
+            from util.ui.rectify_menu_handler import on_add_rectify_record
+            on_add_rectify_record()
+        except ImportError as e:
+            logger.warning(f"无法导入纠错菜单处理器: {e}")
+
+    def copy_last_result():
+        text = state.last_output_text
+        if text:
+            from util.llm.llm_clipboard import copy_to_clipboard
+            copy_to_clipboard(text)
+
+    import os
+    icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
+    enable_min_to_tray(
+        'CapsWriter Client',
+        icon_path,
+        logger=logger,
+        exit_callback=request_exit_from_tray,
+        more_options=[
+            ('📋 复制结果', copy_last_result),
+            ('✨ 添加热词', add_hotword),
+            ('🛠️ 添加纠错', add_rectify),
+            ('🧹 清除记忆', clear_memory),
+            ('🔄 重启音频', restart_audio),
+        ]
+    )
+    logger.info("托盘图标已启用")
 
 def setup_client_components(base_dir):
     """
@@ -32,62 +90,7 @@ def setup_client_components(base_dir):
 
     # 1. 托盘
     if Config.enable_tray:
-        def restart_audio():
-            """重启音频服务回调"""
-            if state.stream_manager:
-                state.stream_manager.reopen()
-                logger.info("用户请求重启音频")
-
-        def clear_memory():
-            """清除 LLM 对话记忆回调"""
-            from util.llm.llm_handler import clear_llm_history
-            clear_llm_history()
-            from util.ui.toast import toast
-            toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
-
-        def add_hotword():
-            """添加热词回调"""
-            try:
-                from util.ui.hotword_menu_handler import on_add_hotword
-                on_add_hotword()
-            except ImportError as e:
-                logger.warning(f"无法导入热词菜单处理器: {e}")
-
-        def add_rectify():
-            """添加纠错记录回调"""
-            try:
-                from util.ui.rectify_menu_handler import on_add_rectify_record
-                on_add_rectify_record()
-            except ImportError as e:
-                logger.warning(f"无法导入纠错菜单处理器: {e}")
-
-        def copy_last_result():
-            """复制上一次输出结果回调"""
-            text = state.last_output_text
-            if text:
-                from util.llm.llm_clipboard import copy_to_clipboard
-                copy_to_clipboard(text)
-            #     from util.ui.toast import toast
-            #     toast("已复制上次输出结果", duration=2000)
-            # else:
-            #     from util.ui.toast import toast
-            #     toast("复制失败：尚无输出结果", duration=2000, bg="#CC3333")
-
-        icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
-        enable_min_to_tray(
-            'CapsWriter Client',
-            icon_path,
-            logger=logger,
-            exit_callback=request_exit_from_tray,
-            more_options=[
-                ('📋 复制结果', copy_last_result),
-                ('✨ 添加热词', add_hotword),
-                ('🛠️ 添加纠错', add_rectify),
-                ('🧹 清除记忆', clear_memory),
-                ('🔄 重启音频', restart_audio),
-            ]
-        )
-        logger.info("托盘图标已启用")
+        _setup_tray(state, base_dir)
 
     # 2. UI 提示
     TipsDisplay.show_mic_tips()
