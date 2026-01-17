@@ -8,7 +8,7 @@
 3. restore 功能的防自捕获逻辑
 4. hold_mode 和 click_mode 支持
 """
-
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Dict, List, Optional
 
@@ -169,17 +169,11 @@ class ShortcutManager:
         if not task.is_recording:
             return
 
-        import time
         duration = time.time() - task.recording_start_time
         logger.debug(f"[{button_name}] 松开按键，持续时间: {duration:.3f}s")
 
         if duration < task.threshold:
-            cancel_start = time.perf_counter()
             task.cancel()
-            cancel_time = (time.perf_counter() - cancel_start) * 1000
-            logger.debug(f"[{button_name}] task.cancel() 耗时: {cancel_time:.2f}ms")
-
-            # 短按且 suppress=True：异步补发鼠标按键
             if task.shortcut.suppress:
                 logger.debug(f"[{button_name}] 安排异步补发鼠标按键")
                 self._pool.submit(self._emulator.emulate_mouse_click, button_name)
@@ -254,24 +248,18 @@ class ShortcutManager:
         has_mouse = any(s.type == 'mouse' for s in self.shortcuts if s.enabled)
 
         if has_keyboard:
-            try:
-                self.keyboard_listener = keyboard.Listener(
-                    win32_event_filter=self.create_keyboard_filter()
-                )
-                self.keyboard_listener.start()
-                logger.info("键盘监听器已启动")
-            except Exception as e:
-                logger.error(f"启动键盘监听器失败: {e}")
+            self.keyboard_listener = keyboard.Listener(
+                win32_event_filter=self.create_keyboard_filter()
+            )
+            self.keyboard_listener.start()
+            logger.info("键盘监听器已启动")
 
         if has_mouse:
-            try:
-                self.mouse_listener = mouse.Listener(
-                    win32_event_filter=self.create_mouse_filter()
-                )
-                self.mouse_listener.start()
-                logger.info("鼠标监听器已启动")
-            except Exception as e:
-                logger.error(f"启动鼠标监听器失败: {e}")
+            self.mouse_listener = mouse.Listener(
+                win32_event_filter=self.create_mouse_filter()
+            )
+            self.mouse_listener.start()
+            logger.info("鼠标监听器已启动")
 
         # 打印所有启用的快捷键
         for shortcut in self.shortcuts:
@@ -281,11 +269,11 @@ class ShortcutManager:
 
     def stop(self) -> None:
         """停止所有监听器和清理资源"""
-        if self.keyboard_listener and self.keyboard_listener.running:
+        if self.keyboard_listener:
             self.keyboard_listener.stop()
             logger.debug("键盘监听器已停止")
 
-        if self.mouse_listener and self.mouse_listener.running:
+        if self.mouse_listener:
             self.mouse_listener.stop()
             logger.debug("鼠标监听器已停止")
 
@@ -295,6 +283,5 @@ class ShortcutManager:
                 task.cancel()
 
         # 关闭线程池
-        if self._pool:
-            self._pool.shutdown(wait=False)
-            logger.debug("快捷键管理器线程池已关闭")
+        self._pool.shutdown(wait=False)
+        logger.debug("快捷键管理器线程池已关闭")

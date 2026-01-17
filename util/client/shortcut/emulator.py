@@ -40,18 +40,15 @@ class ShortcutEmulator:
         Args:
             key_name: 按键名称（如 'caps_lock', 'f12'）
         """
-        try:
-            self._emulating_keys.add(key_name)
+        self._emulating_keys.add(key_name)
 
-            key_obj = KeyMapper.name_to_key(key_name)
-            if key_obj is not None:
-                self._keyboard_controller.press(key_obj)
-                self._keyboard_controller.release(key_obj)
-                logger.debug(f"[{key_name}] 补发按键成功")
-            else:
-                logger.warning(f"[{key_name}] 无法识别的按键，跳过补发")
-        except Exception as e:
-            logger.error(f"[{key_name}] 补发按键失败: {e}")
+        key_obj = KeyMapper.name_to_key(key_name)
+        if key_obj is not None:
+            self._keyboard_controller.press(key_obj)
+            self._keyboard_controller.release(key_obj)
+            logger.debug(f"[{key_name}] 补发按键成功")
+        else:
+            logger.warning(f"[{key_name}] 无法识别的按键，跳过补发")
 
     def emulate_mouse_click(self, button_name: str) -> None:
         """
@@ -60,21 +57,18 @@ class ShortcutEmulator:
         Args:
             button_name: 鼠标按键名称（'x1' 或 'x2'）
         """
-        try:
-            self._emulating_keys.add(button_name)
+        self._emulating_keys.add(button_name)
 
-            # pynput 鼠标按键对象映射
-            button_map = {
-                'x1': mouse.Button.x1,
-                'x2': mouse.Button.x2
-            }
+        # pynput 鼠标按键对象映射
+        button_map = {
+            'x1': mouse.Button.x1,
+            'x2': mouse.Button.x2
+        }
 
-            if button_name in button_map:
-                button = button_map[button_name]
-                self._mouse_controller.press(button)
-                self._mouse_controller.release(button)
-                logger.debug(f"[{button_name}] 补发鼠标按键成功")
-            else:
-                logger.warning(f"[{button_name}] 无法识别的鼠标按键，跳过补发")
-        except Exception as e:
-            logger.error(f"[{button_name}] 补发鼠标按键失败: {e}")
+        if button_name in button_map:
+            button = button_map[button_name]
+            self._mouse_controller.press(button)
+            self._mouse_controller.release(button)
+            logger.debug(f"[{button_name}] 补发鼠标按键成功")
+        else:
+            logger.warning(f"[{button_name}] 无法识别的鼠标按键，跳过补发")

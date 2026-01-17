@@ -99,9 +99,8 @@ class ShortcutTask:
         self.state.stop_recording()
         self._status.stop()
 
-        if self.task:
-            self.task.cancel()
-            self.task = None
+        self.task.cancel()
+        self.task = None
 
     def finish(self) -> None:
         """完成录音任务"""
@@ -131,7 +130,6 @@ class ShortcutTask:
 
         # 通知管理器执行 restore
         # 防自捕获：管理器会设置 flag 再发送按键
-        if hasattr(self, '_manager_ref'):
-            manager = self._manager_ref()
-            if manager:
-                manager.schedule_restore(self.shortcut.key)
+        manager = self._manager_ref()
+        if manager:
+            manager.schedule_restore(self.shortcut.key)
