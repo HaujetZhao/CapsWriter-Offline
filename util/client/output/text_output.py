@@ -42,7 +42,7 @@ class TextOutput:
         """
         if not text:
             return text
-        return text.rstrip('，。！？,.!?')
+        return text.rstrip(Config.trash_punc)
     
     async def output(self, text: str, paste: Optional[bool] = None) -> None:
         """
