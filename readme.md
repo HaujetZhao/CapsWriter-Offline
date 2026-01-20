@@ -58,7 +58,7 @@ LLM 角色既可以使用 Ollama 运行的本地模型，又可以用 API 访问
 ## 🎬 快速开始
 
 1.  **准备环境**：确保安装了 [VC++ 运行库](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)。
-2.  **下载解压**：下载 [Latest Release](https://github.com/HaujetZhao/CapsWriter-Offline/releases/latest) 里的软件本体，再到 [Models Release](https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/Models) 下载模型压缩包，将模型解压，放入 `models` 文件夹中对应模型的文件夹里。
+2.  **下载解压**：下载 [Latest Release](https://github.com/HaujetZhao/CapsWriter-Offline/releases/latest) 里的软件本体，再到 [Models Release](https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/models) 下载模型压缩包，将模型解压，放入 `models` 文件夹中对应模型的文件夹里。
 3.  **启动服务**：双击 `start_server.exe`，它会自动最小化到托盘菜单。
 4.  **启动听写**：双击 `start_client.exe`，它会自动最小化到托盘菜单。
 5.  **开始录音**：按住 `CapsLock` 就可以说话了！
