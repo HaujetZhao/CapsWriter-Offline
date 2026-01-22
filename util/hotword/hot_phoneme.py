@@ -245,20 +245,30 @@ if __name__ == "__main__":
     corrector = PhonemeCorrector(threshold=0.7)
     
     hotwords = """
-    # 中文热词
-    撒贝宁
-    康辉
-    周涛
-    乐清
-    东方财富
-    科大讯飞
-    
-    # 英文热词
-    CapsWriter
-    Python
-    Microsoft
-    iPhone
-    7-Zip
+# 中文热词
+撒贝宁
+康辉
+周涛
+乐清
+东方财富
+科大讯飞
+
+# 英文热词
+CapsWriter
+Python
+Microsoft
+iPhone
+7-Zip
+
+# 杂项
+Claude
+Bilibili
+Microsoft
+麦当劳
+肯德基
+VsCode
+七浦路
+句子
     """
     corrector.update_hotwords(hotwords)
     
@@ -270,6 +280,10 @@ if __name__ == "__main__":
         "在月清这个地方",
         "东方菜富股票上涨了",
         "科大迅飞的语音识别",
+        "我想去吃买当劳和啃得鸡",
+        "喜欢刷Bili Bili",
+        "请把那个锯子发给我一下",
+        "我很喜欢 cloud",
     ]
     for text in test_cases_zh:
         result = corrector.correct(text)
@@ -291,135 +305,78 @@ if __name__ == "__main__":
         if result.matchs:
             print(f"    匹配热词: {result.matchs}")
 
-    print("\n=== 股票热词测试 (stocks.txt) ===")
-    # 读取 stocks.txt 文件
-    import os
-    import time
-    stocks_path = os.path.join(os.path.dirname(__file__), "stocks.txt")
-    if os.path.exists(stocks_path):
-        with open(stocks_path, "r", encoding="utf-8") as f:
-            stocks_text = f.read()
-        count = corrector.update_hotwords(stocks_text)
-        print(f"已加载 {count} 个股票热词")
+    # =====================================================================
+    # 对比测试: FastRAG (粗筛) vs AccuRAG (精筛)
+    # =====================================================================
+    print("\n" + "="*70)
+    print("【对比测试】FastRAG (粗筛) vs AccuRAG (精筛)")
+    print("="*70)
 
-        # 测试股票名称的纠错
-        test_cases_stocks = [
-            "我看好平昂银行的发展",  # 平安银行
-            "中选天楹发布了财报",     # 中国天楹
-            "科打讯飞的语音技术很强",  # 科大讯飞
-            "格力电汽股价上涨",        # 格力电器
-            "招商 Yin行很不错",         # 招商银行
-            "我想买一点贵州茂台",       # 贵州茅台
-            "比亚迪汽车销量不错",       # 比亚迪 (完全匹配)
-            "宁波 Fang展",              # 宁波银行
-        ]
-        for text in test_cases_stocks:
-            result = corrector.correct(text)
-            print(f"  '{text}' -> '{result.text}'")
-            if result.matchs:
-                # 只显示前3个匹配的热词，避免输出过长
-                displayed = result.matchs[:3]
-                if len(result.matchs) > 3:
-                    displayed.append(f"...(共{len(result.matchs)}个)")
-                print(f"    匹配热词: {displayed}")
+    # 导入
+    from .rag_fast import FastRAG
+    from .rag_accu import AccuRAG
+    from .algo_phoneme import get_phoneme_info
 
-        # =====================================================================
-        # 对比测试: PhonemeCorrector vs FastRAG 结果一致性验证
-        # =====================================================================
-        print("\n" + "="*70)
-        print("【对比测试】PhonemeCorrector vs FastRAG 结果一致性")
-        print("="*70)
+    # 构建热词映射
+    hotword_map = {}
+    for word in [line.strip() for line in hotwords.splitlines()
+                    if line.strip() and not line.strip().startswith('#')]:
+        phonemes = get_phoneme_info(word)
+        if phonemes:
+            hotword_map[word] = phonemes
 
-        # 导入 FastRAG
-        from .rag_fast import FastRAG
-        from .algo_phoneme import get_phoneme_info
+    # 创建检索器
+    fast_rag = FastRAG(threshold=0.6)  # FastRAG 阈值稍低
+    fast_rag.add_hotwords(hotword_map)
+    
+    accu_rag = AccuRAG(threshold=0.6)
+    accu_rag.update_hotwords(hotword_map)
 
-        # 构建热词映射
-        hotword_map = {}
-        for word in [line.strip() for line in stocks_text.splitlines()
-                     if line.strip() and not line.strip().startswith('#')]:
-            phonemes, _ = get_phoneme_info(word)
-            if phonemes:
-                hotword_map[word] = phonemes
+    print(f"\n测试用例:")
+    comparison_tests = test_cases_zh + test_cases_en
 
-        # 创建 FastRAG
-        fast_rag = FastRAG(threshold=0.7)
-        fast_rag.add_hotwords(hotword_map)
+    # 打印格式说明
+    # print(f"\n{'输入文本':<20} {'FastRAG (Top1)':<25} {'AccuRAG (Top1)':<25}")
+    # print("-"*80)
 
-        print(f"\n测试用例:")
-        comparison_tests = [
-            "撒贝你主持节目",
-            "康灰是央视主持人",
-            "东方菜富股票",
-            "科大迅飞语音",
-            "月清这个地方",
-        ]
+    for text in comparison_tests:
+        input_phonemes = get_phoneme_info(text)
+        
+        # 1. FastRAG 检索
+        fast_results = fast_rag.search(input_phonemes, top_k=5)
+        # 格式化列表: [(词, 分数), ...]
+        fast_str = str([(h, f"{s:.2f}") for h, s in fast_results])
+        
+        # 2. AccuRAG 检索
+        accu_results = accu_rag.search(input_phonemes, top_k=5)
+        # 格式化列表: [(词, 分数), ...] - AccuRAG returns (hw, score, start, end)
+        accu_str = str([(h, f"{s:.2f}") for h, s, _, _ in accu_results])
 
-        print(f"\n{'输入文本':<20} {'PhonemeCorrector':<25} {'FastRAG':<25} {'一致?'}")
-        print("-"*70)
+        print(f"Original: {text}")
+        print(f"    FastRAG: {fast_str}")
+        print(f"    AccuRAG: {accu_str}")
 
-        all_match = True
-        for text in comparison_tests:
-            # PhonemeCorrector 结果
-            result_pc = corrector.correct(text)
-            pc_top = result_pc.matchs[0] if result_pc.matchs else None
+    print("="*70)
 
-            # FastRAG 结果
-            input_phonemes, _ = get_phoneme_info(text)
-            fast_results = fast_rag.search(input_phonemes, top_k=1)
-            fast_top = fast_results[0] if fast_results else None
+    # =====================================================================
+    # 性能测试
+    # =====================================================================
+    print("\n" + "="*70)
+    print("【性能测试】5000+ 热词检索耗时")
+    print("="*70)
 
-            # 对比
-            pc_str = f"{pc_top[0]}({pc_top[1]:.2f})" if pc_top else "无匹配"
-            fast_str = f"{fast_top[0]}({fast_top[1]:.2f})" if fast_top else "无匹配"
+    # 准备长文本输入
+    long_text = "撒贝你主持康灰的节目，在东方菜富和科大迅飞工作的月清员工"
+    input_phonemes = get_phoneme_info(long_text)
+    print(f"输入: {long_text}")
+    print(f"音素数: {len(input_phonemes)}")
 
-            is_match = (pc_top and fast_top and
-                       pc_top[0] == fast_top[0] and
-                       abs(pc_top[1] - fast_top[1]) < 0.01)
-            status = "✓" if is_match else "✗"
+    # 测试 PhonemeCorrector
+    iterations = 100
+    start = time.time()
+    for _ in range(iterations):
+        _ = corrector.correct(long_text)
+    pc_time = (time.time() - start) / iterations * 1000
 
-            if not is_match:
-                all_match = False
-
-            print(f"{text:<20} {pc_str:<25} {fast_str:<25} {status}")
-
-        print("="*70)
-        if all_match:
-            print("✓ 两种方法结果完全一致")
-        else:
-            print("✗ 存在不一致，请检查算法实现")
-
-        # =====================================================================
-        # 性能对比测试
-        # =====================================================================
-        print("\n" + "="*70)
-        print("【性能对比】5000+ 热词检索耗时")
-        print("="*70)
-
-        # 准备长文本输入
-        long_text = "撒贝你主持康灰的节目，在东方菜富和科大迅飞工作的月清员工"
-        input_phonemes, _ = get_phoneme_info(long_text)
-        print(f"输入: {long_text}")
-        print(f"音素数: {len(input_phonemes)}")
-
-        # 测试 PhonemeCorrector (传统算法)
-        iterations = 10
-        start = time.time()
-        for _ in range(iterations):
-            _ = corrector.correct(long_text)
-        pc_time = (time.time() - start) / iterations * 1000
-
-        # 测试 FastRAG
-        start = time.time()
-        for _ in range(iterations):
-            _ = fast_rag.search(input_phonemes, top_k=10)
-        fast_time = (time.time() - start) / iterations * 1000
-
-        print(f"\n{'方法':<20} {'平均耗时':<15} {'加速比'}")
-        print("-"*70)
-        print(f"{'PhonemeCorrector':<20} {pc_time:>10.2f}ms      1.0x")
-        print(f"{'FastRAG':<20} {fast_time:>10.2f}ms      {pc_time/fast_time:.1f}x")
-        print("="*70)
-
-    else:
-        print(f"  警告: 未找到 stocks.txt 文件 ({stocks_path})")
+    print(f"\n平均耗时: {pc_time:.2f}ms / iter")
+    print("="*70)

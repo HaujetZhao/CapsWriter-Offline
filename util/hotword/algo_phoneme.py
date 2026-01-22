@@ -9,6 +9,7 @@ import re
 from typing import List, Tuple, Literal
 from dataclasses import dataclass
 import logging
+from pypinyin import pinyin, Style
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +55,6 @@ class Phoneme:
     def __repr__(self) -> str:
         return f"Phoneme({self.value}, {self.lang}, start={self.is_word_start}, end={self.is_word_end})"
 
-try:
-    from pypinyin import pinyin, Style
-except ImportError:
-    # 延迟警告，或者只在调用时报错
-    pinyin = None
-    Style = None
 
 
 def normalize_text(text: str) -> str:
