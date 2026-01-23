@@ -47,14 +47,12 @@ def format_text(text: str, punc_model) -> str:
     Returns:
         格式化后的文本
     """
-    if Config.format_spell:
+    if text and Config.format_spell:
         text = adjust_space(text)
-    if punc_model and text:
+    if text and punc_model:
         text = punc_model.add_punctuation(text)
-    if Config.format_num:
+    if text and Config.format_num:
         text = chinese_to_num(text)
-    if Config.format_spell:
-        text = adjust_space(text)
     return text
 
 

@@ -340,10 +340,9 @@ def tokens_to_text(tokens: List[str]) -> str:
     Returns:
         合并后的文本
     """
-    # 处理 @@ 标记：表示与下一个 token 直接拼接（无空格）
-    text = ' '.join(tokens).replace('@@ ', '')
-    # 非英文数字后面的空格去掉
-    text = re.sub('([^a-zA-Z0-9]) (?![a-zA-Z0-9])', r'\1', text)
+    # 直接拼接所有 token，仅处理 Paraformer 的 @@ 标记
+    # 对于现代模型（如 Fun-ASR-Nano），空格本身就是作为独立 token 存在的
+    text = "".join(tokens).replace('@@', '')
     return text
 
 
