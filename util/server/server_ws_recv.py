@@ -192,4 +192,9 @@ async def ws_recv(websocket) -> None:
         sockets.pop(socket_id, None)
         if socket_id in sockets_id:
             sockets_id.remove(socket_id)
+        
+        # 清理识别结果缓存，防止内存泄漏
+        from util.server.server_recognize import clear_results_by_socket_id
+        clear_results_by_socket_id(socket_id)
+        
         logger.debug(f"客户端资源已清理: {socket_id}")

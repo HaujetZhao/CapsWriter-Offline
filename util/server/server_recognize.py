@@ -202,3 +202,21 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
     except Exception as e:
         logger.error(f"识别错误: {e}", exc_info=True)
         raise
+
+
+def clear_results_by_socket_id(socket_id: str) -> None:
+    """
+    清理指定 socket_id 关联的所有任务结果缓存
+    
+    当客户端连接断开时调用，防止内存泄漏。
+    """
+    global _results
+    tasks_to_remove = [
+        task_id for task_id, result in _results.items() 
+        if result.socket_id == socket_id
+    ]
+    for task_id in tasks_to_remove:
+        _results.pop(task_id, None)
+    
+    if tasks_to_remove:
+        logger.debug(f"已清理断开连接相关的缓存: socket_id={socket_id}, 任务数={len(tasks_to_remove)}")
