@@ -97,6 +97,21 @@ class LLMDecoder:
             text_piece = decoder_utf8.decode(raw_bytes)
             generated_text += text_piece
             tokens_generated += 1
+            
+            # 熔断检测：防止 iGPU 溢出导致的无限重复
+            if _ == 0:
+                last_token_id = token_id
+                consecutive_cnt = 1
+            elif token_id == last_token_id:
+                consecutive_cnt += 1
+            else:
+                last_token_id = token_id
+                consecutive_cnt = 1
+            
+            if consecutive_cnt > 20:
+                print(f"\n[bold red]警告: 检测到异常重复输出 (可能由 iGPU 溢出引起)，已熔断。[/bold red]")
+                print(f"[dim]尝试在 config.py 中禁用 Vulkan 或强制 FP32 精度的修复。[/dim]")
+                break
 
             if stream_output:
                 if reporter: reporter.stream(text_piece)
