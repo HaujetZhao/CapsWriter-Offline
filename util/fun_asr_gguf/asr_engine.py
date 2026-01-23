@@ -86,7 +86,7 @@ class FunASREngine:
         stream: RecognitionStream,
         language: Optional[str] = None,
         context: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         reporter = None
     ) -> DecodeResult:
         """解码识别流 (委托给 Orchestrator 内置的 Decoder)"""

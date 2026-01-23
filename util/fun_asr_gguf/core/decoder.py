@@ -134,7 +134,7 @@ class StreamDecoder:
         stream: RecognitionStream,
         language: Optional[str] = None,
         context: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         reporter: Optional[DisplayReporter] = None
     ) -> DecodeResult:
         

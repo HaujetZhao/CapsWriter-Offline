@@ -99,22 +99,22 @@ a_1 = Analysis(
 # 我们排除从系统 CUDA 安装目录收集的 DLL（它们应该运行时从系统加载）
 filtered_binaries = []
 for name, src, type in a_1.binaries:
-    # 检查源路径是否包含 CUDA 安装目录
-    # 常见的 CUDA 安装路径模式：
-    # - C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v*\bin\
-    # - C:\Program Files\NVIDIA\CUDNN\v*\bin\*\\
-    # - 任何包含 \CUDA\ 的路径
     src_lower = src.lower() if isinstance(src, str) else ''
     is_system_cuda_dll = (
         '\\nvidia gpu computing toolkit\\cuda\\' in src_lower or
         '\\nvidia\\cudnn\\' in src_lower or
         ('\\cuda\\v' in src_lower and '\\bin\\' in src_lower)
     )
+    is_unwanted_onnx_dll = (
+        'onnxruntime_providers_cuda.dll' in name.lower() or
+        'directml.dll' in name.lower()
+    )
 
-    if not is_system_cuda_dll:
+    if not is_system_cuda_dll and not is_unwanted_onnx_dll:
         filtered_binaries.append((name, src, type))
     else:
-        print(f"[INFO] 排除系统 CUDA DLL: {name} (从 {src} 收集)")
+        reason = "环境 CUDA DLL" if is_system_cuda_dll else "冗余 ONNX DLL"
+        print(f"[INFO] 排除 {reason}: {name} (从 {src} 收集)")
 a_1.binaries = filtered_binaries
 
 a_2 = Analysis(
@@ -142,11 +142,16 @@ for name, src, type in a_2.binaries:
         '\\nvidia\\cudnn\\' in src_lower or
         ('\\cuda\\v' in src_lower and '\\bin\\' in src_lower)
     )
+    is_unwanted_onnx_dll = (
+        'onnxruntime_providers_cuda.dll' in name.lower() or
+        'directml.dll' in name.lower()
+    )
 
-    if not is_system_cuda_dll:
+    if not is_system_cuda_dll and not is_unwanted_onnx_dll:
         filtered_binaries.append((name, src, type))
     else:
-        print(f"[INFO] 排除系统 CUDA DLL: {name} (从 {src} 收集)")
+        reason = "环境 CUDA DLL" if is_system_cuda_dll else "冗余 ONNX DLL"
+        print(f"[INFO] 排除 {reason}: {name} (从 {src} 收集)")
 a_2.binaries = filtered_binaries
 
 

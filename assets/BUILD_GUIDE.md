@@ -262,7 +262,7 @@ start_client.exe
 
 在 [`config.py`](../config.py) 中定义版本号：
 ```python
-__version__ = '2.2'
+__version__ = '2.3'
 ```
 
 ### 2. 模型管理

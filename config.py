@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 # 版本信息
-__version__ = '2.2'
+__version__ = '2.3'
 
 # 项目根目录
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -33,7 +33,7 @@ def find_7zip():
     return None
 
 
-def should_include_file(file_path):
+def should_include_file(file_path, is_client_only=False):
     """
     判断文件是否应该被打包
 
@@ -41,21 +41,27 @@ def should_include_file(file_path):
     - 所有文件，除了 models/模型名/子目录/... 的内容
     - models/模型名/文件 会被打包（层级深度 == 2）
     - models/模型名/子目录/文件  不会被打包（层级深度 >= 3）
-
-    例如：
-    - ✅ models/Paraformer/下载与转换.ipynb
-    - ✅ models/FunASR-Nano/模型下载链接.txt
-    - ❌ models/Paraformer/speech_paraformer-.../model.onnx
+    - 如果是【仅客户端】打包：
+        - 排除 util 目录下的所有 .dll 文件（客户端不需要本地识别引擎）
     """
     path = Path(file_path)
     parts = path.parts
 
-    # 检查是否在 models 目录下
+    # 1. 客户端特殊排除逻辑
+    if is_client_only:
+        # 排除 util 中的 dll 文件
+        if 'util' in parts and path.suffix.lower() == '.dll':
+            return False
+
+    # 2. 检查是否在 models 目录下
     if 'models' not in parts:
         return True  # 非 models 目录，全部打包
 
     # 找到 models 在路径中的位置
-    models_index = parts.index('models')
+    try:
+        models_index = parts.index('models')
+    except ValueError:
+        return True
 
     # models/模型名/子目录/... 的深度 >= 3 不打包
     depth = len(parts) - models_index
@@ -66,7 +72,7 @@ def should_include_file(file_path):
         return True
 
 
-def create_file_list(dist_folder, output_file='file_list.txt'):
+def create_file_list(dist_folder, output_file='file_list.txt', is_client_only=False):
     """
     创建要打包的文件列表
 
@@ -86,7 +92,7 @@ def create_file_list(dist_folder, output_file='file_list.txt'):
 
         for filename in filenames:
             file_path = os.path.join(root, filename)
-            if should_include_file(file_path):
+            if should_include_file(file_path, is_client_only):
                 # 计算相对于 dist 父目录的路径
                 rel_path = os.path.relpath(file_path, dist_path.parent)
                 files.append(rel_path)
@@ -245,7 +251,8 @@ def main():
             list_file_name = f'file_list_{idx}.txt'
 
             # 生成文件列表
-            files, list_file = create_file_list(pkg['source'], list_file_name)
+            is_client_only = pkg['source'].name == 'CapsWriter-Offline-Client'
+            files, list_file = create_file_list(pkg['source'], list_file_name, is_client_only)
 
             if not files:
                 print(f"\n警告: 没有找到要打包的文件")

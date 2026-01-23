@@ -102,11 +102,16 @@ for name, src, type in a_2.binaries:
         '\\nvidia\\cudnn\\' in src_lower or
         ('\\cuda\\v' in src_lower and '\\bin\\' in src_lower)
     )
+    is_unwanted_onnx_dll = (
+        'onnxruntime_providers_cuda.dll' in name.lower() or
+        'directml.dll' in name.lower()
+    )
 
-    if not is_system_cuda_dll:
+    if not is_system_cuda_dll and not is_unwanted_onnx_dll:
         filtered_binaries.append((name, src, type))
     else:
-        print(f"[INFO] 排除系统 CUDA DLL: {name} (从 {src} 收集)")
+        reason = "环境 CUDA DLL" if is_system_cuda_dll else "冗余 ONNX DLL"
+        print(f"[INFO] 排除 {reason}: {name} (从 {src} 收集)")
 a_2.binaries = filtered_binaries
 
 
@@ -171,7 +176,7 @@ my_files = [
     'hot-rectify.txt',
     'readme.md'
 ]
-my_folders = ['assets', 'util', 'LLM']
+my_folders = []     # 使用软链接，不再复制
 dest_root = join('dist', basename(coll.name))
 
 # 复制文件夹中的文件
@@ -197,18 +202,22 @@ for file in my_files:
 
 
 # 为 models 文件夹建立链接，免去复制大文件
-# 客户端不需要 models，所以这里留空
 from platform import system
 from subprocess import run
 
 if system() == 'Windows':
-    link_folders = []  # 客户端不需要 models 文件夹
+    link_folders = ['assets', 'util', 'LLM', '2026', 'log']
     for folder in link_folders:
         if not exists(folder):
             continue
         dest_folder = join(dest_root, folder)
         if exists(dest_folder):
-            rmtree(dest_folder)
+            if os.path.islink(dest_folder) or os.path.isdir(dest_folder):
+                try:
+                    rmtree(dest_folder)
+                except:
+                    # 如果是 junction，rmtree 可能会失败，尝试调用 rmdir
+                    run(['rmdir', '/s', '/q', dest_folder], shell=True)
         # 使用管理员权限运行的命令提示符来创建目录连接符
         cmd = ['mklink', '/j', dest_folder, folder]
         try:
