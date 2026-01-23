@@ -32,16 +32,13 @@ def check_model() -> None:
     # 根据模型类型确定需要检查的文件
     if model_type == 'funasr_nano':
         required_files = {
-            'FunASR-nano 模型文件': [
-                ModelPaths.funasr_nano_tokenizer,
-                ModelPaths.funasr_nano_encoder_adaptor,
-                ModelPaths.funasr_nano_embedding,
-                ModelPaths.funasr_nano_llm_prefill,
-                ModelPaths.funasr_nano_llm_decode,
+            'Fun-ASR-Nano-GGUF 模型文件': [
+                ModelPaths.fun_asr_nano_gguf_encoder_adaptor,
+                ModelPaths.fun_asr_nano_gguf_ctc,
+                ModelPaths.fun_asr_nano_gguf_llm_decode,
+                ModelPaths.fun_asr_nano_gguf_token,
             ]
         }
-        download_link = ModelDownloadLinks.funasr_nano
-        model_name = "FunASR-nano"
     elif model_type == 'sensevoice':
         required_files = {
             'SenseVoice 模型文件': [
@@ -49,8 +46,6 @@ def check_model() -> None:
                 ModelPaths.sensevoice_tokens,
             ]
         }
-        download_link = ModelDownloadLinks.sensevoice
-        model_name = "SenseVoice"
     elif model_type == 'paraformer':
         required_files = {
             'Paraformer 模型文件': [
@@ -61,9 +56,6 @@ def check_model() -> None:
                 ModelPaths.punc_model_dir,
             ]
         }
-        download_link = ModelDownloadLinks.paraformer
-        model_name = "Paraformer"
-        punct_download_link = ModelDownloadLinks.punct
     else:
         error_msg = f"不支持的模型类型: {Config.model_type}"
         logger.error(error_msg)
@@ -98,18 +90,11 @@ def check_model() -> None:
 
         error_msg += f'    当前配置的模型类型：[bold yellow]{model_type}[/bold yellow]\n\n'
 
-        # 提供下载链接
-        if download_link:
-            error_msg += f'    [cyan]下载链接：{download_link}[/cyan]\n\n'
-        else:
-            error_msg += f'    [dim]暂无官方下载链接，请手动下载 {model_name} 模型[/dim]\n\n'
+        # 提供统一下载页面链接
+        error_msg += f'    [cyan]请前往模型发布页下载缺失文件：[/cyan]\n'
+        error_msg += f'    [cyan]{ModelDownloadLinks.models_page}[/cyan]\n\n'
 
-        # 如果是 Paraformer，还需要标点模型链接
-        if model_type == 'paraformer' and missing_files[0][0] == '标点模型文件':
-            if punct_download_link:
-                error_msg += f'    [cyan]标点模型下载链接：{punct_download_link}[/cyan]\n\n'
-
-        error_msg += f'    下载后请解压到：[cyan]{ModelPaths.model_dir}[/cyan]\n'
+        error_msg += f'    下载后请根据发布页说明，解压到：[cyan]{ModelPaths.model_dir}[/cyan]\n'
         error_msg += '    \n    按回车退出\n    '
 
         logger.error(f"模型文件检查失败，共 {len(missing_files)} 个文件缺失")

@@ -106,6 +106,8 @@ def create_asr_engine(
     tokens_path: str,
     hotwords_path: str = None,
     enable_ctc: bool = True,
+    n_predict: int = 512,
+    n_threads: int = None,
     similar_threshold: float = 0.6,
     max_hotwords: int = 10,
     verbose: bool = True,
@@ -118,9 +120,12 @@ def create_asr_engine(
         tokens_path=tokens_path,
         hotwords_path=hotwords_path,
         enable_ctc=enable_ctc,
+        n_predict=n_predict,
+        n_threads=n_threads,
         similar_threshold=similar_threshold,
         max_hotwords=max_hotwords,
     )
     if not engine.initialize(verbose=verbose):
         raise RuntimeError("Failed to initialize ASR engine")
     return engine
+

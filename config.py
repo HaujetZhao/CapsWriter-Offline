@@ -12,7 +12,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 服务端配置
 class ServerConfig:
     addr = '0.0.0.0'
-    port = '6016'
+    port = '6017'
 
     # 语音模型选择：'funasr_nano', 'sensevoice', 'paraformer'
     model_type = 'funasr_nano'
@@ -77,10 +77,10 @@ class ClientConfig:
     log_level = 'INFO'          # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
 
     mic_seg_duration = 60       # 麦克风听写时分段长度：60秒
-    mic_seg_overlap = 2         # 麦克风听写时分段重叠：2秒
+    mic_seg_overlap = 4         # 麦克风听写时分段重叠：4秒
 
     file_seg_duration = 60      # 转录文件时分段长度
-    file_seg_overlap = 2        # 转录文件时分段重叠
+    file_seg_overlap = 4        # 转录文件时分段重叠
 
     udp_broadcast = True                # 是否启用 UDP 广播输出结果
     udp_broadcast_targets = [           # UDP 广播目标地址列表，格式: (地址, 端口)

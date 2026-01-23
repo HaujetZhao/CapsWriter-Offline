@@ -23,8 +23,7 @@ from rich import inspect
 # 导入拆分出去的模块
 from util.server.text_merge import (
     merge_by_text,
-    calculate_timestamp_boundaries,
-    deduplicate_at_boundary,
+    merge_tokens_by_sequence_matcher,
     process_tokens_safely,
     tokens_to_text,
     remove_trailing_punctuation,
@@ -140,48 +139,30 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         # 4. 简单文本拼接
         _process_simple_merge(result, stream.result.text)
 
-        # 5. 时间戳拼接
+        # 5. 时间戳拼接（使用 SequenceMatcher 策略）
         try:
-            # 计算边界
-            start_idx, end_idx = calculate_timestamp_boundaries(
-                stream.result.timestamps,
-                task.overlap,
-                duration,
-                is_first_segment,
-                task.is_final
+            # 安全处理当前片段的 tokens
+            new_tokens = process_tokens_safely(stream.result.tokens)
+            new_timestamps = list(stream.result.timestamps)
+            
+            # 使用 SequenceMatcher 进行精确拼接
+            result.tokens, result.timestamps = merge_tokens_by_sequence_matcher(
+                prev_tokens=result.tokens,
+                prev_timestamps=result.timestamps,
+                new_tokens=new_tokens,
+                new_timestamps=new_timestamps,
+                offset=task.offset,
+                overlap=task.overlap,
+                is_first_segment=is_first_segment
             )
             
-            # 切片
-            sliced_tokens = stream.result.tokens[start_idx:end_idx]
-            sliced_timestamps = stream.result.timestamps[start_idx:end_idx]
-            
-            # 边界去重
-            sliced_tokens, sliced_timestamps = deduplicate_at_boundary(
-                result.tokens, sliced_tokens, sliced_timestamps
-            )
-            
-            # 安全处理 tokens
-            new_tokens = process_tokens_safely(sliced_tokens)
-            new_timestamps = [t + task.offset for t in sliced_timestamps]
-            
-            logger.debug(f"时间戳拼接: +{len(new_tokens)} tokens")
+            logger.debug(f"时间戳拼接完成: 总 {len(result.tokens)} tokens")
 
         except (UnicodeDecodeError, UnicodeError) as e:
             save_error_audio(samples, task.task_id, task.samplerate)
             console.print(f'\n[red]编码错误: {e}')
-            # console.print('\n[yellow]完整 stream.result:')
-            # inspect(stream.result)
-            new_tokens = []
-            new_timestamps = []
 
-        # 6. 合并 tokens（先移除旧末尾标点）
-        result.tokens, result.timestamps = remove_trailing_punctuation(
-            result.tokens, result.timestamps
-        )
-        result.tokens += new_tokens
-        result.timestamps += new_timestamps
-        
-        # 7. 生成 text_accu
+        # 6. 生成 text_accu
         result.text_accu = tokens_to_text(result.tokens)
 
         # 如果不是最终结果，直接返回

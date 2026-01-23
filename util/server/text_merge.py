@@ -171,90 +171,143 @@ def merge_by_text(
     return prev_text + new_text
 
 
-def calculate_timestamp_boundaries(
-    timestamps: List[float], 
-    overlap: float, 
-    duration: float,
-    is_first_segment: bool,
-    is_final: bool
-) -> Tuple[int, int]:
-    """
-    根据时间戳计算去重边界
-    
-    通过分析重叠区域的时间戳，确定有效 token 的起止索引。
-    
-    Args:
-        timestamps: 当前片段的时间戳列表
-        overlap: 重叠时间（秒）
-        duration: 片段总时长（秒）
-        is_first_segment: 是否为第一个片段
-        is_final: 是否为最后一个片段
-        
-    Returns:
-        (start_index, end_index) 有效 token 的起止索引
-    """
-    n_tokens = len(timestamps)
-    start_idx = n_tokens
-    end_idx = n_tokens
-    
-    # 找到起始边界
-    for i, ts in enumerate(timestamps):
-        if ts > overlap / 2:
-            start_idx = i
-            break
-    
-    # 找到结束边界
-    for i, ts in enumerate(timestamps, start=1):
-        end_idx = i
-        if ts > duration - overlap / 2:
-            break
-    
-    # 特殊处理
-    if is_first_segment:
-        start_idx = 0
-    if is_final:
-        end_idx = n_tokens
-    
-    logger.debug(
-        f"时间戳边界: start={start_idx}, end={end_idx}, "
-        f"tokens={n_tokens}, overlap={overlap:.2f}s"
-    )
-    
-    return start_idx, end_idx
-
-
-def deduplicate_at_boundary(
+def merge_tokens_by_sequence_matcher(
     prev_tokens: List[str],
+    prev_timestamps: List[float],
     new_tokens: List[str],
-    new_timestamps: List[float]
+    new_timestamps: List[float],
+    offset: float,
+    overlap: float,
+    is_first_segment: bool = False
 ) -> Tuple[List[str], List[float]]:
     """
-    在片段边界处进行细粒度去重
+    使用 SequenceMatcher 进行精确的 token 级别拼接
     
-    检查新片段开头是否与前一片段末尾有重复 token。
+    算法：
+    1. 提取 prev 和 new 在重叠区域的 tokens
+    2. 使用 SequenceMatcher 找到最长公共子序列
+    3. 在匹配点截断 prev，拼接 new 从匹配点开始的部分
     
     Args:
         prev_tokens: 之前累积的 tokens
+        prev_timestamps: 之前累积的时间戳（全局时间）
         new_tokens: 新片段的 tokens
-        new_timestamps: 新片段的 timestamps
+        new_timestamps: 新片段的时间戳（片段内相对时间）
+        offset: 当前片段的全局起始偏移
+        overlap: 重叠时间（秒）
+        is_first_segment: 是否为第一个片段
         
     Returns:
-        (去重后的 tokens, 去重后的 timestamps)
+        (合并后的 tokens, 合并后的时间戳)
     """
-    if not prev_tokens or not new_tokens:
-        return new_tokens, new_timestamps
+    import difflib
     
-    skip = 0
-    if prev_tokens[-2:] == new_tokens[:2]:
-        skip = 2
-    elif prev_tokens[-1:] == new_tokens[:1]:
-        skip = 1
+    # 转换新片段时间戳为全局时间
+    new_global_timestamps = [t + offset for t in new_timestamps]
     
-    if skip > 0:
-        logger.debug(f"边界去重: 跳过 {skip} 个重复 token")
-        return new_tokens[skip:], new_timestamps[skip:]
+    # 如果是第一个片段，直接返回
+    if is_first_segment or not prev_tokens:
+        return new_tokens, new_global_timestamps
     
-    return new_tokens, new_timestamps
+    if not new_tokens:
+        return prev_tokens, prev_timestamps
+    
+    # 标点集合，用于后处理
+    from util.constants import Punctuation
+    puncs = set(Punctuation.ALL + " ")
+    
+    # 1. 提取重叠区域
+    # prev 的重叠区：时间戳 >= offset - 1.0 的部分
+    overlap_start_time = offset - 1.0
+    prev_overlap_indices = [i for i, t in enumerate(prev_timestamps) if t >= overlap_start_time]
+    prev_overlap_tokens = [prev_tokens[i] for i in prev_overlap_indices]
+    prev_overlap_text = "".join(prev_overlap_tokens)
+    
+    # new 的重叠区：时间戳 <= overlap + 1.0 的部分
+    overlap_end_time = overlap + 1.0
+    new_overlap_indices = [i for i, t in enumerate(new_timestamps) if t <= overlap_end_time]
+    new_overlap_tokens = [new_tokens[i] for i in new_overlap_indices]
+    new_overlap_text = "".join(new_overlap_tokens)
+    
+    # 2. 使用 SequenceMatcher 寻找最佳对齐
+    sm = difflib.SequenceMatcher(None, prev_overlap_text, new_overlap_text)
+    match = sm.find_longest_match(0, len(prev_overlap_text), 0, len(new_overlap_text))
+    
+    if match.size >= 2:  # 至少匹配上 2 个字符
+        # a. 找到 prev 的截断点
+        # match.a 是 prev_overlap_text 中的字符索引
+        # 我们需要将其映射回 prev_overlap_indices
+        char_count = 0
+        prev_cut_local_idx = 0
+        for idx, token in enumerate(prev_overlap_tokens):
+            if char_count >= match.a:
+                prev_cut_local_idx = idx
+                break
+            char_count += len(token)
+        else:
+            prev_cut_local_idx = len(prev_overlap_tokens)
+        
+        # 转换为全局索引
+        if prev_overlap_indices and prev_cut_local_idx < len(prev_overlap_indices):
+            prev_cut_global_idx = prev_overlap_indices[prev_cut_local_idx]
+        else:
+            prev_cut_global_idx = len(prev_tokens)
+        
+        # b. 找到 new 的起始点
+        # match.b 是 new_overlap_text 中的字符索引
+        char_count = 0
+        new_start_local_idx = 0
+        for idx, token in enumerate(new_overlap_tokens):
+            if char_count >= match.b:
+                new_start_local_idx = idx
+                break
+            char_count += len(token)
+        else:
+            new_start_local_idx = len(new_overlap_tokens)
+        
+        # 转换为全局索引
+        if new_overlap_indices and new_start_local_idx < len(new_overlap_indices):
+            new_start_global_idx = new_overlap_indices[new_start_local_idx]
+        else:
+            new_start_global_idx = 0
+        
+        # c. 执行拼接
+        result_tokens = prev_tokens[:prev_cut_global_idx] + new_tokens[new_start_global_idx:]
+        result_timestamps = prev_timestamps[:prev_cut_global_idx] + new_global_timestamps[new_start_global_idx:]
+        
+        logger.debug(
+            f"SequenceMatcher 拼接: 匹配长度 {match.size}, "
+            f"prev 截断位置 {prev_cut_global_idx}, "
+            f"new 起始位置 {new_start_global_idx}"
+        )
+        
+    else:
+        # 兜底：基于时间戳硬拼接
+        last_time = prev_timestamps[-1] if prev_timestamps else offset
+        new_start_idx = 0
+        for i, t in enumerate(new_global_timestamps):
+            if t > last_time + 0.1:
+                new_start_idx = i
+                break
+        else:
+            new_start_idx = len(new_tokens)
+        
+        result_tokens = prev_tokens + new_tokens[new_start_idx:]
+        result_timestamps = prev_timestamps + new_global_timestamps[new_start_idx:]
+        
+        logger.debug(f"时间戳兜底拼接: 从 new[{new_start_idx}] 开始")
+    
+    # 3. 后处理：清理连续重复标点
+    clean_tokens = []
+    clean_timestamps = []
+    for token, ts in zip(result_tokens, result_timestamps):
+        if clean_tokens and token in puncs and clean_tokens[-1] == token:
+            continue
+        clean_tokens.append(token)
+        clean_timestamps.append(ts)
+    
+    return clean_tokens, clean_timestamps
+
 
 
 def process_tokens_safely(tokens: List) -> List[str]:

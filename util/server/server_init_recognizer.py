@@ -4,7 +4,7 @@ import signal
 import atexit
 from platform import system
 from config import ServerConfig as Config
-from util.model_config import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoArgs, FunASRNanoGGUFArgs
+from util.model_config import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoGGUFArgs
 from util.server.server_check_model import check_model
 from util.server.server_cosmic import console
 from util.server.server_recognize import recognize
