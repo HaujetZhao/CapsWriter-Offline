@@ -30,7 +30,7 @@ def check_model() -> None:
     logger.debug(f"检查模型文件, 类型: {model_type}")
 
     # 根据模型类型确定需要检查的文件
-    if model_type == 'funasr_nano':
+    if model_type == 'fun_asr_nano':
         required_files = {
             'Fun-ASR-Nano-GGUF 模型文件': [
                 ModelPaths.fun_asr_nano_gguf_encoder_adaptor,
@@ -63,7 +63,7 @@ def check_model() -> None:
     [bold red]不支持的模型类型：{Config.model_type}[/bold red]
 
     请在 config.py 中将 ServerConfig.model_type 设置为：
-    - 'funasr_nano'
+    - 'fun_asr_nano'
     - 'sensevoice'
     - 'paraformer'
 

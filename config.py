@@ -14,15 +14,15 @@ class ServerConfig:
     addr = '0.0.0.0'
     port = '6017'
 
-    # 语音模型选择：'funasr_nano', 'sensevoice', 'paraformer'
-    model_type = 'funasr_nano'
+    # 语音模型选择：'fun_asr_nano', 'sensevoice', 'paraformer'
+    model_type = 'fun_asr_nano'
 
     format_num = True       # 输出时是否将中文数字转为阿拉伯数字
     format_spell = True     # 输出时是否调整中英之间的空格
 
     enable_tray = True        # 是否启用托盘图标功能
 
-    # GPU 加速配置（仅针对 FunASR-Nano-GGUF 模型有效）
+    # GPU 加速配置（仅针对 Fun-ASR-Nano-GGUF 模型有效）
     vulkan_enable     = True    # 是否启用 Vulkan 加速 GPU 推理
     vulkan_force_fp32 = False   # 是否强制 FP32 计算（如果 GPU 是 Intel 集显且出现精度溢出，可设为 True）
 

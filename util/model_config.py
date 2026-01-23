@@ -32,7 +32,7 @@ class ModelPaths:
     sensevoice_tokens = sensevoice_dir / 'tokens.txt'
 
 
-    fun_asr_nano_gguf_dir = model_dir / 'FunASR-Nano' / 'Fun-ASR-Nano-GGUF'
+    fun_asr_nano_gguf_dir = model_dir / 'Fun-ASR-Nano' / 'Fun-ASR-Nano-GGUF'
     fun_asr_nano_gguf_encoder_adaptor = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Encoder-Adaptor.fp32.onnx'
     fun_asr_nano_gguf_ctc = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-CTC.int8.onnx'
     fun_asr_nano_gguf_llm_decode = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Decoder.q8_0.gguf'
