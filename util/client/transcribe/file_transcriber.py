@@ -61,11 +61,25 @@ class FileTranscriber:
         Returns:
             是否满足转录条件
         """
+        # 1. 检查 FFmpeg 环境
+        import shutil
+        if shutil.which('ffmpeg') is None:
+            console.print('\n[bold red]错误：未检测到 FFmpeg 环境[/bold red]')
+            console.print('    文件转录功能依赖 FFmpeg 来提取音视频中的音频。')
+            console.print('    [cyan]建议处理方案：[/cyan]')
+            console.print('    1. 请确保已安装 FFmpeg 并将其 [bold]bin[/bold] 目录添加到系统环境变量 [bold]Path[/bold] 中。')
+            console.print('    2. 或者将 [bold]ffmpeg.exe[/bold] 放置在程序根目录下。')
+            console.print('    3. 也可以前往官方下载：[u]https://ffmpeg.org/download.html[/u]\n')
+            logger.error("未检测到 FFmpeg 环境，无法进行文件转录")
+            return False
+
+        # 2. 检查服务端连接
         if not await self._ws_manager.connect():
             console.print('无法连接到服务端')
             logger.error("无法连接到服务端")
             return False
         
+        # 3. 检查文件是否存在
         if not self.file.exists():
             console.print(f'文件不存在：{self.file}')
             logger.error(f"文件不存在: {self.file}")
