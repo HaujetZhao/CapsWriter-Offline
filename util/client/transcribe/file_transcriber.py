@@ -7,12 +7,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import re
 import subprocess
 import time
 import uuid
+import websockets
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
