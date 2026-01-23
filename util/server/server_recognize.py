@@ -127,7 +127,10 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         # 3. 执行识别
         stream = recognizer.create_stream()
         stream.accept_waveform(task.samplerate, samples)
+        
+        t1 = time.time()
         recognizer.decode_stream(stream)
+        print(f'decoded stream in {time.time() - t1:.2f}s')
 
         # 更新时间戳
         result.time_start = task.time_start

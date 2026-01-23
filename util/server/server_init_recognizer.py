@@ -4,12 +4,13 @@ import signal
 import atexit
 from platform import system
 from config import ServerConfig as Config
-from util.model_config import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoArgs
+from util.model_config import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoArgs, FunASRNanoGGUFArgs
 from util.server.server_check_model import check_model
 from util.server.server_cosmic import console
 from util.server.server_recognize import recognize
 from util.tools.empty_working_set import empty_current_working_set
 from util.logger import get_logger
+from util.fun_asr_gguf import create_asr_engine
 
 # 获取日志记录器
 logger = get_logger('server')
@@ -79,9 +80,12 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
     model_type = Config.model_type.lower()
     try:
         if model_type == 'funasr_nano':
-            logger.debug("使用 FunASR-Nano 模型")
-            recognizer = sherpa_onnx.OfflineRecognizer.from_funasr_nano(
-                **{key: value for key, value in FunASRNanoArgs.__dict__.items() if not key.startswith('_')}
+            logger.debug("使用 Fun-ASR-Nano 模型")
+            # recognizer = sherpa_onnx.OfflineRecognizer.from_funasr_nano(
+            #     **{key: value for key, value in FunASRNanoArgs.__dict__.items() if not key.startswith('_')}
+            # )
+            recognizer = create_asr_engine(
+                **{key: value for key, value in FunASRNanoGGUFArgs.__dict__.items() if not key.startswith('_')}
             )
         elif model_type == 'sensevoice':
             logger.debug("使用 SenseVoice 模型")

@@ -2,6 +2,8 @@
 -f https://k2-fsa.github.io/sherpa/onnx/cuda-cn.html
 sherpa-onnx==1.12.20+cuda12.cudnn9
 numpy
+gguf
+onnxruntime
 
 # basic
 rich

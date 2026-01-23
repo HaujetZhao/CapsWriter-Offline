@@ -52,6 +52,13 @@ class ModelPaths:
     funasr_nano_llm_prefill = funasr_nano_dir / 'llm_prefill.int8.onnx'
     funasr_nano_llm_decode = funasr_nano_dir / 'llm_decode.int8.onnx'
 
+    fun_asr_nano_gguf_dir = model_dir / 'FunASR-Nano' / 'Fun-ASR-Nano-GGUF'
+    fun_asr_nano_gguf_encoder_adaptor = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Encoder-Adaptor.fp32.onnx'
+    fun_asr_nano_gguf_ctc = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-CTC.int8.onnx'
+    fun_asr_nano_gguf_llm_decode = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Decoder.q8_0.gguf'
+    fun_asr_nano_gguf_token = fun_asr_nano_gguf_dir / 'tokens.txt'
+    fun_asr_nano_gguf_hotwords = Path() / 'hot.txt'
+
     # 标点模型路径
     punc_model_dir = model_dir / 'Punct-CT-Transformer' / 'sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12' / 'model.onnx'
 
@@ -82,7 +89,7 @@ class SenseVoiceArgs:
 
 
 class FunASRNanoArgs:
-    """FunASR-nano 模型参数配置"""
+    """Fun-ASR-nano 模型参数配置"""
 
     encoder_adaptor = ModelPaths.funasr_nano_encoder_adaptor.as_posix()
     llm_prefill = ModelPaths.funasr_nano_llm_prefill.as_posix()
@@ -98,3 +105,14 @@ class FunASRNanoArgs:
     temperature = 0.3
     top_p = 0.8
     seed = 42
+
+class FunASRNanoGGUFArgs:
+    """Fun-ASR-nano 模型参数配置"""
+
+    encoder_onnx_path=ModelPaths.fun_asr_nano_gguf_encoder_adaptor.as_posix()
+    ctc_onnx_path=ModelPaths.fun_asr_nano_gguf_ctc.as_posix()
+    decoder_gguf_path=ModelPaths.fun_asr_nano_gguf_llm_decode.as_posix()
+    tokens_path=ModelPaths.fun_asr_nano_gguf_token.as_posix()
+    hotwords_path=ModelPaths.fun_asr_nano_gguf_hotwords.as_posix()
+    enable_ctc=True
+    verbose=True

@@ -70,6 +70,7 @@ int4
 int8
 fp16
 fp32
+Antigravity
 
 
 #IDE

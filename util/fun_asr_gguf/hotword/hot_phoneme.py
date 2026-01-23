@@ -17,24 +17,8 @@ from .algo_phoneme import get_phoneme_info, Phoneme
 from .rag_fast import FastRAG
 from .algo_calc import fast_substring_score, fuzzy_substring_score, fuzzy_substring_search_constrained
 
-# 配置日志
-try:
-    from util.logger import get_logger
-    logger = get_logger('client')
-except (ImportError, Exception):
-    # 如果作为独立模块运行，或获取统一日志失败，则使用本地配置
-    LOG_DIR = Path("logs")
-    LOG_DIR.mkdir(exist_ok=True)
-    log_path = LOG_DIR / "hotword_corrector.log"
-
-    logger = logging.getLogger("HotwordCorrector")
-    logger.setLevel(logging.DEBUG)
-    if not logger.handlers:
-        fh = logging.FileHandler(log_path, encoding='utf-8', mode='a')
-        fh.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
+# 使用统一的 logger（从 __init__.py 导入）
+from . import logger
 
 
 class MatchResult(NamedTuple):
@@ -238,8 +222,8 @@ class PhonemeCorrector:
 
 
 if __name__ == "__main__":
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
+    from .. import setup_logging
+    setup_logging(level=logging.DEBUG)
     
     print("\n--- PhonemeCorrector 测试 ---")
     corrector = PhonemeCorrector(threshold=0.7)
@@ -283,7 +267,7 @@ VsCode
         "我想去吃买当劳和啃得鸡",
         "喜欢刷Bili Bili",
         "请把那个锯子发给我一下",
-        "现在有了 Cloud，已经可以了。",
+        "我很喜欢 cloud",
     ]
     for text in test_cases_zh:
         result = corrector.correct(text)

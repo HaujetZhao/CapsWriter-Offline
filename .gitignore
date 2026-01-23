@@ -184,3 +184,7 @@ example_.ipynb
 file_*.txt
 *summary*.txt
 *summary*.md
+
+release
+*.dll 
+*.exe
