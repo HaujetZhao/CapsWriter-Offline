@@ -22,6 +22,10 @@ class ServerConfig:
 
     enable_tray = True        # 是否启用托盘图标功能
 
+    # GPU 加速配置（仅针对 FunASR-Nano-GGUF 模型有效）
+    vulkan_enable     = True    # 是否启用 Vulkan 加速 GPU 推理
+    vulkan_force_fp32 = False   # 是否强制 FP32 计算（如果 GPU 是 Intel 集显且出现精度溢出，可设为 True）
+
     # 日志配置
     log_level = 'INFO'        # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
 

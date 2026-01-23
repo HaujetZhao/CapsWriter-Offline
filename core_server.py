@@ -25,6 +25,23 @@ for handler in logger.handlers:
     ws_logger.addHandler(handler)
 
 
+def apply_vulkan_config():
+    """根据配置应用 Vulkan 相关的环境变量"""
+    if not Config.vulkan_enable:
+        # 强制禁用 Vulkan 推理
+        os.environ["VK_ICD_FILENAMES"] = "none"
+        logger.info("GPU 加速: 已禁用 (vulkan_enable=False)")
+    else:
+        # 启用 Vulkan 并根据配置调整精度
+        if Config.vulkan_force_fp32:
+            os.environ["GGML_VK_DISABLE_F16"] = "1"
+            logger.info("GPU 加速: 已启用 Vulkan (强制 FP32 模式)")
+        else:
+            # 清理环境变量，确保不残留之前的设置
+            os.environ.pop("GGML_VK_DISABLE_F16", None)
+            logger.info("GPU 加速: 已启用 Vulkan (自动精度模式)")
+
+
 async def run_websocket_server():
     """运行 WebSocket 服务器"""
     loop = asyncio.get_running_loop()
@@ -93,6 +110,8 @@ def init():
     logger.info("CapsWriter Offline Server 正在启动")
     logger.info(f"版本: {__version__}")
     logger.info(f"日志级别: {Config.log_level}")
+
+    apply_vulkan_config()
 
     setup_tray()
     print_banner()
