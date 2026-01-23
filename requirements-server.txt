@@ -8,6 +8,7 @@ onnxruntime
 # basic
 rich
 websockets
+watchdog
 
 # tray and image
 pystray

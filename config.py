@@ -12,7 +12,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 服务端配置
 class ServerConfig:
     addr = '0.0.0.0'
-    port = '6017'
+    port = '6016'
 
     # 语音模型选择：'fun_asr_nano', 'sensevoice', 'paraformer'
     model_type = 'fun_asr_nano'
