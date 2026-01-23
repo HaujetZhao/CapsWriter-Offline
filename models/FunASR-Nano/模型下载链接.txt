@@ -1,5 +1,2 @@
-https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-funasr-nano-2025-12-30.tar.bz2
-
-或：
-
-https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/models/sherpa-onnx-funasr-nano-int8-2025-12-30.zip
+所有模型请前往此处下载：
+https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/models

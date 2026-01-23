@@ -1,3 +1,4 @@
-https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-fire-red-asr-large-zh_en-2025-02-16.tar.bz2
+所有模型请前往此处下载：
+https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/models
 
 但是这个模型的速度很慢，10秒的音频要10秒才能转录，其延迟不满足语音输入的用途。

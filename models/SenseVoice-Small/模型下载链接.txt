@@ -1,5 +1,2 @@
-https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2
-
-或
-
-https://github.com/HaujetZhao/CapsWriter-Offline/releases/download/models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.zip
+所有模型请前往此处下载：
+https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/models
