@@ -86,6 +86,11 @@ class ClientConfig:
     file_seg_duration = 60      # 转录文件时分段长度
     file_seg_overlap = 4        # 转录文件时分段重叠
 
+    file_save_srt = True        # 转录文件时是否保存 srt 字幕
+    file_save_txt = True        # 转录文件时是否保存 txt 文本（按标点切分后的）
+    file_save_json = True       # 转录文件时是否保存 json 结果（含原始时间戳）
+    file_save_merge = False      # 转录文件时是否保存 merge.txt（未切分的段落长文本）
+
     udp_broadcast = True                # 是否启用 UDP 广播输出结果
     udp_broadcast_targets = [           # UDP 广播目标地址列表，格式: (地址, 端口)
         ('127.255.255.255', 6017),      # 本地回环广播
@@ -111,19 +116,30 @@ class ClientConfig:
   - 非阻塞模式：对于 CapsLock/NumLock/ScrollLock 这类切换键，松开时会自动补发，以恢复按键状态
 
 可用按键名称：
+
   字母数字：a - z, 0 - 9（大键盘）, numpad0 - numpad9（小键盘）
-  符号键：   , . / \ ` ' - = [ ] ; '
-  小键盘：decimal(小数点), numpad_add(+), numpad_subtract(-),
-           numpad_multiply(*), numpad_divide(/), numpad_enter
+
+  符号键：, . / \ ` ' - = [ ] ; '
+
+  小键盘：
+      decimal(小数点), numpad_add(+), numpad_subtract(-),
+      numpad_multiply(*), numpad_divide(/), numpad_enter
+
   功能键：f1 - f24
-  控制键: ctrl, ctrl_r,
-          shift, shift_r,
-          alt, alt_r,
-          cmd, cmd_r
-  特殊键：space, enter, tab, backspace, delete, insert, home, end
-          page_up, page_down, esc, caps_lock, num_lock, scroll_lock
-          print_screen, pause, menu
+
+  控制键:
+      ctrl,   ctrl_r,
+      shift,  shift_r,
+      alt,    alt_r,
+      cmd,    cmd_r
+
+  特殊键：
+      space, enter, tab, backspace, delete, insert, home, end
+      page_up, page_down, esc, caps_lock, num_lock, scroll_lock
+      print_screen, pause, menu
+
   方向键：up, down, left, right
+
   鼠标键：x1, x2
 
 示例配置：

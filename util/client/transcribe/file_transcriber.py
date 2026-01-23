@@ -174,19 +174,40 @@ class FileTranscriber:
         timestamps = message['timestamps']
         tokens = message['tokens']
         
-        # 保存结果文件
+        # 按照配置保存结果文件
         json_filename = self.file.with_suffix('.json')
         txt_filename = self.file.with_suffix('.txt')
         merge_filename = self.file.with_suffix('.merge.txt')
         
-        with open(merge_filename, 'w', encoding='utf-8') as f:
-            f.write(text_accu)
-        with open(txt_filename, 'w', encoding='utf-8') as f:
-            f.write(text_split)
-        with open(json_filename, 'w', encoding='utf-8') as f:
-            json.dump({'timestamps': timestamps, 'tokens': tokens}, f, ensure_ascii=False)
+        # 1. 保存 merge.txt (如果启用)
+        if Config.file_save_merge:
+            with open(merge_filename, 'w', encoding='utf-8') as f:
+                f.write(text_accu)
+            logger.debug(f"保存合并文本: {merge_filename}")
+
+        # 2. 保存 txt 或为了生成 srt 而暂时保存 txt
+        if Config.file_save_txt or Config.file_save_srt:
+            with open(txt_filename, 'w', encoding='utf-8') as f:
+                f.write(text_split)
+            logger.debug(f"保存切分文本: {txt_filename}")
+
+        # 3. 保存 json (如果启用)
+        if Config.file_save_json:
+            with open(json_filename, 'w', encoding='utf-8') as f:
+                json.dump({'timestamps': timestamps, 'tokens': tokens}, f, ensure_ascii=False)
+            logger.debug(f"保存 JSON 结果: {json_filename}")
         
-        srt_from_txt.one_task(txt_filename)
+        # 4. 生成 srt (如果启用)
+        if Config.file_save_srt:
+            srt_from_txt.one_task(txt_filename)
+        
+        # 5. 清理中间生成的 txt (如果用户不想要)
+        if not Config.file_save_txt and txt_filename.exists():
+            try:
+                txt_filename.unlink()
+                logger.debug(f"清理中间 TXT 文件: {txt_filename}")
+            except Exception as e:
+                logger.warning(f"清理中间 TXT 文件失败: {e}")
         
         process_duration = message['time_complete'] - message['time_start']
         console.print(f'\033[K    处理耗时：{process_duration:.2f}s')
