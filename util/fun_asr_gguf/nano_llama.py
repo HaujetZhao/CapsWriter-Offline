@@ -3,6 +3,7 @@ import os
 import ctypes
 import numpy as np
 import gguf
+from . import logger
 
 # =========================================================================
 # Configuration
@@ -133,16 +134,12 @@ def init_llama_lib():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     lib_dir = os.path.join(base_dir, "bin")
 
-    GGML_DLL_PATH = os.path.join(lib_dir, "ggml.dll")
-    LLAMA_DLL_PATH = os.path.join(lib_dir, "llama.dll")
-    GGML_BASE_DLL_PATH = os.path.join(lib_dir, "ggml-base.dll")
-
     original_cwd = os.getcwd()
     os.chdir(lib_dir)
     try:
-        ggml = ctypes.CDLL(GGML_DLL_PATH)
-        ggml_base = ctypes.CDLL(GGML_BASE_DLL_PATH)
-        llama = ctypes.CDLL(LLAMA_DLL_PATH)
+        ggml = ctypes.CDLL("./ggml.dll")
+        ggml_base = ctypes.CDLL("./ggml-base.dll")
+        llama = ctypes.CDLL("./llama.dll")
 
         # 先设置日志回调（在加载 backend 之前）
         LOG_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
@@ -159,13 +156,20 @@ def init_llama_lib():
         ggml_backend_load_all.argtypes = []
         ggml_backend_load_all.restype = None
         ggml_backend_load_all()
+    except Exception as e:
+        logger.error(f"加载 llama.cpp 动态库失败: {e}", exc_info=True)
+        logger.error(f"尝试加载目录: {lib_dir}")
+        raise
     finally:
         os.chdir(original_cwd)
 
-    # Backend
+    # Initialize backend
     llama_backend_init = llama.llama_backend_init
     llama_backend_init.argtypes = []
     llama_backend_init.restype = None
+    llama_backend_init()
+
+
 
     llama_backend_free = llama.llama_backend_free
     llama_backend_free.argtypes = []
@@ -250,6 +254,29 @@ def init_llama_lib():
     llama_memory_clear = llama.llama_memory_clear
     llama_memory_clear.argtypes = [ctypes.c_void_p, ctypes.c_bool]
     llama_memory_clear.restype = None
+
+def load_model(model_path: str):
+    """
+    加载 GGUF 模型（自动处理初始化和路径编码）
+    
+    Args:
+        model_path: GGUF 模型文件路径
+        
+    Returns:
+        model: llama_model 指针
+    """
+    init_llama_lib()
+    
+    if not os.path.exists(model_path):
+        logger.error(f"GGUF 模型文件不存在: {model_path}")
+        return None
+        
+    model_params = llama_model_default_params()
+    
+    return llama_model_load_from_file(
+        model_path.encode('utf-8'),
+        model_params
+    )
 
 _log_callback_ref = None
 
