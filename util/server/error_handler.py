@@ -10,9 +10,8 @@ from pathlib import Path
 from datetime import datetime
 
 from util.server.server_cosmic import console
-from util.logger import get_logger
+from . import logger
 
-logger = get_logger('server')
 
 
 def save_error_audio(samples, task_id: str, samplerate: int) -> None:

@@ -15,9 +15,8 @@ from .dialogs import (
     wait_window,
 )
 from .toast_constants import DEFAULT_FONT_FAMILY
-from util.logger import get_logger
+from . import logger
 
-logger = get_logger('client')
 
 
 class RectifyDialog:

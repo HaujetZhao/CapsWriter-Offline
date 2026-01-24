@@ -5,11 +5,10 @@
 """
 
 import asyncio
-from util.logger import get_logger
+from . import logger
 from util.common.lifecycle import lifecycle
 from util.client.state import get_state, console
 
-logger = get_logger('client')
 
 def request_exit_from_tray(icon=None, item=None):
     """
@@ -75,7 +74,7 @@ def cleanup_client_resources():
 
     # 停止托盘图标
     try:
-        from util.ui.tray import stop_tray
+        from util.client.ui import stop_tray
         stop_tray()
     except Exception as e:
         logger.warning(f"停止托盘图标时发生错误: {e}")

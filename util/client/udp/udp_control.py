@@ -16,12 +16,11 @@ import threading
 from typing import TYPE_CHECKING
 
 from config import ClientConfig as Config
-from util.logger import get_logger
+from . import logger
 
 if TYPE_CHECKING:
     from util.client.shortcut.shortcut_manager import ShortcutManager
 
-logger = get_logger('client')
 
 
 class UDPController:

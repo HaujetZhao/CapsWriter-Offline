@@ -20,23 +20,13 @@ import time
 import threading
 import platform
 from typing import Optional
-
-# 日志记录器（由主程序传入）
-_logger = None
+from . import logger, set_ui_logger
 
 # 退出回调函数（由主程序传入）
 _exit_callback = None
 
 # 是否可用（在 enable_min_to_tray 时检测）
 _tray_available = None
-
-def _set_logger(logger):
-    """设置日志记录器"""
-    global _logger
-    _logger = logger
-
-def _get_logger():
-    return _logger
 
 def _set_exit_callback(callback):
     """设置退出回调函数"""
@@ -70,14 +60,10 @@ def _check_tray_available() -> bool:
         from PIL import Image
         _tray_available = True
     except ImportError as e:
-        log = _get_logger()
-        if log:
-            log.warning(f"托盘功能不可用: {e}")
+        logger.warning(f"托盘功能不可用: {e}")
         _tray_available = False
     except Exception as e:
-        log = _get_logger()
-        if log:
-            log.warning(f"托盘功能检测失败: {e}")
+        logger.warning(f"托盘功能检测失败: {e}")
         _tray_available = False
     
     return _tray_available
@@ -111,9 +97,7 @@ def _init_win_api():
         kernel32 = ctypes.windll.kernel32
         _win_api_initialized = True
     except Exception as e:
-        log = _get_logger()
-        if log:
-            log.warning(f"Windows API 初始化失败: {e}")
+        logger.warning(f"Windows API 初始化失败: {e}")
 
 
 # 全局变量
@@ -273,48 +257,38 @@ class _TraySystem:
 
     def on_exit(self, icon, item) -> None:
         """托盘退出处理"""
-        log = _get_logger()
         exit_callback = _get_exit_callback()
 
-        if log:
-            log.info("托盘退出: 用户点击退出菜单，准备清理资源并退出")
+        logger.info("托盘退出: 用户点击退出菜单，准备清理资源并退出")
 
         # 1. 设置退出标志，停止监控循环
         self.should_exit = True
-        if log:
-            log.debug("已设置托盘退出标志")
+        logger.debug("已设置托盘退出标志")
 
         # 2. 恢复窗口关闭按钮并显示窗口
         if self.hwnd and user32:
             _enable_close_button(self.hwnd)
             user32.ShowWindow(self.hwnd, SW_RESTORE)
-            if log:
-                log.debug("已恢复窗口显示")
+            logger.debug("已恢复窗口显示")
 
         # 3. 调用退出回调函数，请求主程序退出
         if exit_callback:
             try:
-                if log:
-                    log.debug("正在调用退出回调函数...")
+                logger.debug("正在调用退出回调函数...")
                 exit_callback()
-                if log:
-                    log.info("退出回调函数已调用")
+                logger.info("退出回调函数已调用")
             except Exception as e:
-                if log:
-                    log.error(f"调用退出回调函数时发生错误: {e}")
+                logger.error(f"调用退出回调函数时发生错误: {e}")
 
 
 
         # 5. 停止托盘图标
         try:
-            if log:
-                log.debug("正在停止托盘图标线程...")
+            logger.debug("正在停止托盘图标线程...")
             self.icon.stop()
-            if log:
-                log.debug("托盘图标线程已停止")
+            logger.debug("托盘图标线程已停止")
         except Exception as e:
-            if log:
-                log.warning(f"停止托盘图标时发生错误: {e}")
+            logger.warning(f"停止托盘图标时发生错误: {e}")
 
     def start(self) -> None:
         """启动托盘系统"""
@@ -330,7 +304,7 @@ class _TraySystem:
         self.toggle_window()
 
 
-def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = None, logger=None, exit_callback=None, more_options: list = None) -> None:
+def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = None, exit_callback=None, more_options: list = None) -> None:
     """
     启用最小化到托盘功能
 
@@ -340,15 +314,12 @@ def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = No
     Args:
         name: 托盘图标显示的名称，默认使用程序名称
         icon_path: 图标文件路径，默认动态生成
-        logger: 日志记录器，如果传入则使用主程序的统一日志记录器
         exit_callback: 退出回调函数，当用户点击托盘退出菜单时调用
         more_options: 额外菜单项列表，格式为 [(名称, 回调函数), ...]
     """
     global _tray_instance
 
-    # 设置日志记录器
-    if logger is not None:
-        _set_logger(logger)
+    global _tray_instance
 
     # 设置退出回调函数
     if exit_callback is not None:
@@ -356,9 +327,7 @@ def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = No
 
     # 检查托盘功能是否可用
     if not _check_tray_available():
-        log = _get_logger()
-        if log:
-            log.info("托盘功能不可用，跳过启用")
+        logger.info("托盘功能不可用，跳过启用")
         return
 
     # DPI 感知设置

@@ -13,10 +13,8 @@ from rich.markdown import Markdown
 
 from util.client.state import console
 from config import ClientConfig as Config, __version__
-from util.logger import get_logger
+from . import logger
 
-# 日志记录器
-logger = get_logger('client')
 
 
 def _format_shortcut_name(key: str) -> str:

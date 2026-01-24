@@ -9,9 +9,7 @@ import logging
 import threading
 from typing import Optional
 from config import ClientConfig as Config
-from util.logger import get_logger
-
-logger = get_logger('client')
+from . import logger
 
 
 # 全局事件：用于通知 LLM 停止输出（用于手动按 ESC 键的情况）

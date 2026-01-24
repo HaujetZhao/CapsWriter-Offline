@@ -13,9 +13,8 @@ from typing import Optional
 
 from util.client.state import get_state
 from util.client.state import console
-from util.logger import get_logger
+from . import logger
 
-logger = get_logger('client')
 
 
 # 全局对话框管理器

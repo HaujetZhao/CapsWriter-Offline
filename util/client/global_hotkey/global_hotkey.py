@@ -18,9 +18,8 @@ from typing import Callable, Dict, Optional
 
 from pynput import keyboard
 
-from util.logger import get_logger
+from . import logger
 
-logger = get_logger('client')
 
 
 class GlobalHotkeyManager:

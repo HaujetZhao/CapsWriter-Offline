@@ -11,10 +11,8 @@ from pathlib import Path
 from config import ServerConfig as Config
 from util.model_config import ModelPaths, ModelDownloadLinks
 from util.server.server_cosmic import console
-from util.logger import get_logger
+from . import logger
 
-# 日志记录器
-logger = get_logger('server')
 
 
 def check_model() -> None:

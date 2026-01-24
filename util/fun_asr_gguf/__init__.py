@@ -6,41 +6,11 @@ FunASR-GGUF: 混合 ASR 推理引擎
 API 兼容 sherpa-onnx，可直接替换使用。
 """
 
-import logging
 import sys
+from util import get_logger
 
-# ==================== 日志配置 ====================
-
-def setup_logging(level: int = logging.WARNING):
-    """
-    配置全局日志
-
-    Args:
-        level: 日志级别 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-
-    Returns:
-        配置好的 logger 实例
-    """
-    # 获取根 logger
-    root_logger = logging.getLogger('fun_asr_gguf')
-    root_logger.setLevel(logging.WARNING)  # 接收所有级别的日志
-    root_logger.handlers.clear()  # 清除已有处理器
-
-    # 控制台处理器
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(level)
-    formatter = logging.Formatter(
-        fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%H:%M:%S'
-    )
-    console_handler.setFormatter(formatter)
-    root_logger.addHandler(console_handler)
-
-    return root_logger
-
-
-# 初始化默认日志配置（默认 WARNING 级别，只显示警告和错误）
-logger = setup_logging(level=logging.WARNING)
+# 统一使用通过 util 获取的 'server' logger
+logger = get_logger('server')
 
 
 # ==================== 导入主要组件 ====================

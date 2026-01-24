@@ -13,9 +13,8 @@ import platform
 from contextlib import contextmanager
 import pyclip
 from pynput import keyboard
-from util.logger import get_logger
+from . import logger
 
-logger = get_logger('client')
 
 # 支持的编码列表
 CLIPBOARD_ENCODINGS = ['utf-8', 'gbk', 'utf-16', 'latin1']

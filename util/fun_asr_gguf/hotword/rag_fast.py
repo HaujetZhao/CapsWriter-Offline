@@ -12,8 +12,6 @@ import numpy as np
 from typing import List, Dict, Tuple, Set, Union
 from collections import defaultdict
 import time
-import logging
-
 from . import logger
 
 

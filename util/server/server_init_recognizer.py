@@ -9,11 +9,9 @@ from util.server.server_check_model import check_model
 from util.server.server_cosmic import console
 from util.server.server_recognize import recognize
 from util.tools.empty_working_set import empty_current_working_set
-from util.logger import get_logger
 from util.fun_asr_gguf import create_asr_engine
 
-# 获取日志记录器
-logger = get_logger('server')
+from . import logger
 
 # 全局变量，用于跟踪资源状态
 _resources_initialized = False

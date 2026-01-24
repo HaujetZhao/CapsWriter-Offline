@@ -20,13 +20,12 @@ import websockets
 from config import ClientConfig as Config
 from util.client.state import console
 from util.client.audio.file_manager import AudioFileManager
-from util.logger import get_logger
+from . import logger
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
 
 # 日志记录器
-logger = get_logger('client')
 
 
 class AudioRecorder:

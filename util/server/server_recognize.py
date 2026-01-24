@@ -17,7 +17,7 @@ from config import ServerConfig as Config
 from util.server.server_classes import Task, Result
 from util.tools.chinese_itn import chinese_to_num
 from util.tools.format_tools import adjust_space
-from util.logger import get_logger
+from . import logger
 from rich import inspect
 
 # 导入拆分出去的模块
@@ -30,7 +30,6 @@ from util.server.text_merge import (
 )
 from util.server.error_handler import save_error_audio
 
-logger = get_logger('server')
 
 # 任务结果缓存（按 task_id 索引）
 _results = {}

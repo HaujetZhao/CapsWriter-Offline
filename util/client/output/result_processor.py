@@ -19,15 +19,13 @@ from util.client.websocket_manager import WebSocketManager
 from util.hotword import get_hotword_manager
 from util.client.output.text_output import TextOutput
 from util.tools.window_detector import get_active_window_info
-from util.logger import get_logger
+from . import logger
 from util.common.lifecycle import lifecycle
 from util.client.state import get_state
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
 
-# 日志记录器
-logger = get_logger('client')
 
 
 def _estimate_tokens(text: str) -> int:

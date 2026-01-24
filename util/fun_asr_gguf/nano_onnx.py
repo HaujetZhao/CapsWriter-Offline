@@ -2,10 +2,11 @@ import onnxruntime
 import time
 import os
 import numpy as np
+from . import logger
 
 def load_onnx_models(encoder_path, ctc_path):
     """步骤 1: 加载 ONNX 音频编码器和 CTC Head"""
-    # print("\n[1] 加载 ONNX Models (Encoder + CTC)...")
+    # logger.info("\n[1] 加载 ONNX Models (Encoder + CTC)...")
     
     t_start = time.perf_counter()
     session_opts = onnxruntime.SessionOptions()

@@ -11,11 +11,9 @@ LLM 获取选中文字功能
 import time
 import pyclip
 import keyboard
-from util.logger import get_logger
-from util.llm.llm_clipboard import safe_paste
+from . import logger
+from .llm_clipboard import safe_paste
 from util.client.state import get_state
-
-logger = get_logger('client')
 state = get_state()
 
 

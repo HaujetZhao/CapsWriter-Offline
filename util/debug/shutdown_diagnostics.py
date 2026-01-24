@@ -3,9 +3,8 @@ import sys
 import traceback
 import threading
 import asyncio
-from util.logger import get_logger
+from . import logger
 
-logger = get_logger('server')
 
 def dump_active_stacks():
     """

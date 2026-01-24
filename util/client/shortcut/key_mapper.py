@@ -7,9 +7,8 @@
 
 from pynput import keyboard
 from pynput._util.win32 import KeyTranslator
-from util.logger import get_logger
+from . import logger
 
-logger = get_logger('client')
 
 # 创建键盘翻译器实例（用于 VK 到字符的转换）
 _key_translator = KeyTranslator()

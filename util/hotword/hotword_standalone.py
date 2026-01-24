@@ -18,9 +18,7 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 from pathlib import Path
 
-# 配置日志
-logging.basicConfig(level=logging.INFO, format='%(message)s')
-logger = logging.getLogger(__name__)
+from . import logger
 
 # 确保控制台输出 UTF-8
 if sys.platform == 'win32':

@@ -5,7 +5,7 @@
 使用音素编辑距离进行模糊匹配，实现智能热词替换。
 """
 
-import logging
+
 import os
 import time
 import threading

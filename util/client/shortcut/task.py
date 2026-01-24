@@ -10,7 +10,7 @@ import time
 from threading import Event
 from typing import TYPE_CHECKING, Optional
 
-from util.logger import get_logger
+from . import logger
 from util.tools.my_status import Status
 
 if TYPE_CHECKING:
@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from util.client.state import ClientState
     from util.client.audio.recorder import AudioRecorder
 
-logger = get_logger('client')
 
 
 class ShortcutTask:

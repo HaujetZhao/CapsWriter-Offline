@@ -32,13 +32,7 @@ except ImportError:
     HOT_SIMILAR = 0.6
     RECTIFY_THRESH = 0.5
 
-try:
-    from util.logger import get_logger
-    logger = get_logger('client')
-except ImportError:
-    import logging
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger = logging.getLogger('hotword')
+from . import logger
 
 try:
     from util.client.state import console

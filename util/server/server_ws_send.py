@@ -6,11 +6,9 @@ from multiprocessing import Queue
 from util.server.server_cosmic import console, Cosmic
 from util.server.server_classes import Result
 from util.tools.asyncio_to_thread import to_thread
-from util.logger import get_logger
+from . import logger
 from rich import inspect
 
-# 获取日志记录器
-logger = get_logger('server')
 
 
 async def ws_send():

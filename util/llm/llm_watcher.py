@@ -18,9 +18,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from util.llm.llm_constants import WatcherConstants
 from util.llm.llm_role_formatter import RoleFormatter
-from util.logger import get_logger
+from . import logger
 
-logger = get_logger('client')
 
 
 class LLMFileWatcher(FileSystemEventHandler):

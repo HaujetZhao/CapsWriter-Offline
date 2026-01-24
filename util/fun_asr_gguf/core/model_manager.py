@@ -4,7 +4,7 @@ import ctypes
 from pathlib import Path
 from typing import Optional, Tuple
 
-from .. import nano_llama
+from .. import nano_llama, logger
 from ..nano_ctc import load_ctc_tokens
 from ..nano_onnx import load_onnx_models
 from ..hotword.manager import get_hotword_manager
@@ -120,4 +120,4 @@ class ModelManager:
             nano_llama.llama_model_free(self.model)
             nano_llama.llama_backend_free()
             self._initialized = False
-            print("[ASR] 资源已释放")
+            logger.info("[ASR] 资源已释放")

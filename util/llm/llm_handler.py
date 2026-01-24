@@ -20,10 +20,8 @@ from util.llm.llm_role_detector import RoleDetector
 from util.llm.llm_processor import LLMProcessor
 from util.llm.llm_get_selection import get_selected_text, record_selection_usage
 from util.llm.llm_process_text import LLMResult
-from util.logger import get_logger
+from . import logger
 from util.hotword import get_hotword_manager
-
-logger = get_logger('client')
 
 
 # ======================================================================

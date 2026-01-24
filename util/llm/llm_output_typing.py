@@ -13,9 +13,7 @@ from util.tools.asyncio_to_thread import to_thread
 from util.client.output.text_output import TextOutput
 from util.client.clipboard import paste_text
 from util.llm.llm_stop_monitor import reset, should_stop
-from util.logger import get_logger
-
-logger = get_logger('client')
+from . import logger
 
 
 async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=None, role_config=None, content=None) -> tuple:

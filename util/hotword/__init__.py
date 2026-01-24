@@ -9,6 +9,10 @@
 - HotwordManager: 热词管理器（单例）
 """
 
+from util import get_logger
+logger = get_logger('client')
+
+
 from .hot_phoneme import PhonemeCorrector, CorrectionResult
 from .hot_rule import RuleCorrector
 from .hot_rectification import RectificationRAG

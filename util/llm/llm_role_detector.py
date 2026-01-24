@@ -8,9 +8,7 @@ LLM 角色检测器
 from typing import Tuple, Optional
 from util.llm.llm_role_config import RoleConfig
 from util.llm.llm_interfaces import IRoleLoader
-from util.logger import get_logger
-
-logger = get_logger('client')
+from . import logger
 
 
 class RoleDetector:

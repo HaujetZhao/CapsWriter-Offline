@@ -6,9 +6,8 @@ from util.server.server_cosmic import Cosmic, console
 from util.server.server_init_recognizer import init_recognizer
 from util.server.state import get_state
 from util.common.lifecycle import lifecycle
-from util.logger import get_logger
+from . import logger
 
-logger = get_logger('server')
 
 def start_recognizer_process():
     """启动识别子进程并等待模型加载完成"""

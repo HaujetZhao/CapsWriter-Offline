@@ -19,9 +19,7 @@ from typing import List, Dict, Optional, Tuple, Any
 
 from util.llm.llm_role_config import RoleConfig
 from util.llm.llm_constants import estimate_tokens
-from util.logger import get_logger
-
-logger = get_logger('client')
+from . import logger
 
 
 class MessageBuilder:

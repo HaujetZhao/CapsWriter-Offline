@@ -10,12 +10,11 @@ import asyncio
 from rich.console import Console
 
 from config import ClientConfig as Config, __version__
-from util.logger import get_logger
+from . import logger
 from util.common.lifecycle import lifecycle
 from util.server.state import get_state
 from util.ui.tray import stop_tray
 
-logger = get_logger('server')
 console = Console(highlight=False)
 
 # 计算项目根目录: util/server/cleanup.py -> util/server -> util -> root
@@ -71,9 +70,9 @@ def cleanup_server_resources():
 def setup_tray():
     """启用托盘图标"""
     if Config.enable_tray:
-        from util.ui.tray import enable_min_to_tray
+        from util.server.ui import enable_min_to_tray
         icon_path = os.path.join(BASE_DIR, 'assets', 'icon.ico')
-        enable_min_to_tray('CapsWriter Server', icon_path, logger=logger, exit_callback=request_exit_from_tray)
+        enable_min_to_tray('CapsWriter Server', icon_path, exit_callback=request_exit_from_tray)
         logger.info("托盘图标已启用")
 
 

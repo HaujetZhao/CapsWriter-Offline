@@ -22,10 +22,8 @@ if TYPE_CHECKING:
 from rich.console import Console
 from rich.theme import Theme
 
-from util.logger import get_logger
+from . import logger
 
-# 日志记录器
-logger = get_logger('client')
 
 # 配置 Rich console
 _theme = Theme({

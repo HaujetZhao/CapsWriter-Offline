@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 from pynput import keyboard, mouse
 
-from util.logger import get_logger
+from . import logger
 from util.client.shortcut.key_mapper import *
 from util.client.shortcut.key_mapper import KeyMapper
 from util.client.shortcut.emulator import ShortcutEmulator
@@ -25,7 +25,6 @@ if TYPE_CHECKING:
     from util.client.shortcut.shortcut_config import Shortcut
     from util.client.state import ClientState
 
-logger = get_logger('client')
 
 
 class ShortcutManager:

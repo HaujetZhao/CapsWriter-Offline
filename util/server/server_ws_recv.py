@@ -15,10 +15,9 @@ from util.server.server_cosmic import console, Cosmic
 from util.server.server_classes import Task
 from util.constants import AudioFormat
 from util.tools.my_status import Status
-from util.logger import get_logger
+from . import logger
 
-# 获取日志记录器
-logger = get_logger('server')
+
 
 # 麦克风接收状态指示器
 status_mic = Status('正在接收音频', spinner='point')

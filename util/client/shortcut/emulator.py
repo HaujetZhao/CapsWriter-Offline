@@ -6,10 +6,9 @@
 """
 
 from pynput import keyboard, mouse
-from util.logger import get_logger
+from . import logger
 from util.client.shortcut.key_mapper import KeyMapper
 
-logger = get_logger('client')
 
 
 class ShortcutEmulator:

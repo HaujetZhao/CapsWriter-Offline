@@ -16,6 +16,9 @@
 - ui/: 用户界面
 """
 
+from util import get_logger
+logger = get_logger('client')
+
 # 核心模块
 from util.client.state import ClientState, get_state, console
 from util.client.websocket_manager import WebSocketManager
