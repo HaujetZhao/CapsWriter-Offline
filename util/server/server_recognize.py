@@ -185,11 +185,12 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         result.is_final = True
         
         process_time = result.time_complete - task.time_submit
+        rtf_value = process_time / result.duration if result.duration > 0 else 0
         logger.info(
             f"识别完成: task={task.task_id[:8]}, "
             f"duration={result.duration:.2f}(s), "
             f"process_time={process_time:.3f}(s), "
-            f"RTF={process_time/result.duration:.3f}"
+            f"RTF={rtf_value:.3f}"
         )
         logger.debug(f"最终文本: {result.text[:100]}...")
 
