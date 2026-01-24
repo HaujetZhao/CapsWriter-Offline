@@ -71,8 +71,11 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
     console.print('[yellow]语音模型载入中', end='\r'); t1 = time.time()
     logger.info(f"开始加载语音模型，类型: {Config.model_type}")
 
-     # 检查模型文件
-    check_model()
+    # 载入语音模型
+    console.print('[yellow]语音模型载入中', end='\r'); t1 = time.time()
+    logger.info(f"开始加载语音模型，类型: {Config.model_type}")
+
+
 
     # 根据配置选择模型类型
     model_type = Config.model_type.lower()

@@ -87,7 +87,7 @@ class HotwordManager:
     def _load_hot(self) -> None:
         content = self._read_file()
         num = self.phoneme_corrector.update_hotwords(content)
-        console.print(self._format_msg("热词库", self.file.name, num))
+        console.print(self._format_msg("热词库", self.file.name, num) + '\n')
 
     def get_corrector(self) -> PhonemeCorrector:
         """获取热词纠错器"""

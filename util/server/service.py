@@ -5,12 +5,16 @@ import queue
 from util.server.server_cosmic import Cosmic, console
 from util.server.server_init_recognizer import init_recognizer
 from util.server.state import get_state
+from util.server.server_check_model import check_model
 from util.common.lifecycle import lifecycle
 from . import logger
 
 
 def start_recognizer_process():
     """启动识别子进程并等待模型加载完成"""
+    
+    check_model()
+
     state = get_state()
     Cosmic.sockets_id = Manager().list()
     recognize_process = Process(target=init_recognizer,
@@ -36,6 +40,17 @@ def start_recognizer_process():
             if isinstance(e, InterruptedError) or e.errno == errno.EINTR:
                 continue
             raise
+
+        # 检查子进程是否存活
+        if not recognize_process.is_alive():
+            logger.error("识别子进程意外退出（可能是因为模型文件缺失或加载失败）")
+            # 退出码不为0，说明可能出错
+            if recognize_process.exitcode != 0:
+                logger.error(f"子进程退出码: {recognize_process.exitcode}")
+            
+            # 主动抛出异常或直接退出
+            lifecycle.shutdown()
+            raise RuntimeError("识别子进程启动失败")
 
     if lifecycle.is_shutting_down:
         logger.warning("在加载模型时收到退出请求")

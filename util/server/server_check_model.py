@@ -11,6 +11,7 @@ from pathlib import Path
 from config import ServerConfig as Config
 from util.model_config import ModelPaths, ModelDownloadLinks
 from util.server.server_cosmic import console
+from util.common.lifecycle import lifecycle
 from . import logger
 
 
@@ -66,9 +67,8 @@ def check_model() -> None:
     - 'paraformer'
 
         ''', style='bright_red')
-        # 只在交互式终端中等待用户输入
-        if sys.stdin.isatty():
-            input('按回车退出')
+        input('按回车退出')
+        lifecycle.cleanup()
         sys.exit(1)
 
     # 检查所有必需的文件
@@ -93,13 +93,12 @@ def check_model() -> None:
         error_msg += f'    [cyan]{ModelDownloadLinks.models_page}[/cyan]\n\n'
 
         error_msg += f'    下载后请根据发布页说明，解压到：[cyan]{ModelPaths.model_dir}[/cyan]\n'
-        error_msg += '    \n    按回车退出\n    '
-
+        error_msg += '    \n'
+        
         logger.error(f"模型文件检查失败，共 {len(missing_files)} 个文件缺失")
         console.print(error_msg)
-        # 只在交互式终端中等待用户输入
-        if sys.stdin.isatty():
-            input()
+        input('按回车退出')
+        lifecycle.cleanup()
         sys.exit(1)
 
     # 所有检查通过
