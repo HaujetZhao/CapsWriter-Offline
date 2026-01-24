@@ -3,6 +3,8 @@ import os
 import ctypes
 import numpy as np
 import gguf
+from pathlib import Path
+from os.path import relpath
 from . import logger
 
 # =========================================================================
@@ -130,38 +132,26 @@ def init_llama_lib():
     global llama_vocab_n_tokens, llama_vocab_eos, llama_token_to_piece
     global _log_callback_ref
 
-    # 获取模块所在目录下的 bin 目录
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    lib_dir = os.path.join(base_dir, "bin")
+    ggml = ctypes.CDLL("./ggml.dll")
+    ggml_base = ctypes.CDLL("./ggml-base.dll")
+    llama = ctypes.CDLL("./llama.dll")
 
-    original_cwd = os.getcwd()
-    os.chdir(lib_dir)
-    try:
-        ggml = ctypes.CDLL("./ggml.dll")
-        ggml_base = ctypes.CDLL("./ggml-base.dll")
-        llama = ctypes.CDLL("./llama.dll")
+    # 先设置日志回调（在加载 backend 之前）
+    LOG_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
+    llama_log_set = llama.llama_log_set
+    llama_log_set.argtypes = [LOG_CALLBACK, ctypes.c_void_p]
+    llama_log_set.restype = None
 
-        # 先设置日志回调（在加载 backend 之前）
-        LOG_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
-        llama_log_set = llama.llama_log_set
-        llama_log_set.argtypes = [LOG_CALLBACK, ctypes.c_void_p]
-        llama_log_set.restype = None
+    if QUIET_LOGS:
+        _log_callback_ref = LOG_CALLBACK(quiet_log_callback)
+        llama_log_set(_log_callback_ref, None)
 
-        if QUIET_LOGS:
-            _log_callback_ref = LOG_CALLBACK(quiet_log_callback)
-            llama_log_set(_log_callback_ref, None)
+    # 然后再加载 backend
+    ggml_backend_load_all = ggml.ggml_backend_load_all
+    ggml_backend_load_all.argtypes = []
+    ggml_backend_load_all.restype = None
+    ggml_backend_load_all()
 
-        # 然后再加载 backend
-        ggml_backend_load_all = ggml.ggml_backend_load_all
-        ggml_backend_load_all.argtypes = []
-        ggml_backend_load_all.restype = None
-        ggml_backend_load_all()
-    except Exception as e:
-        logger.error(f"加载 llama.cpp 动态库失败: {e}", exc_info=True)
-        logger.error(f"尝试加载目录: {lib_dir}")
-        raise
-    finally:
-        os.chdir(original_cwd)
 
     # Initialize backend
     llama_backend_init = llama.llama_backend_init
@@ -265,18 +255,28 @@ def load_model(model_path: str):
     Returns:
         model: llama_model 指针
     """
+    lib_dir = Path(__file__).parent / 'bin'
+    model_path = Path(model_path).resolve()
+    model_rel = Path(relpath(model_path, lib_dir))
+
+    original_cwd = Path.cwd()
+    os.chdir(lib_dir)
+    logger.info(f"Changed directory to: {Path.cwd()}")
+
     init_llama_lib()
-    
-    if not os.path.exists(model_path):
-        logger.error(f"GGUF 模型文件不存在: {model_path}")
-        return None
-        
     model_params = llama_model_default_params()
-    
-    return llama_model_load_from_file(
-        model_path.encode('utf-8'),
+    model = llama_model_load_from_file(
+        model_rel.as_posix().encode('utf-8'),
         model_params
     )
+    os.chdir(original_cwd)
+    logger.info(f"Restored directory to: {Path.cwd()}")
+
+    if model:
+        return model
+    else:
+        logger.error(f"模型加载失败: {model_path}")
+        return None
 
 _log_callback_ref = None
 
