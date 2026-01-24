@@ -250,8 +250,8 @@ class FileTranscriber:
                 f.write(text_accu)
             logger.debug(f"保存合并文本: {merge_filename}")
 
-        # 2. 保存 txt 或为了生成 srt 而暂时保存 txt
-        if Config.file_save_txt or Config.file_save_srt:
+        # 2. 保存 txt
+        if Config.file_save_txt:
             with open(txt_filename, 'w', encoding='utf-8') as f:
                 f.write(text_split)
             logger.debug(f"保存切分文本: {txt_filename}")
@@ -264,7 +264,16 @@ class FileTranscriber:
         
         # 4. 生成 srt (如果启用)
         if Config.file_save_srt:
-            srt_from_txt.one_task(txt_filename)
+            # 即使 file_save_json=False，也在内存中构建 words 信息用于生成 srt
+            words = [{'word': token.replace('@', ''), 'start': timestamp, 'end': timestamp + 0.2} 
+                     for (timestamp, token) in zip(timestamps, tokens)]
+            for i in range(len(words) - 1):
+                words[i]['end'] = min(words[i]['end'], words[i+1]['start'])
+            
+            text_lines = text_split.splitlines()
+            srt_filename = self.file.with_suffix('.srt')
+
+            srt_from_txt.generate_srt_file(words, text_lines, srt_filename)
         
         # 5. 清理中间生成的 txt (如果用户不想要)
         if not Config.file_save_txt and txt_filename.exists():
