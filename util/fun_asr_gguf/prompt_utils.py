@@ -4,7 +4,7 @@ FunASR-GGUF Prompt 构建工具
 
 from typing import List, Optional, Tuple
 import numpy as np
-from . import nano_llama
+from . import nano_llama, logger
 
 class PromptBuilder:
     """负责构建 LLM 的 Prompt Embeddings"""
@@ -41,7 +41,9 @@ class PromptBuilder:
             prefix_prompt += "语音转写："
         else:
             prefix_prompt += f"语音转写成{language}："
-
+        
+        logger.debug(f"Generated Prompt:\n{'-'*40}\n{prefix_prompt}\n{'-'*40}")
+        
         suffix_prompt = "<|im_end|>\n<|im_start|>assistant\n"
 
         # 转换为 embeddings
