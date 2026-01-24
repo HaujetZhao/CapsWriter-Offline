@@ -44,8 +44,18 @@ class ResultHandler:
         
         if buffer:
             lines.append(buffer)
+
+        # 去除每行末尾的标点
+        final_lines = []
+        for line in lines:
+            line = line.strip()
+            # 循环去除结尾的标点
+            while line and line[-1] in punct_chars:
+                line = line[:-1].strip()
+            if line:
+                final_lines.append(line)
             
-        return "\n".join(lines)
+        return "\n".join(final_lines)
 
     @classmethod
     def save_results(cls, file: Path, message: Dict[str, Any]) -> str:
