@@ -86,12 +86,11 @@ class FunASREngine:
         stream: RecognitionStream,
         language: Optional[str] = None,
         context: Optional[str] = None,
-        verbose: bool = False,
         reporter = None
     ) -> DecodeResult:
         """解码识别流 (委托给 Orchestrator 内置的 Decoder)"""
         return self.orchestrator.decoder.decode_stream(
-            stream, language, context, verbose, reporter
+            stream, language, context, reporter
         )
 
     def cleanup(self):

@@ -31,6 +31,7 @@ from util.ui import (
 # 4. 导出菜单处理器（供 Startup 使用）
 from util.ui.rectify_menu_handler import on_add_rectify_record
 from util.ui.hotword_menu_handler import on_add_hotword
+from util.ui.context_menu_handler import on_edit_context
 
 __all__ = [
     'logger',
@@ -43,4 +44,5 @@ __all__ = [
     'stop_tray',
     'on_add_rectify_record',
     'on_add_hotword',
+    'on_edit_context',
 ]

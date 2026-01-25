@@ -81,9 +81,10 @@ Alibaba
 Paraformer
 SenseVoice
 CosyVoice
-FunASR
-FunASR-nano
+Fun-ASR
+Fun-ASR-nano
 ModelScope
+
 
 
 # Apple

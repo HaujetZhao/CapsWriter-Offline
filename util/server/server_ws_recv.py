@@ -67,6 +67,7 @@ async def message_handler(websocket, message: dict, cache: AudioCache) -> None:
     # 获取 id
     task_id = message['task_id']
     socket_id = str(websocket.id)
+    context = message.get('context', '')
 
     # 从消息中获取分段参数（由客户端决定）
     seg_duration = message['seg_duration']
@@ -104,7 +105,8 @@ async def message_handler(websocket, message: dict, cache: AudioCache) -> None:
                     overlap=seg_overlap,
                     is_final=False,
                     time_start=message['time_start'],
-                    time_submit=time.time()
+                    time_submit=time.time(),
+                    context=context
                 )
                 cache.offset += seg_duration
                 queue_in.put(task)
@@ -131,7 +133,8 @@ async def message_handler(websocket, message: dict, cache: AudioCache) -> None:
                 overlap=seg_overlap,
                 is_final=True,
                 time_start=message['time_start'],
-                time_submit=time.time()
+                time_submit=time.time(),
+                context=context
             )
             queue_in.put(task)
             logger.debug(f"提交最终片段，任务ID: {task_id}, 数据大小: {len(cache.chunks)} bytes")

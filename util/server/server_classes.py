@@ -38,6 +38,7 @@ class Task:
     is_final: bool
     time_start: float
     time_submit: float
+    context: str = ''
     samplerate: int = 16000
 
 

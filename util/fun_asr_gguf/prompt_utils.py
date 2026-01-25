@@ -32,6 +32,7 @@ class PromptBuilder:
             if context:
                 prefix_prompt += f"请结合上下文信息，更加准确地完成语音转写任务。\n\n\n"
                 prefix_prompt += f"**上下文信息：**{context}\n\n\n"
+                logger.info(f'上下文信息：{context}')
 
             if hotwords:
                 hotwords_str = ", ".join(hotwords)

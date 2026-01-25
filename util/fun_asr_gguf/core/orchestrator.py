@@ -84,7 +84,7 @@ class TranscriptionOrchestrator:
         stream = RecognitionStream()
         stream.accept_waveform(self.models.config.sample_rate, audio)
         
-        d_res = self.decoder.decode_stream(stream, language, context, verbose, reporter)
+        d_res = self.decoder.decode_stream(stream, language, context, reporter)
         
         # Sync stats
         for field in ['encode', 'ctc', 'prepare', 'inject', 'llm_generate', 'align']:
@@ -126,7 +126,7 @@ class TranscriptionOrchestrator:
             stream.accept_waveform(self.models.config.sample_rate, chunk)
             
             # Sub-segment always uses verbose=True for tokens, but reporter will filter tech logs
-            d_res = self.decoder.decode_stream(stream, language, context, True, reporter)
+            d_res = self.decoder.decode_stream(stream, language, context, reporter)
             
             segment_results.append({
                 'text': d_res.text,

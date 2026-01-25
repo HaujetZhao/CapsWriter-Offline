@@ -116,6 +116,7 @@ class FileTranscriber:
                     'time_frame': time.time(),
                     'source': 'file',
                     'data': base64.b64encode(data).decode('utf-8'),
+                    'context': Config.context,
                 }
                 await websocket.send(json.dumps(message))
 
@@ -129,6 +130,7 @@ class FileTranscriber:
                 'time_frame': time.time(),
                 'source': 'file',
                 'data': '',
+                'context': Config.context,
             }
             await websocket.send(json.dumps(final_message))
             await process.wait()

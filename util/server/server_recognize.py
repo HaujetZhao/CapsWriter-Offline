@@ -125,7 +125,12 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         stream.accept_waveform(task.samplerate, samples)
         
         t1 = time.time()
-        recognizer.decode_stream(stream)
+        # 尝试带上 context 参数（自定义 FunASREngine 支持）
+        # 如果是原生 sherpa-onnx 引擎，不支持 context，会抛出 TypeError，此时回退到普通调用
+        try:
+            recognizer.decode_stream(stream, context=task.context)
+        except TypeError:
+            recognizer.decode_stream(stream)
 
         # 更新时间戳
         result.time_start = task.time_start

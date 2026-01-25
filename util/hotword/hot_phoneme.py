@@ -243,6 +243,7 @@ Python
 Microsoft
 iPhone
 7-Zip
+Fun-ASR
 
 # 杂项
 Claude
@@ -268,6 +269,7 @@ VsCode
         "喜欢刷Bili Bili",
         "请把那个锯子发给我一下",
         "现在有了 Cloud，已经可以了。",
+        "传给服务端，对于 FUNAS2 模型就有效利用这一个 context。"
     ]
     for text in test_cases_zh:
         result = corrector.correct(text)

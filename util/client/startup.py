@@ -51,6 +51,13 @@ def _setup_tray(state, base_dir):
         except ImportError as e:
             logger.warning(f"无法导入纠错菜单处理器: {e}")
 
+    def add_context():
+        try:
+            from util.client.ui import on_edit_context
+            on_edit_context()
+        except ImportError as e:
+            logger.warning(f"无法导入上下文菜单处理器: {e}")
+
     def copy_last_result():
         text = state.last_output_text
         if text:
@@ -65,6 +72,7 @@ def _setup_tray(state, base_dir):
         exit_callback=request_exit_from_tray,
         more_options=[
             ('📋 复制结果', copy_last_result),
+            ('📝 上下文', add_context),
             ('✨ 添加热词', add_hotword),
             ('🛠️ 添加纠错', add_rectify),
             ('🧹 清除记忆', clear_memory),
