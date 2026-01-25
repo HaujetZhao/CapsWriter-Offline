@@ -30,7 +30,7 @@ def decode_ctc(logits, id2token):
     blank_id = max(id2token.keys()) if id2token else 0
     
     frame_shift_ms = 60
-    offset_ms = -30
+    offset_ms = -240
     
     # 1. Collapse repeats
     collapsed = []
