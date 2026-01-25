@@ -244,21 +244,17 @@ class ResultProcessor:
             except Exception as e:
                 logger.warning(f"繁体转换失败: {e}")
 
-        # 热词替换
-        # 1. 音素纠错
+        # 1. 音素检索，热词替换
         correction_result = self._hotword_manager.get_phoneme_corrector().correct(text, k=10)
-        correction_result = self._hotword_manager.get_phoneme_corrector().correct(text, k=10)
-        text = correction_result.text
+        if Config.hot:
+            text = correction_result.text
 
         # 2. 规则纠错
         text = self._hotword_manager.get_rule_corrector().substitute(text)
-
         text = TextOutput.strip_punc(text)
 
-        # 保存最近一次识别结果（供用户手动添加纠错记录到 hot-rectify.txt）
+        # 保存最近一次识别结果
         self.state.last_recognition_text = text
-
-        logger.debug(f"热词替换后: {text[:50]}{'...' if len(text) > 50 else ''}")
 
         # 控制台输出
         console.print(f'    转录时延：{delay:.2f}s')
@@ -270,19 +266,20 @@ class ResultProcessor:
         # 如果发生了热词替换，显示替换后的结果
         if original_text_stripped != text:
             console.print(f'    热词替换：[cyan]{text}')
+            logger.debug(f"热词替换后: {text[:50]}{'...' if len(text) > 50 else ''}")
 
-        # 显示热词匹配情况
+        # 热词匹配情况
         matched_hotwords = correction_result.matchs
         potential_hotwords = correction_result.similars
 
         # 1. 显示完全匹配/已替换的热词
-        if matched_hotwords:
+        if matched_hotwords and Config.hot:
             # 提取热词文本 (现为 (原词, 热词, 分数))
             replaced_info = [f"{origin}->[green4]{hw}[/]" for origin, hw, score in matched_hotwords]
             console.print(f'    完全匹配：{", ".join(replaced_info)}')
 
         # 2. 显示潜在热词（从上下文热词中排除已替换的）
-        if potential_hotwords:
+        if potential_hotwords and Config.hot:
             replaced_set = {hw for origin, hw, score in matched_hotwords}
             potential_matches = [(origin, hw, score) for origin, hw, score in potential_hotwords if hw not in replaced_set]
             
