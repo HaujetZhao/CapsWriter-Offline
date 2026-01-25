@@ -36,6 +36,7 @@ class PromptBuilder:
             if hotwords:
                 hotwords_str = ", ".join(hotwords)
                 prefix_prompt += f"热词列表：[{hotwords_str}]\n"
+                logger.info(f'热词列表：{hotwords_str}')
 
         if not language:
             prefix_prompt += "语音转写："
