@@ -269,10 +269,10 @@ def load_model(model_path: str):
         model_rel.as_posix().encode('utf-8'),
         model_params
     )
-    os.chdir(original_cwd)
-    logger.info(f"Restored directory to: {Path.cwd()}")
 
     if model:
+        os.chdir(original_cwd)
+        logger.info(f"Restored directory to: {Path.cwd()}")
         return model
     else:
         logger.error(f"模型加载失败: {model_path}")
