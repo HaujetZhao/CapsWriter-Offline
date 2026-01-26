@@ -64,6 +64,8 @@ hiddenimports += [
     'rich',
     'rich.console',
     'rich.markdown',
+    'rich._unicode_data',
+    'rich._unicode_data.unicode17-0-0', 
     'keyboard',
     'pyclip',
     'numpy',
