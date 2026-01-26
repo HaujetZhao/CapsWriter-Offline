@@ -57,6 +57,9 @@ class LLMHandler:
         # LLM 处理引擎
         self.processor = LLMProcessor(self.client_pool)
 
+        # 最近使用的角色（用于撤回/显示功能）
+        self.last_used_role: Optional[str] = None
+
     def _init_context_managers(self):
         """为启用了历史的角色创建上下文管理器"""
         for role_name, role_config in self.roles.items():
@@ -128,6 +131,9 @@ class LLMHandler:
         role_name = role_config.name or RoleConfig.DEFAULT_ROLE_NAME
         logger.debug(f"开始 LLM 核心处理 [角色: {role_name}] [内容长度: {len(content)}]")
 
+        # 更新最近使用的角色
+        self.last_used_role = role_name
+
         # 获取上下文管理器（如果启用历史）
         context_manager = self.context_managers.get(role_name) if role_config.enable_history else None
         if context_manager:
@@ -179,7 +185,23 @@ class LLMHandler:
 
         # 2. 如果不匹配任何需要处理的角色（或者默认角色被禁用）
         if not role_config:
-            result_text = TextOutput.strip_punc(text)
+            # 如果是指令标记，不更新 last_output_text
+            from util.llm.llm_role_detector import COMMAND_TOKEN
+            if content == COMMAND_TOKEN:
+                # 指令已执行，直接返回，不更新输出文本
+                if return_result:
+                    return LLMResult(
+                        result=content,
+                        role_name=None,
+                        processed=False,
+                        token_count=0,
+                        polish_time=0,
+                        input_text=text,
+                        generation_time=0
+                    )
+                return None
+            
+            result_text = TextOutput.strip_punc(content)
             await output_text(result_text, paste)
             
             # 更新全局状态并 UDP 广播
@@ -231,6 +253,222 @@ class LLMHandler:
             )
         return None
 
+    def revoke_last_turn(self) -> Tuple[bool, str]:
+        """
+        撤回最近一次使用的角色的最近一轮对话消息
+
+        撤回规则：
+        - 如果最后两条是 [user, assistant]，删除两者
+        - 如果只剩一条助手消息，删除助手消息
+
+        Returns:
+            (success, message) - success 表示是否成功，message 是反馈信息
+        """
+        if not self.last_used_role:
+            return False, "没有最近使用的角色记录"
+
+        context_manager = self.context_managers.get(self.last_used_role)
+        if not context_manager:
+            return False, f"角色 '{self.last_used_role}' 未启用历史记录"
+
+        with context_manager._lock:
+            if not context_manager.history:
+                return False, f"角色 '{self.last_used_role}' 没有历史记录可撤回"
+
+            # 撤回最后两条消息（user + assistant）
+            if len(context_manager.history) >= 2:
+                context_manager.history.pop()  # 先删除 assistant
+                context_manager.history.pop()  # 再删除 user
+                logger.info(f"已撤回角色 '{self.last_used_role}' 的最近一轮对话")
+                return True, f"已撤回角色 '{self.last_used_role}' 的最近一轮对话"
+
+            # 只剩一条助手消息，删除助手消息
+            context_manager.history.pop()
+            logger.info(f"已撤回角色 '{self.last_used_role}' 的最后一条助手消息")
+            return True, f"已撤回角色 '{self.last_used_role}' 的最后一条助手消息"
+
+    def show_last_turn(self) -> Tuple[bool, str]:
+        """
+        显示最近一次使用的角色的最近一轮对话消息
+
+        显示规则：
+        - 如果最后两条是 [user, assistant]，显示完整对话
+        - 如果只剩一条助手消息，显示助手消息
+
+        Returns:
+            (success, message) - success 表示是否成功，message 是反馈信息
+        """
+        if not self.last_used_role:
+            return False, "没有最近使用的角色记录"
+
+        context_manager = self.context_managers.get(self.last_used_role)
+        if not context_manager:
+            return False, f"角色 '{self.last_used_role}' 未启用历史记录"
+
+        with context_manager._lock:
+            if not context_manager.history:
+                return False, f"角色 '{self.last_used_role}' 没有历史记录可显示"
+
+            # 显示最后两条消息（user + assistant）
+            if len(context_manager.history) >= 2:
+                last_two = context_manager.history[-2:]
+                user_msg = last_two[0]['content']
+                assistant_msg = last_two[1]['content']
+                return True, (
+                    f"角色 '{self.last_used_role}' 的最近一轮对话：\n"
+                    f"{user_msg}\n"
+                    f"助手输出：{assistant_msg}"
+                )
+
+            # 只剩一条助手消息，显示助手消息
+            last_msg = context_manager.history[-1]
+            return True, f"角色 '{self.last_used_role}' 的最后一条助手消息：\n{last_msg['role']}：{last_msg['content']}"
+
+    def copy_all_context(self) -> Tuple[bool, str]:
+        """
+        复制所有启用历史的角色的所有历史到剪贴板
+
+        格式规则：
+        - 角色和内容之间增加换行
+        - 倒数每两条（一条user，一条assistant）为一组
+        - 每组之间额外空一行（两个换行）
+        - 奇数组时，最后剩下的一条单独一组
+
+        Returns:
+            (success, message) - success 表示是否成功，message 是反馈信息
+        """
+        full_text_parts = []
+        total_messages = 0
+
+        # 按角色顺序遍历
+        for role_name in self.roles.keys():
+            context_manager = self.context_managers.get(role_name)
+            if not context_manager or not context_manager.history:
+                continue
+
+            # 收集该角色的消息列表
+            messages = []
+            for msg in context_manager.history:
+                messages.append({
+                    'role': msg['role'],
+                    'content': msg['content']
+                })
+                total_messages += 1
+
+            # 对每个角色的消息进行分组（user+assistant为一组）
+            role_groups = []
+            i = 0
+            while i < len(messages):
+                if i + 1 < len(messages):
+                    # 取两条（user+assistant）为一组
+                    pair = messages[i:i+2]
+                    # 去掉 user 消息中的 "用户输入：" 前缀
+                    user_content = pair[0]['content'].replace("用户输入：", "")
+                    # 格式化为 user: 内容\nassistant: 内容
+                    pair_str = f"{pair[0]['role']}:\n{user_content}\n\n{pair[1]['role']}:\n{pair[1]['content']}"
+                    role_groups.append(pair_str)
+                    i += 2
+                else:
+                    # 剩下一条单独一组
+                    single_msg = messages[i]
+                    # 去掉 user 消息中的 "用户输入：" 前缀
+                    if single_msg['role'] == 'user':
+                        single_content = single_msg['content'].replace("用户输入：", "")
+                    else:
+                        single_content = single_msg['content']
+                    single_str = f"{single_msg['role']}:\n{single_content}"
+                    role_groups.append(single_str)
+                    i += 1
+
+            # 构建该角色的完整文本：角色标题 + 各个分组
+            if role_groups:
+                role_text = f"=== 角色: {role_name} ===\n\n"
+                role_text += "\n\n".join(role_groups)
+                full_text_parts.append(role_text)
+
+        if not full_text_parts:
+            return False, "没有可复制的上下文内容"
+
+        full_text = "\n\n".join(full_text_parts)
+
+        try:
+            from util.client.clipboard import copy_to_clipboard
+            copy_to_clipboard(full_text)
+            logger.info(f"已复制 {len(full_text_parts)} 个角色的 {total_messages} 条上下文到剪贴板")
+            return True, f"已复制 {len(full_text_parts)} 个角色的 {total_messages} 条上下文到剪贴板"
+        except Exception as e:
+            logger.error(f"复制到剪贴板失败: {e}")
+            return False, f"复制失败: {str(e)}"
+
+    def copy_current_role_context(self) -> Tuple[bool, str]:
+        """
+        复制最近使用的助手的上下文到剪贴板
+
+        格式规则与 copy_all_context() 一致：
+        - 角色和内容之间增加换行
+        - 倒数每两条（一条user，一条assistant）为一组
+        - 每组之间额外空一行（两个换行）
+        - 奇数组时，最后剩下的一条单独一组
+
+        Returns:
+            (success, message) - success 表示是否成功，message 是反馈信息
+        """
+        if not self.last_used_role:
+            return False, "没有最近使用的角色记录"
+
+        context_manager = self.context_managers.get(self.last_used_role)
+        if not context_manager or not context_manager.history:
+            return False, f"角色 '{self.last_used_role}' 没有历史记录可复制"
+
+        # 收集该角色的消息列表
+        messages = []
+        for msg in context_manager.history:
+            messages.append({
+                'role': msg['role'],
+                'content': msg['content']
+            })
+
+        # 对消息进行分组（user+assistant为一组）
+        groups = []
+        i = 0
+        while i < len(messages):
+            if i + 1 < len(messages):
+                # 取两条（user+assistant）为一组
+                pair = messages[i:i+2]
+                # 去掉 user 消息中的 "用户输入：" 前缀
+                user_content = pair[0]['content'].replace("用户输入：", "")
+                # 格式化为 user: 内容\nassistant: 内容
+                pair_str = f"{pair[0]['role']}:\n{user_content}\n\n{pair[1]['role']}:\n{pair[1]['content']}"
+                groups.append(pair_str)
+                i += 2
+            else:
+                # 剩下一条单独一组
+                single_msg = messages[i]
+                # 去掉 user 消息中的 "用户输入：" 前缀
+                if single_msg['role'] == 'user':
+                    single_content = single_msg['content'].replace("用户输入：", "")
+                else:
+                    single_content = single_msg['content']
+                single_str = f"{single_msg['role']}:\n{single_content}"
+                groups.append(single_str)
+                i += 1
+
+        if not groups:
+            return False, f"角色 '{self.last_used_role}' 没有可复制的上下文内容"
+
+        # 构建该角色的完整文本：角色标题 + 各个分组
+        role_text = f"=== 角色: {self.last_used_role} ===\n\n"
+        role_text += "\n\n".join(groups)
+
+        try:
+            from util.client.clipboard import copy_to_clipboard
+            copy_to_clipboard(role_text)
+            logger.info(f"已复制角色 '{self.last_used_role}' 的 {len(messages)} 条上下文到剪贴板")
+            return True, f"已复制角色 '{self.last_used_role}' 的 {len(messages)} 条上下文到剪贴板"
+        except Exception as e:
+            logger.error(f"复制到剪贴板失败: {e}")
+            return False, f"复制失败: {str(e)}"
+
 
 # ======================================================================
 # --- 全局实例 ---
@@ -277,6 +515,30 @@ def clear_llm_history():
     """清除 LLM 对话历史（便捷函数）"""
     handler = get_handler()
     handler.clear_history()
+
+
+def revoke_last_turn() -> Tuple[bool, str]:
+    """撤回最近一次使用的角色的最近一条消息（便捷函数）"""
+    handler = get_handler()
+    return handler.revoke_last_turn()
+
+
+def show_last_turn() -> Tuple[bool, str]:
+    """显示最近一次使用的角色的最近一条消息（便捷函数）"""
+    handler = get_handler()
+    return handler.show_last_turn()
+
+
+def copy_all_context() -> Tuple[bool, str]:
+    """复制所有启用历史的角色的所有历史到剪贴板（便捷函数）"""
+    handler = get_handler()
+    return handler.copy_all_context()
+
+
+def copy_current_role_context() -> Tuple[bool, str]:
+    """复制最近使用的助手的上下文到剪贴板（便捷函数）"""
+    handler = get_handler()
+    return handler.copy_current_role_context()
 
 
 # ======================================================================

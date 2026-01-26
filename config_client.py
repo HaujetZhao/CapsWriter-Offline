@@ -32,6 +32,30 @@ class ClientConfig:
         },
     ]
 
+    # LLM 清除历史指令关键词（完全匹配）
+    # 支持一个或多个关键词：clear_history_keywords = ['清除历史', '清除记忆', '清除上下文'] ，留空则关闭此功能：clear_history_keywords = []
+    clear_history_keywords = ['清除历史', '清除记忆', '清除上下文']
+
+    # LLM 撤回上一轮对话的关键词（完全匹配）
+    # 支持一个或多个关键词：revoke_last_turn_keywords = ['撤回', '撤销', '回退'] ，留空则关闭此功能：revoke_last_turn_keywords = []
+    revoke_last_turn_keywords = ['撤回最近对话', '撤销最近对话', '回退最近对话']
+
+    # LLM 显示上一轮对话的关键词（完全匹配）
+    # 支持一个或多个关键词：show_last_turn_keywords = ['显示', '查看', '最近'] ，留空则关闭此功能：show_last_turn_keywords = []
+    show_last_turn_keywords = ['显示最近对话', '查看最近对话']
+
+    # LLM 复制全部上下文的关键词（完全匹配）
+    # 支持一个或多个关键词：copy_all_context_keywords = ['复制', '拷贝'] ，留空则关闭此功能：copy_all_context_keywords = []
+    copy_all_context_keywords = ['复制全部上下文', '拷贝全部上下文']
+
+    # LLM 复制当前角色上下文的关键词（完全匹配）
+    # 支持一个或多个关键词：copy_current_role_context_keywords = ['复制当前角色上下文', '拷贝当前角色上下文'] ，留空则关闭此功能：copy_current_role_context_keywords = []
+    copy_current_role_context_keywords = ['复制当前角色上下文', '拷贝当前角色上下文']
+
+    # LLM 复制结果的关键词（完全匹配）
+    # 支持一个或多个关键词：copy_result_keywords = ['复制结果', '复制输出'] ，留空则关闭此功能：copy_result_keywords = []
+    copy_result_keywords = ['复制最近结果', '复制输出']
+
     threshold    = 0.3          # 快捷键触发阈值（秒）
 
     paste        = False        # 是否以写入剪切板然后模拟 Ctrl-V 粘贴的方式输出结果
