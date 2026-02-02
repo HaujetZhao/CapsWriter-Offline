@@ -48,9 +48,13 @@ class ASRPanel(ttk.Frame):
     
     def _create_ui(self):
         """创建界面"""
-        # 模型选择区域
-        model_frame = ttk.Frame(self)
-        model_frame.pack(fill='x', pady=(0, 12))
+        # 主容器：左右布局
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill='x')
+        
+        # 左侧：模型选择区域
+        model_frame = ttk.Frame(main_frame)
+        model_frame.pack(side='left', fill='both', expand=True)
         
         # 模型单选按钮
         for model_id, model_info in self.MODELS.items():
@@ -73,13 +77,9 @@ class ASRPanel(ttk.Frame):
             )
             desc_label.pack(side='left', padx=(8, 0))
         
-        # 分隔线
-        separator = ttk.Separator(self, orient='horizontal')
-        separator.pack(fill='x', pady=12)
-        
-        # 加速选项区域
-        accel_frame = ttk.Frame(self)
-        accel_frame.pack(fill='x')
+        # 右侧：加速选项区域（垂直排列，顶部对齐）
+        accel_frame = ttk.Frame(main_frame)
+        accel_frame.pack(side='right', anchor='n', padx=(20, 0))
         
         # Vulkan 加速复选框
         self.vulkan_check = ttk.Checkbutton(
@@ -88,7 +88,7 @@ class ASRPanel(ttk.Frame):
             variable=self.vulkan_var,
             command=self._on_vulkan_change
         )
-        self.vulkan_check.pack(side='left')
+        self.vulkan_check.pack(anchor='w', pady=2)
         
         # 强制 FP32 复选框
         self.fp32_check = ttk.Checkbutton(
@@ -97,7 +97,7 @@ class ASRPanel(ttk.Frame):
             variable=self.fp32_var,
             command=self._on_fp32_change
         )
-        self.fp32_check.pack(side='left', padx=(16, 0))
+        self.fp32_check.pack(anchor='w', pady=2)
         
         # 根据 Vulkan 状态更新 FP32 可用性
         self._update_fp32_state()

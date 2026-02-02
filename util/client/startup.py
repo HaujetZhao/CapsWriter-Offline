@@ -20,6 +20,13 @@ def _setup_tray(state, base_dir):
     """
     初始化托盘图标（延迟导入，支持无 GUI 环境）
     """
+    # 检查是否从 GUI 启动（禁用子进程托盘）
+    no_tray_env = os.environ.get('CAPSWRITER_NO_TRAY', '')
+    logger.debug(f"CAPSWRITER_NO_TRAY 环境变量值: '{no_tray_env}'")
+    if no_tray_env == '1':
+        logger.info("检测到 GUI 模式，跳过 Client 托盘图标")
+        return
+    
     try:
         from util.client.ui import enable_min_to_tray
     except ImportError as e:
@@ -64,7 +71,6 @@ def _setup_tray(state, base_dir):
             from util.llm.llm_clipboard import copy_to_clipboard
             copy_to_clipboard(text)
 
-    import os
     icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
     enable_min_to_tray(
         'CapsWriter Client',
@@ -80,6 +86,25 @@ def _setup_tray(state, base_dir):
         ]
     )
     logger.info("托盘图标已启用")
+
+
+def _setup_overlay():
+    """
+    初始化状态悬浮窗系统（在单独线程中运行 Tkinter）
+    """
+    try:
+        from util.client.ui.overlay_bridge import get_overlay_bridge
+        bridge = get_overlay_bridge()
+        bridge.start(
+            position=Config.overlay_position,
+            opacity=Config.overlay_opacity
+        )
+        logger.info("状态悬浮窗系统已启动")
+    except ImportError as e:
+        logger.warning(f"悬浮窗模块导入失败，跳过悬浮窗功能: {e}")
+    except Exception as e:
+        logger.warning(f"悬浮窗初始化失败: {e}")
+
 
 def setup_client_components(base_dir):
     """
@@ -98,10 +123,14 @@ def setup_client_components(base_dir):
     if Config.enable_tray:
         _setup_tray(state, base_dir)
 
-    # 2. UI 提示
+    # 2. 状态悬浮窗（在单独线程中运行 Tkinter）
+    if Config.enable_overlay:
+        _setup_overlay()
+
+    # 3. UI 提示
     TipsDisplay.show_mic_tips()
 
-    # 3. 热词
+    # 4. 热词
     logger.info("正在加载热词...")
     hotword_files = {
         'hot': Path('hot.txt'),
@@ -117,18 +146,18 @@ def setup_client_components(base_dir):
     hotword_manager.load_all()
     hotword_manager.start_file_watcher()
 
-    # 4. LLM
+    # 5. LLM
     logger.info("正在初始化 LLM 系统...")
     init_llm_system()
     logger.info("LLM 系统初始化完成")
 
-    # 5. 音频流
+    # 6. 音频流
     logger.info("正在打开音频流...")
     stream_manager = AudioStreamManager(state)
     state.stream_manager = stream_manager
     stream_manager.open()
 
-    # 6. 快捷键管理器（统一管理键盘和鼠标快捷键）
+    # 7. 快捷键管理器（统一管理键盘和鼠标快捷键）
     # 从 Config.shortcuts 列表创建 Shortcut 对象
     shortcuts = [Shortcut(**sc) for sc in Config.shortcuts]
     logger.info(f"正在初始化快捷键管理器，共 {len(shortcuts)} 个快捷键")
@@ -140,7 +169,7 @@ def setup_client_components(base_dir):
     # 为了兼容性，同时保留旧的 shortcut_handler 引用
     state.shortcut_handler = shortcut_manager
 
-    # 7. UDP 控制（可选）
+    # 8. UDP 控制（可选）
     if Config.udp_control:
         from util.client.udp.udp_control import UDPController
         logger.info(f"正在启用 UDP 控制，端口: {Config.udp_control_port}")

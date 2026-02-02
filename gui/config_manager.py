@@ -92,32 +92,34 @@ class ConfigManager:
                 "vulkan_enable": False,
                 "vulkan_force_fp32": False
             },
-            "shortcuts": [
+            "scenes": [
                 {
+                    "name": "直接打字",
                     "key": "caps_lock",
                     "type": "keyboard",
                     "mode": "hold",
-                    "enabled": True,
-                    "role": None
+                    "processor": "direct",
+                    "enabled": True
                 }
             ],
             "llm": {
-                "source": "local",
-                "local": {
-                    "model": "gemma3:4b"
-                },
-                "cloud": {
-                    "provider": "deepseek",
-                    "api_key": "",
-                    "model": "deepseek-chat"
+                "configs": [],
+                "processors": {
+                    "light": "",
+                    "deep": "",
+                    "translate": ""
                 },
                 "interrupt_key": "escape"
             },
             "overlay": {
                 "enabled": True,
-                "position": "center",
-                "opacity": 0.85,
+                "position": "bottom_center",
+                "opacity": 0.9,
                 "auto_hide_delay": 1.5
+            },
+            "general": {
+                "auto_start_service": False,
+                "minimize_to_tray": True
             }
         }
     
@@ -144,37 +146,47 @@ class ConfigManager:
         if asr.get('model_type') not in valid_models:
             errors.append(f"无效的 ASR 模型: {asr.get('model_type')}")
         
-        # 验证快捷键配置
-        shortcuts = config.get('shortcuts', [])
-        if not isinstance(shortcuts, list):
-            errors.append("shortcuts 必须是数组")
+        # 验证场景配置 (scenes)
+        scenes = config.get('scenes', [])
+        if not isinstance(scenes, list):
+            errors.append("scenes 必须是数组")
         else:
             seen_keys = set()
-            for i, shortcut in enumerate(shortcuts):
-                key = shortcut.get('key')
+            for i, scene in enumerate(scenes):
+                key = scene.get('key')
                 if not key:
-                    errors.append(f"快捷键 {i+1} 缺少 key 字段")
+                    errors.append(f"场景 {i+1} 缺少 key 字段")
                 elif key in seen_keys:
-                    errors.append(f"快捷键重复: {key}")
+                    errors.append(f"场景按键重复: {key}")
                 else:
                     seen_keys.add(key)
                 
-                if shortcut.get('type') not in ('keyboard', 'mouse'):
-                    errors.append(f"快捷键 {i+1} 无效的类型: {shortcut.get('type')}")
+                if scene.get('type') not in ('keyboard', 'mouse'):
+                    errors.append(f"场景 {i+1} 无效的类型: {scene.get('type')}")
                 
-                if shortcut.get('mode') not in ('hold', 'toggle'):
-                    errors.append(f"快捷键 {i+1} 无效的模式: {shortcut.get('mode')}")
+                if scene.get('mode') not in ('hold', 'toggle'):
+                    errors.append(f"场景 {i+1} 无效的模式: {scene.get('mode')}")
         
         # 验证 LLM 配置
         llm = config.get('llm', {})
-        if llm.get('source') not in ('local', 'cloud'):
-            errors.append(f"无效的 LLM 来源: {llm.get('source')}")
+        configs = llm.get('configs', [])
+        if not isinstance(configs, list):
+            errors.append("llm.configs 必须是数组")
         
         # 验证悬浮窗配置
         overlay = config.get('overlay', {})
-        valid_positions = ('top_left', 'top_right', 'bottom_left', 'bottom_right', 'center')
-        if overlay.get('position') not in valid_positions:
-            errors.append(f"无效的悬浮窗位置: {overlay.get('position')}")
+        # 支持内部ID和中文显示值
+        valid_positions = {
+            'bottom_left': 'bottom_left', '左下角': 'bottom_left',
+            'bottom_center': 'bottom_center', '屏幕中下': 'bottom_center',
+            'bottom_right': 'bottom_right', '右下角': 'bottom_right'
+        }
+        current_pos = overlay.get('position')
+        if current_pos not in valid_positions:
+            errors.append(f"无效的悬浮窗位置: {current_pos}")
+        else:
+            # 自动规范化为内部ID
+            overlay['position'] = valid_positions[current_pos]
         
         opacity = overlay.get('opacity', 0.85)
         if not (0.3 <= opacity <= 1.0):
