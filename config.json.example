@@ -1,0 +1,51 @@
+{
+  "version": "1.0",
+  "last_modified": "2026-02-02T14:30:00+08:00",
+  "theme": "light",
+  "asr": {
+    "model_type": "fun_asr_nano",
+    "vulkan_enable": false,
+    "vulkan_force_fp32": false
+  },
+  "shortcuts": [
+    {
+      "key": "caps_lock",
+      "type": "keyboard",
+      "mode": "hold",
+      "enabled": true,
+      "role": null
+    },
+    {
+      "key": "f1",
+      "type": "keyboard",
+      "mode": "hold",
+      "enabled": true,
+      "role": "翻译"
+    },
+    {
+      "key": "x2",
+      "type": "mouse",
+      "mode": "hold",
+      "enabled": true,
+      "role": null
+    }
+  ],
+  "llm": {
+    "source": "local",
+    "local": {
+      "model": "gemma3:4b"
+    },
+    "cloud": {
+      "provider": "deepseek",
+      "api_key": "",
+      "model": "deepseek-chat"
+    },
+    "interrupt_key": "escape"
+  },
+  "overlay": {
+    "enabled": true,
+    "position": "center",
+    "opacity": 0.85,
+    "auto_hide_delay": 1.5
+  }
+}
