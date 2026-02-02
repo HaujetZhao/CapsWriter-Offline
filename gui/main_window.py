@@ -4,6 +4,8 @@ CapsWriter-Offline 配置工具 - 主窗口
 
 import tkinter as tk
 from tkinter import ttk
+import ctypes
+import sys
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 
@@ -42,6 +44,9 @@ class MainWindow(ttkb.Window):
         
         # 创建 UI
         self._create_ui()
+        
+        # 应用标题栏主题（Windows 暮色模式 API）
+        self.after(100, self._apply_titlebar_theme)
     
     def _create_ui(self):
         """创建主界面布局"""
@@ -147,6 +152,30 @@ class MainWindow(ttkb.Window):
         )
         self.status_label.pack(side=RIGHT)
     
+    def _apply_titlebar_theme(self):
+        """应用 Windows 标题栏暗色/亮色模式"""
+        if sys.platform != 'win32':
+            return
+        
+        try:
+            # 获取窗口句柄
+            hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+            
+            # DWMWA_USE_IMMERSIVE_DARK_MODE = 20 (Windows 10 20H1+)
+            # 值为 1 表示暗色，0 表示亮色
+            DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+            dark_mode = ctypes.c_int(1 if self.current_theme == "dark" else 0)
+            
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_USE_IMMERSIVE_DARK_MODE,
+                ctypes.byref(dark_mode),
+                ctypes.sizeof(dark_mode)
+            )
+        except Exception as e:
+            # 在不支持的 Windows 版本上静默失败
+            pass
+    
     def _toggle_theme(self):
         """切换主题"""
         # 切换主题
@@ -155,6 +184,9 @@ class MainWindow(ttkb.Window):
         
         # 应用主题
         self.style.theme_use(new_theme)
+        
+        # 应用标题栏主题
+        self._apply_titlebar_theme()
         
         # 更新按钮图标
         self.theme_btn.configure(text="☀️" if self.current_theme == "light" else "🌙")
