@@ -31,8 +31,8 @@ class MainWindow(ttkb.Window):
         
         # 窗口设置
         self.title("CapsWriter-Offline 配置工具")
-        self.geometry("720x800")
-        self.minsize(640, 600)
+        self.geometry("720x860")
+        self.minsize(640, 700)
         
         # 尝试设置图标
         try:
@@ -53,7 +53,7 @@ class MainWindow(ttkb.Window):
         self._create_title_bar(main_container)
         
         # ASR 模型设置区域
-        self.asr_frame = ttk.LabelFrame(main_container, text="🎙️ ASR 模型设置", padding=0)
+        self.asr_frame = ttk.LabelFrame(main_container, text="🎙 ASR 模型设置", padding=0)
         self.asr_frame.pack(fill=X, pady=8)
         self.asr_panel = ASRPanel(
             self.asr_frame,
@@ -64,7 +64,7 @@ class MainWindow(ttkb.Window):
         
         # 快捷键设置区域
         self.shortcut_frame = self._create_section(
-            main_container, "⌨️ 快捷键设置", "快捷键配置面板占位"
+            main_container, "⌨ 快捷键设置", "快捷键配置面板占位"
         )
         
         # LLM 设置区域

@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "last_modified": "2026-02-02T15:01:51.145932",
+  "theme": "dark",
+  "asr": {
+    "model_type": "fun_asr_nano",
+    "vulkan_enable": true,
+    "vulkan_force_fp32": false
+  },
+  "shortcuts": [
+    {
+      "key": "caps_lock",
+      "type": "keyboard",
+      "mode": "hold",
+      "enabled": true,
+      "role": null
+    }
+  ],
+  "llm": {
+    "source": "local",
+    "local": {
+      "model": "gemma3:4b"
+    },
+    "cloud": {
+      "provider": "deepseek",
+      "api_key": "",
+      "model": "deepseek-chat"
+    },
+    "interrupt_key": "escape"
+  },
+  "overlay": {
+    "enabled": true,
+    "position": "center",
+    "opacity": 0.85,
+    "auto_hide_delay": 1.5
+  }
+}
