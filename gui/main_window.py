@@ -8,6 +8,7 @@ import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 
 from gui.config_manager import ConfigManager
+from gui.panels.asr_panel import ASRPanel
 
 
 class MainWindow(ttkb.Window):
@@ -52,9 +53,14 @@ class MainWindow(ttkb.Window):
         self._create_title_bar(main_container)
         
         # ASR 模型设置区域
-        self.asr_frame = self._create_section(
-            main_container, "🎙️ ASR 模型设置", "ASR 配置面板占位"
+        self.asr_frame = ttk.LabelFrame(main_container, text="🎙️ ASR 模型设置", padding=0)
+        self.asr_frame.pack(fill=X, pady=8)
+        self.asr_panel = ASRPanel(
+            self.asr_frame,
+            self.config.get('asr', {}),
+            on_change=self._on_config_change
         )
+        self.asr_panel.pack(fill=X)
         
         # 快捷键设置区域
         self.shortcut_frame = self._create_section(
@@ -157,9 +163,17 @@ class MainWindow(ttkb.Window):
         self.config['theme'] = self.current_theme
         ConfigManager.save(self.config)
     
+    def _on_config_change(self):
+        """配置变更回调"""
+        # 更新 ASR 配置
+        self.config['asr'] = self.asr_panel.get_config()
+        self.status_label.configure(text="配置已修改（未保存）", foreground="orange")
+    
     def _on_save(self):
         """保存配置按钮点击事件"""
         try:
+            # 收集所有面板配置
+            self.config['asr'] = self.asr_panel.get_config()
             ConfigManager.save(self.config)
             self.status_label.configure(text="✅ 配置已保存", foreground="green")
         except Exception as e:
