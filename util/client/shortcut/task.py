@@ -7,7 +7,7 @@
 
 import asyncio
 import time
-from threading import Event
+from threading import Event, Timer
 from typing import TYPE_CHECKING, Optional
 
 from . import logger
@@ -17,6 +17,20 @@ if TYPE_CHECKING:
     from util.client.shortcut.shortcut_config import Shortcut
     from util.client.state import ClientState
     from util.client.audio.recorder import AudioRecorder
+
+# 延迟导入悬浮窗桥接（避免循环依赖）
+_overlay_bridge = None
+
+def _get_overlay_bridge():
+    """获取悬浮窗桥接实例（延迟导入）"""
+    global _overlay_bridge
+    if _overlay_bridge is None:
+        try:
+            from util.client.ui.overlay_bridge import get_overlay_bridge
+            _overlay_bridge = get_overlay_bridge()
+        except ImportError:
+            pass
+    return _overlay_bridge
 
 
 
@@ -56,12 +70,45 @@ class ShortcutTask:
         # 录音状态动画
         self._status = Status('开始录音', spinner='point')
 
+        # 延迟启动状态（hold_mode 用）
+        self._pending_launch: bool = False
+        self._launch_timer: Timer | None = None
+
     def _get_recorder(self) -> 'AudioRecorder':
         """获取 AudioRecorder 实例"""
         if self._recorder_class is None:
             from util.client.audio.recorder import AudioRecorder
             self._recorder_class = AudioRecorder
         return self._recorder_class(self.state)
+
+    def start_pending_launch(self) -> None:
+        """启动延迟启动定时器（hold_mode 用）"""
+        if self._pending_launch or self.is_recording:
+            return
+        
+        self._pending_launch = True
+        self._launch_timer = Timer(self.threshold, self._on_launch_timer)
+        self._launch_timer.daemon = True
+        self._launch_timer.start()
+        logger.debug(f"[{self.shortcut.key}] 开始计时，{self.threshold}s 后启动录音")
+
+    def _on_launch_timer(self) -> None:
+        """定时器回调：启动录音"""
+        if self._pending_launch and not self.is_recording:
+            self._pending_launch = False
+            self.launch()
+
+    def cancel_pending_launch(self) -> bool:
+        """取消待启动状态，返回是否成功取消"""
+        if not self._pending_launch:
+            return False
+        
+        self._pending_launch = False
+        if self._launch_timer:
+            self._launch_timer.cancel()
+            self._launch_timer = None
+        logger.debug(f"[{self.shortcut.key}] 取消延迟启动（单击）")
+        return True
 
     def launch(self) -> None:
         """启动录音任务"""
@@ -70,6 +117,11 @@ class ShortcutTask:
         # 记录开始时间
         self.recording_start_time = time.time()
         self.is_recording = True
+        
+        # 设置当前活动的 LLM 角色（从快捷键配置读取）
+        self.state.current_role = self.shortcut.role
+        if self.shortcut.role:
+            logger.info(f"[{self.shortcut.key}] 使用 LLM 角色: {self.shortcut.role}")
 
         # 将开始标志放入队列
         asyncio.run_coroutine_threadsafe(
@@ -82,6 +134,11 @@ class ShortcutTask:
 
         # 打印动画：正在录音
         self._status.start()
+        
+        # 显示悬浮窗
+        bridge = _get_overlay_bridge()
+        if bridge:
+            bridge.show('recording')
 
         # 启动识别任务
         recorder = self._get_recorder()
@@ -97,6 +154,11 @@ class ShortcutTask:
         self.is_recording = False
         self.state.stop_recording()
         self._status.stop()
+        
+        # 隐藏悬浮窗
+        bridge = _get_overlay_bridge()
+        if bridge:
+            bridge.hide()
 
         self.task.cancel()
         self.task = None
@@ -108,6 +170,11 @@ class ShortcutTask:
         self.is_recording = False
         self.state.stop_recording()
         self._status.stop()
+        
+        # 显示悬浮窗：处理中
+        bridge = _get_overlay_bridge()
+        if bridge:
+            bridge.show('processing')
 
         asyncio.run_coroutine_threadsafe(
             self.state.queue_in.put({

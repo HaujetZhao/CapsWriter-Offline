@@ -22,6 +22,7 @@ from util.llm.llm_get_selection import get_selected_text, record_selection_usage
 from util.llm.llm_process_text import LLMResult
 from . import logger
 from util.hotword import get_hotword_manager
+from config import reload_config
 
 
 # ======================================================================
@@ -68,6 +69,9 @@ class LLMHandler:
     def reload_roles(self):
         """重新加载所有角色（保留历史记录）"""
         logger.info("重新加载角色配置")
+        # 1. 先刷新全局配置（从 config.json）
+        reload_config()
+
         # 保存旧的历史记录
         old_contexts = {}
         for role_name, ctx in self.context_managers.items():
@@ -157,7 +161,7 @@ class LLMHandler:
 
         return result_text, token_count, gen_time
 
-    async def process_and_output(self, text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
+    async def process_and_output(self, text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None, role_name: str = None) -> Optional[LLMResult]:
         """
         统一入口：处理输入文本并根据配置执行输出（打字或弹屏）
         
@@ -166,18 +170,48 @@ class LLMHandler:
             return_result: 是否返回 LLMResult 对象
             paste: 是否强制使用粘贴模式（None 则遵循配置）
             matched_hotwords: 潜在热词列表
+            role_name: 指定角色名称（来自场景绑定）。优先级：前缀匹配 > role_name > 默认
         """
         import time
+        import re
         from util.llm.llm_output_typing import handle_typing_mode, output_text
         from util.llm.llm_output_toast import handle_toast_mode
         from util.client.output.text_output import TextOutput
 
         start_time = time.time()
         
-        # 1. 角色检测
+        # === 预过滤：静音标记和纯语气词 ===
+        # 这些输入无需调用 LLM，直接返回空结果
+        stripped_text = text.strip()
+        
+        # 匹配 /sil 或仅含语气词（嗯、啊、呃、哦、哼、嘿、唉、呀、噢、额）
+        FILLER_PATTERN = re.compile(r'^[嗯啊呃哦哼嘿唉呀噢额、，。！？\s]*$')
+        
+        if stripped_text == '/sil' or (stripped_text and FILLER_PATTERN.match(stripped_text)):
+            logger.debug(f"预过滤：检测到静音/语气词输入 [{repr(stripped_text)}]，返回空结果")
+            if return_result:
+                return LLMResult(result='', role_name=None, processed=True, 
+                                 token_count=0, polish_time=0, input_text=text)
+            return None
+        
+        # 1. 角色检测：先用前缀匹配
         role_config, content = self.detect_role(text)
-
-        # 2. 如果不匹配任何需要处理的角色（或者默认角色被禁用）
+        
+        # 2. 如果前缀未匹配，但指定了 role_name，尝试查找该角色
+        if role_config is None and role_name:
+            # 尝试按 role_name 查找角色
+            roles = self.role_loader.get_roles()
+            for name, config in roles.items():
+                if config.name == role_name or name == role_name:
+                    role_config = config
+                    content = text  # 没有前缀需要剥离
+                    logger.info(f"场景绑定角色: {role_name}")
+                    break
+            
+            if role_config is None:
+                logger.warning(f"未找到场景绑定的角色: {role_name}，将使用默认角色")
+        
+        # 3. 如果仍然没有角色配置，使用原始逻辑
         if not role_config:
             result_text = TextOutput.strip_punc(text)
             await output_text(result_text, paste)

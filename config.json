@@ -1,11 +1,69 @@
 {
   "version": "1.0",
-  "last_modified": "2026-02-02T15:01:51.145932",
-  "theme": "dark",
+  "last_modified": "2026-02-05T15:30:01.963497",
+  "theme": "light",
   "asr": {
     "model_type": "fun_asr_nano",
     "vulkan_enable": true,
     "vulkan_force_fp32": false
+  },
+  "scenes": [
+    {
+      "name": "直出",
+      "key": "shift+win+f23",
+      "type": "keyboard",
+      "mode": "hold",
+      "processor": "润色",
+      "enabled": true,
+      "threshold": 0.3
+    },
+    {
+      "name": "润色",
+      "key": "caps_lock",
+      "type": "keyboard",
+      "mode": "hold",
+      "processor": "润色",
+      "enabled": true
+    },
+    {
+      "name": "翻译",
+      "key": "space",
+      "type": "keyboard",
+      "mode": "hold",
+      "processor": "翻译",
+      "enabled": true
+    }
+  ],
+  "llm": {
+    "configs": [
+      {
+        "provider": "ollama",
+        "base_url": "http://localhost:11434/v1",
+        "api_key": "",
+        "model": "minicpm-v:latest"
+      },
+      {
+        "provider": "ollama",
+        "base_url": "http://localhost:11434/v1",
+        "api_key": "",
+        "model": "qwen2.5:7b"
+      }
+    ],
+    "processors": {
+      "润色": "ollama / qwen2.5:7b",
+      "翻译": "ollama / qwen2.5:7b"
+    },
+    "interrupt_key": "escape"
+  },
+  "overlay": {
+    "enabled": true,
+    "position": "bottom_center",
+    "opacity": 0.6,
+    "auto_hide_delay": 5.0
+  },
+  "general": {
+    "auto_start_service": true,
+    "minimize_to_tray": true
   },
   "shortcuts": [
     {
@@ -15,23 +73,5 @@
       "enabled": true,
       "role": null
     }
-  ],
-  "llm": {
-    "source": "local",
-    "local": {
-      "model": "gemma3:4b"
-    },
-    "cloud": {
-      "provider": "deepseek",
-      "api_key": "",
-      "model": "deepseek-chat"
-    },
-    "interrupt_key": "escape"
-  },
-  "overlay": {
-    "enabled": true,
-    "position": "center",
-    "opacity": 0.85,
-    "auto_hide_delay": 1.5
-  }
+  ]
 }

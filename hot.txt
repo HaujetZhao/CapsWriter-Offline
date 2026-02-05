@@ -7,6 +7,8 @@
 如臂使指
 热词
 音素
+编译
+纠错
 
 # ==================== 游资 ====================
 金开大道
@@ -23,6 +25,8 @@
 呼家楼
 毛老板
 作手新一
+街机
+掌机
 
 # ==================== 股票/公司 ====================
 拓维信息
@@ -62,6 +66,16 @@ TB
 PB
 PDF
 DPI
+AYANEO
+Flatter
+Spec
+Task
+Hot Restart
+Settings
+Sidebar
+Notebooklm
+Grid
+
 
 #AI
 Sonnet
@@ -70,11 +84,19 @@ int4
 int8
 fp16
 fp32
-Antigravity
 
+OpenAI
+Opus
+ChatGPT
 
 #IDE
 VS Code
+Claude Code
+OpenCode
+Antigravity
+IDE
+CLI
+Claude
 
 #阿里
 Alibaba

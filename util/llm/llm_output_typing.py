@@ -74,10 +74,10 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
                     trailing = full_current
 
                 if content_to_write:
-                    # 使用 keyboard.write 替代 pynput controller.type
-                    # 避免与中文输入法冲突
-                    logger.debug(f"output_text: keyboard.write '{content_to_write}'")
-                    keyboard.write(content_to_write)
+                    # 使用 customized write 处理软换行
+                    # 避免与中文输入法冲突，同时防止回车直接发送
+                    logger.debug(f"output_text: write '{content_to_write}'")
+                    write_with_soft_newlines(content_to_write)
                     pending_buffer = trailing
                 else:
                     pending_buffer = trailing
@@ -94,8 +94,8 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
             if not chunks:
                 # 降级
                 final_text = TextOutput.strip_punc(content)
-                logger.debug(f"output_text: keyboard.write '{final_text}' (降级)")
-                keyboard.write(final_text)
+                logger.debug(f"output_text: write '{final_text}' (降级)")
+                write_with_soft_newlines(final_text)
                 return (final_text, 0, 0.0)
             
             # 注意：末尾的 pending_buffer 包含的是垃圾字符，按设计要求不输出
@@ -113,6 +113,26 @@ async def output_text(text: str, paste: bool = None):
     if paste:
         await paste_text(text, restore_clipboard=Config.restore_clip)
     else:
-        # 使用 keyboard.write 替代 pynput controller.type
-        logger.debug(f"output_text: keyboard.write '{text}'")
-        keyboard.write(text)
+        # 使用 write_with_soft_newlines 替代 keyboard.write
+        logger.debug(f"output_text: write '{text}'")
+        write_with_soft_newlines(text)
+
+
+def write_with_soft_newlines(text: str):
+    """
+    模拟打字输出，将换行符转换为 Shift+Enter (软换行)
+    这样可以保留格式，同时避免在即时通讯软件中直接发送消息
+    """
+    if not text:
+        return
+        
+    parts = text.split('\n')
+    count = len(parts)
+    
+    for i, part in enumerate(parts):
+        if part:
+            keyboard.write(part)
+        
+        # 如果不是最后一部分，说明后面有一个 \n，输出软换行
+        if i < count - 1:
+            keyboard.send('shift+enter')

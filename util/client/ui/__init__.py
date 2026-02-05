@@ -15,6 +15,7 @@ util.ui.set_ui_logger(logger)
 
 # 2. 导出客户端特有的 UI 组件
 from util.client.ui.tips import TipsDisplay
+from util.client.ui.overlay_bridge import OverlayBridge, get_overlay_bridge
 
 # 3. 重新导出通用 UI 组件 (Re-export)
 # 这样客户端其他模块只需 from util.client.ui import ... 即可
@@ -36,6 +37,8 @@ from util.ui.context_menu_handler import on_edit_context
 __all__ = [
     'logger',
     'TipsDisplay',
+    'OverlayBridge',
+    'get_overlay_bridge',
     'toast',
     'toast_stream',
     'ToastMessage',
@@ -46,3 +49,4 @@ __all__ = [
     'on_add_hotword',
     'on_edit_context',
 ]
+

@@ -32,10 +32,10 @@ class ShortcutEventHandler:
 
     def handle_keydown(self, key_name, task) -> None:
         """处理按键按下事件"""
-        # 长按模式
+        # 长按模式：使用延迟启动机制
         if task.shortcut.hold_mode:
-            if not task.is_recording:
-                task.launch()
+            if not task.is_recording and not task._pending_launch:
+                task.start_pending_launch()
             return
 
         # 单击模式
@@ -58,15 +58,16 @@ class ShortcutEventHandler:
             return
 
         # 长按模式
-        if not task.is_recording:
+        # 检查是否在 pending 状态（未达到 threshold）
+        if task.cancel_pending_launch():
+            # 单击，未达到 threshold，补发按键
+            if task.shortcut.suppress:
+                logger.debug(f"[{key_name}] 安排异步补发按键（单击取消）")
+                self.pool.submit(self.emulator.emulate_key, key_name)
             return
 
-        duration = time.time() - task.recording_start_time
-        logger.debug(f"[{key_name}] 松开，持续时间: {duration:.2f}s")
-
-        if duration < task.threshold:
-            self._handle_short_press(key_name, task)
-        else:
+        # 已经在录音中，完成录音
+        if task.is_recording:
             task.finish()
 
     def _handle_short_press(self, key_name, task) -> None:

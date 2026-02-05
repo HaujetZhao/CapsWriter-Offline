@@ -1,0 +1,73 @@
+{
+  "version": "1.0",
+  "last_modified": "2026-02-02T23:20:18.049156",
+  "theme": "light",
+  "asr": {
+    "model_type": "fun_asr_nano",
+    "vulkan_enable": true,
+    "vulkan_force_fp32": false
+  },
+  "scenes": [
+    {
+      "name": "直出",
+      "key": "caps_lock",
+      "type": "keyboard",
+      "mode": "hold",
+      "processor": "直出",
+      "enabled": true
+    },
+    {
+      "name": "润色",
+      "key": "tab",
+      "type": "keyboard",
+      "mode": "hold",
+      "processor": "润色",
+      "enabled": true
+    },
+    {
+      "name": "翻译",
+      "key": "esc",
+      "type": "keyboard",
+      "mode": "hold",
+      "processor": "翻译",
+      "enabled": true
+    }
+  ],
+  "llm": {
+    "configs": [
+      {
+        "provider": "openai",
+        "base_url": "http://127.0.0.1:8045/v1/",
+        "api_key": "sk-fb6e70d98e8d4057a9590885c15e4779",
+        "model": "gpt-4o"
+      }
+    ],
+    "processors": {
+      "润色": "openai / gpt-4o",
+      "翻译": "openai / gpt-4o"
+    },
+    "interrupt_key": "escape"
+  },
+  "overlay": {
+    "enabled": true,
+    "position": "右下角",
+    "opacity": 0.85,
+    "auto_hide_delay": 1.5
+  },
+  "shortcuts": [
+    {
+      "key": "caps_lock",
+      "type": "keyboard",
+      "mode": "hold",
+      "enabled": true,
+      "role": null
+    },
+    {
+      "key": "",
+      "type": "mouse",
+      "mode": "hold",
+      "enabled": true,
+      "role": null
+    }
+  ]
+}

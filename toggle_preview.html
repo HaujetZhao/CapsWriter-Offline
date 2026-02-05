@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme Toggle - 尺寸和图标调整</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei UI', sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            align-items: center;
+        }
+        h1 { font-size: 18px; color: #333; }
+        .preview-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 500px;
+        }
+        h2 { margin-bottom: 16px; font-size: 14px; color: #666; }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .option-item {
+            text-align: center;
+            padding: 12px 8px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .option-item:hover { border-color: #2196F3; background: #f0f7ff; }
+        .option-item.selected { border-color: #2196F3; background: #e3f2fd; }
+        .option-icon { font-size: 24px; margin-bottom: 4px; }
+        .option-name { font-size: 11px; color: #666; }
+        
+        /* Toggle 样式 - 更大尺寸 */
+        .theme-toggle { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        
+        .toggle-track {
+            width: 88px;
+            height: 40px;
+            border-radius: 20px;
+            background: #E8E8E8;
+            display: flex;
+            align-items: center;
+            padding: 4px;
+        }
+        
+        .toggle-option {
+            width: 38px;
+            height: 32px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        
+        .toggle-option.active { background: #2196F3; }
+        .toggle-option.active .icon { filter: brightness(0) invert(1); }
+        .toggle-option.inactive { background: transparent; }
+        .toggle-option.inactive .icon { filter: brightness(0); opacity: 0.5; }
+        
+        .size-info { text-align: center; margin-top: 12px; font-size: 12px; color: #999; }
+    </style>
+</head>
+<body>
+    <h1>选择暗色模式图标（纯色/简洁）</h1>
+    
+    <div class="preview-card">
+        <h2>纯色/简洁图标选项</h2>
+        <div class="options-grid">
+            <div class="option-item" onclick="setDarkIcon('🌑')">
+                <div class="option-icon">🌑</div>
+                <div class="option-name">新月</div>
+            </div>
+            <div class="option-item" onclick="setDarkIcon('🔅')">
+                <div class="option-icon">🔅</div>
+                <div class="option-name">低亮度</div>
+            </div>
+            <div class="option-item" onclick="setDarkIcon('◐')">
+                <div class="option-icon">◐</div>
+                <div class="option-name">半月</div>
+            </div>
+            <div class="option-item" onclick="setDarkIcon('●')">
+                <div class="option-icon">●</div>
+                <div class="option-name">实心圆</div>
+            </div>
+            <div class="option-item" onclick="setDarkIcon('☽')">
+                <div class="option-icon">☽</div>
+                <div class="option-name">月牙符号</div>
+            </div>
+            <div class="option-item" onclick="setDarkIcon('🌙')">
+                <div class="option-icon">🌙</div>
+                <div class="option-name">月牙emoji</div>
+            </div>
+            <div class="option-item" onclick="setDarkIcon('⬤')">
+                <div class="option-icon">⬤</div>
+                <div class="option-name">黑圆</div>
+            </div>
+            <div class="option-item" onclick="setDarkIcon('★')">
+                <div class="option-icon">★</div>
+                <div class="option-name">星星</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="preview-card">
+        <h2>效果预览（更大尺寸：88x40）</h2>
+        <div class="theme-toggle" onclick="toggleTheme()">
+            <div class="toggle-track">
+                <div class="toggle-option active" id="light-option">
+                    <span class="icon">🔆</span>
+                </div>
+                <div class="toggle-option inactive" id="dark-option">
+                    <span class="icon" id="dark-icon">🌑</span>
+                </div>
+            </div>
+        </div>
+        <p class="size-info">点击切换主题 | 当前暗色图标: <span id="icon-name">🌑 新月</span></p>
+    </div>
+    
+    <script>
+        let isDark = false;
+        function setDarkIcon(icon) {
+            document.getElementById('dark-icon').textContent = icon;
+            document.getElementById('icon-name').textContent = icon;
+            document.querySelectorAll('.option-item').forEach(el => el.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+        }
+        function toggleTheme() {
+            isDark = !isDark;
+            const light = document.getElementById('light-option');
+            const dark = document.getElementById('dark-option');
+            if (isDark) {
+                light.classList.remove('active'); light.classList.add('inactive');
+                dark.classList.remove('inactive'); dark.classList.add('active');
+            } else {
+                light.classList.add('active'); light.classList.remove('inactive');
+                dark.classList.add('inactive'); dark.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>

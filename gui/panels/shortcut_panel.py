@@ -522,6 +522,29 @@ class SceneEditDialog(tk.Toplevel):
             rb = ttk.Radiobutton(mode_container, text=text, variable=self.mode_var, value=value)
             rb.pack(anchor='w', pady=2)
         
+        # 启动延时控件（仅长按模式有效）
+        threshold_frame = ttk.Frame(col2)
+        threshold_frame.pack(anchor='w', pady=(12, 0))
+        
+        ttk.Label(threshold_frame, text="启动延时", foreground="#666").pack(anchor='w')
+        
+        # 滑块容器
+        slider_container = ttk.Frame(threshold_frame)
+        slider_container.pack(anchor='w', pady=(4, 0))
+        
+        self.threshold_var = tk.DoubleVar(value=0.3)
+        self.threshold_scale = ttk.Scale(
+            slider_container, 
+            from_=0.1, to=1.0, 
+            variable=self.threshold_var,
+            command=self._on_threshold_change,
+            length=100
+        )
+        self.threshold_scale.pack(side='left')
+        
+        self.threshold_label = ttk.Label(slider_container, text="0.3 秒", width=6)
+        self.threshold_label.pack(side='left', padx=(4, 0))
+        
         # --- 第三列: 处理方式 ---
         col3 = ttk.Frame(settings_frame)
         col3.grid(row=0, column=2, sticky='nw')
@@ -568,12 +591,27 @@ class SceneEditDialog(tk.Toplevel):
         
         # 设置快捷键显示
         self._update_key_display()
+        
+        # 加载 threshold
+        threshold = self.scene.get('threshold', 0.3)
+        if threshold is None:
+            threshold = 0.3
+        self.threshold_var.set(threshold)
+        self._on_threshold_change(threshold)
     
     def _update_key_display(self):
         """更新快捷键显示"""
         key = self.scene.get('key', 'caps_lock')
         display = self.KEY_DISPLAY_MAP.get(key, key.upper() if len(key) <= 3 else key.title())
         self.key_display_var.set(display)
+    
+    def _on_threshold_change(self, value):
+        """滑块值变化回调"""
+        try:
+            val = float(value)
+            self.threshold_label.configure(text=f"{val:.1f} 秒")
+        except (ValueError, AttributeError):
+            pass
     
     def _show_key_picker(self):
         """显示快捷键选择对话框"""
@@ -594,11 +632,11 @@ class SceneEditDialog(tk.Toplevel):
             messagebox.showwarning("警告", "请输入场景名称", parent=self)
             return
         
-        # 收集配置
         self.scene['name'] = name
         self.scene['enabled'] = self.enabled_var.get()
         self.scene['mode'] = self.mode_var.get()
         self.scene['processor'] = self.processor_var.get()
+        self.scene['threshold'] = round(self.threshold_var.get(), 2)
         
         # 确保有 key 字段
         if 'key' not in self.scene:

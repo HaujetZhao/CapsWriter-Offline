@@ -15,6 +15,8 @@ import time
 import wave
 from os import makedirs
 from pathlib import Path
+import subprocess
+import sys
 from subprocess import DEVNULL, PIPE, Popen
 from typing import Optional, Tuple, Union
 
@@ -91,7 +93,13 @@ class AudioFileManager:
                 '-b:a', '192k',
                 str(file_path),
             ]
-            file_handle = Popen(ffmpeg_command, stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL)
+            # Windows 上隐藏控制台窗口
+            startupinfo = None
+            if sys.platform == 'win32':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+            file_handle = Popen(ffmpeg_command, stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL, startupinfo=startupinfo)
             logger.debug(f"创建 MP3 文件: {file_path}")
         else:
             # 使用 wave 模块输出 WAV

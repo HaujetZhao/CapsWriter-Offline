@@ -7,15 +7,15 @@
 
 import os
 import asyncio
-from rich.console import Console
 
 from config import ClientConfig as Config, __version__
 from . import logger
 from util.common.lifecycle import lifecycle
+from util.common.safe_console import create_safe_console
 from util.server.state import get_state
 from util.ui.tray import stop_tray
 
-console = Console(highlight=False)
+console = create_safe_console(highlight=False)
 
 # 计算项目根目录: util/server/cleanup.py -> util/server -> util -> root
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -64,11 +64,21 @@ def cleanup_server_resources():
     stop_tray()
 
     logger.info("服务端资源清理完成")
-    console.print('[green4]再见！')
+    try:
+        console.print('[green4]再见！')
+    except (UnicodeEncodeError, OSError):
+        pass  # GUI 模式无控制台，忽略
 
 
 def setup_tray():
     """启用托盘图标"""
+    # 检查是否从 GUI 启动（禁用子进程托盘）
+    no_tray_env = os.environ.get('CAPSWRITER_NO_TRAY', '')
+    logger.debug(f"CAPSWRITER_NO_TRAY 环境变量值: '{no_tray_env}'")
+    if no_tray_env == '1':
+        logger.info("检测到 GUI 模式，跳过 Server 托盘图标")
+        return
+    
     if Config.enable_tray:
         from util.server.ui import enable_min_to_tray
         icon_path = os.path.join(BASE_DIR, 'assets', 'icon.ico')
@@ -78,9 +88,12 @@ def setup_tray():
 
 def print_banner():
     """打印启动信息"""
-    console.line(2)
-    console.rule('[bold #d55252]CapsWriter Offline Server'); console.line()
-    console.print(f'版本：[bold green]{__version__}', end='\n\n')
-    console.print(f'项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
-    console.print(f'当前基文件夹：[cyan underline]{BASE_DIR}', end='\n\n')
-    console.print(f'绑定的服务地址：[cyan underline]{Config.addr}:{Config.port}', end='\n\n')
+    try:
+        console.line(2)
+        console.rule('[bold #d55252]CapsWriter Offline Server'); console.line()
+        console.print(f'版本：[bold green]{__version__}', end='\n\n')
+        console.print(f'项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
+        console.print(f'当前基文件夹：[cyan underline]{BASE_DIR}', end='\n\n')
+        console.print(f'绑定的服务地址：[cyan underline]{Config.addr}:{Config.port}', end='\n\n')
+    except (UnicodeEncodeError, OSError):
+        pass  # GUI 模式无控制台，忽略

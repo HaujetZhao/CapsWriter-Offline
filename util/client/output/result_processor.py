@@ -309,7 +309,8 @@ class ResultProcessor:
                 text,
                 return_result=True,
                 paste=paste,
-                matched_hotwords=potential_hotwords  # 传递上下文热词给 LLM
+                matched_hotwords=potential_hotwords,  # 传递上下文热词给 LLM
+                role_name=self.state.current_role     # 传递场景绑定的角色
             )
         else:
             await self._text_output.output(text, paste=paste)
@@ -350,6 +351,15 @@ class ResultProcessor:
         # 检测修饰键状态（调试用）
         self._log_modifier_key_state()
 
+        # 隐藏悬浮窗（识别完成）
+        try:
+            from util.client.ui.overlay_bridge import get_overlay_bridge
+            bridge = get_overlay_bridge()
+            if bridge:
+                bridge.show('done')  # 显示完成状态，会自动隐藏
+        except ImportError:
+            pass
+
         console.line()
     
     def _cleanup(self) -> None:
@@ -361,3 +371,4 @@ class ResultProcessor:
                     logger.debug("WebSocket 连接已清理")
             except Exception:
                 self.state.websocket = None
+

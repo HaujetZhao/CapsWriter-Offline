@@ -56,9 +56,17 @@ class LLMFileWatcher(FileSystemEventHandler):
 
         # 需要监控的配置文件及其处理函数
         # 注意：hot-rectify.txt 由热词 watchdog 统一管理，不在 LLM watcher 中处理
-        self._watched_files = {}
+        self._watched_files = {
+            'config.json': self._on_config_changed,
+        }
 
         logger.debug("LLMFileWatcher 初始化完成")
+
+    def _on_config_changed(self):
+        """config.json 变更处理"""
+        logger.info("检测到 config.json 变化，调度重载...")
+        # config.json 变化等同于所有角色可能变化
+        self._schedule_reload(WatcherConstants.RELOAD_ALL_MARKER)
 
     def _is_llm_py_file(self, file_path: str) -> bool:
         """检查是否是 LLM 目录下的有效 .py 文件"""

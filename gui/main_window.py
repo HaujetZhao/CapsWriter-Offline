@@ -51,11 +51,8 @@ class MainWindow(ttkb.Window):
         self.title("CapsWriter-Offline 配置工具")
         self.minsize(640, 600)  # 最小尺寸，内容自适应
         
-        # 尝试设置图标
-        try:
-            self.iconbitmap("assets/icon.ico")
-        except:
-            pass  # 图标不存在时忽略
+        # 设置窗口图标（同时使用 iconbitmap 和 wm_iconphoto 确保任务栏图标正确显示）
+        self._set_window_icon()
         
         # 创建 UI
         self._create_ui()
@@ -662,6 +659,71 @@ class MainWindow(ttkb.Window):
         except ImportError:
             # pystray 不可用，直接关闭
             self._exit_app()
+    
+    def _set_window_icon(self):
+        """设置窗口图标（解决 Windows 任务栏图标首次启动显示异常的问题）"""
+        from PIL import Image, ImageTk
+        
+        # 尝试多个可能的图标路径
+        possible_paths = [
+            "assets/icon.ico",
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'icon.ico'),
+        ]
+        
+        # 如果是 PyInstaller 打包的 EXE，添加 _internal 路径
+        if getattr(sys, 'frozen', False):
+            exe_dir = os.path.dirname(sys.executable)
+            possible_paths.insert(0, os.path.join(exe_dir, '_internal', 'assets', 'icon.ico'))
+            possible_paths.insert(0, os.path.join(exe_dir, 'assets', 'icon.ico'))
+        
+        icon_path = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                icon_path = path
+                break
+        
+        if icon_path:
+            try:
+                # 1. 使用 iconbitmap 设置窗口左上角图标
+                self.iconbitmap(icon_path)
+                
+                # 2. 使用 wm_iconphoto 设置任务栏图标（解决首次启动显示异常）
+                # 需要将 ICO 转换为 PhotoImage 格式
+                icon_image = Image.open(icon_path)
+                # ICO 文件可能包含多个尺寸，选择合适的尺寸
+                if hasattr(icon_image, 'n_frames') and icon_image.n_frames > 1:
+                    # 尝试获取最大尺寸的图像
+                    best_size = 0
+                    best_frame = 0
+                    for i in range(icon_image.n_frames):
+                        icon_image.seek(i)
+                        size = icon_image.size[0] * icon_image.size[1]
+                        if size > best_size:
+                            best_size = size
+                            best_frame = i
+                    icon_image.seek(best_frame)
+                
+                # 转换为 RGBA 格式
+                if icon_image.mode != 'RGBA':
+                    icon_image = icon_image.convert('RGBA')
+                
+                # 创建多个尺寸的图标（Windows 任务栏需要）
+                icon_sizes = [16, 32, 48, 64, 128, 256]
+                photo_images = []
+                for size in icon_sizes:
+                    resized = icon_image.resize((size, size), Image.Resampling.LANCZOS)
+                    photo = ImageTk.PhotoImage(resized)
+                    photo_images.append(photo)
+                
+                # 保存引用防止垃圾回收
+                self._icon_photos = photo_images
+                
+                # 设置任务栏图标
+                self.wm_iconphoto(True, *photo_images)
+                
+            except Exception as e:
+                # 图标加载失败时静默忽略
+                pass
     
     def _create_icon_image(self):
         """创建托盘图标图像"""

@@ -10,10 +10,11 @@ from multiprocessing import Queue
 from typing import Dict, List, Optional
 
 import websockets
-from rich.console import Console
+
+from util.common.safe_console import create_safe_console
 
 # Rich console 用于控制台输出（服务端统一使用此实例）
-console = Console(highlight=False)
+console = create_safe_console(highlight=False)
 
 
 class Cosmic:

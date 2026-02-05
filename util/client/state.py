@@ -19,18 +19,21 @@ if TYPE_CHECKING:
     import sounddevice as sd
     from websockets.legacy.client import WebSocketClientProtocol
 
-from rich.console import Console
 from rich.theme import Theme
 
 from . import logger
+from util.common.safe_console import is_gui_mode, create_safe_console
 
 
 # 配置 Rich console
+# 在 GUI 模式下使用 quiet=True 禁用所有输出，避免编码错误
 _theme = Theme({
     'markdown.code': 'cyan',
     'markdown.item.number': 'yellow'
 })
-console = Console(highlight=False, soft_wrap=True, theme=_theme)
+console = create_safe_console(theme=_theme, highlight=False, soft_wrap=True)
+if is_gui_mode():
+    logger.debug("检测到 GUI 模式，禁用 Rich console 输出")
 
 
 @dataclass
@@ -75,6 +78,9 @@ class ClientState:
     
     # 最近一次输出内容（如果是 LLM 润色，则是润色结果；否则是原始识别结果）
     last_output_text: Optional[str] = None
+    
+    # 当前活动的 LLM 角色名称（由快捷键场景设置）
+    current_role: Optional[str] = None
     
     def initialize(self) -> None:
         """

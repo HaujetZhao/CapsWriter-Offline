@@ -1,0 +1,413 @@
+﻿{
+    "data":  [
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-3-5-sonnet-*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-3-5-sonnet-20240620",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-3-5-sonnet-20241022",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-3-haiku-*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-3-haiku-20240307",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-3-opus-*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-haiku-*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-haiku-4",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-haiku-4-5-20251001",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-opus-4",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-opus-4-*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-opus-4-5-20251101",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-opus-4-5-thinking",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-sonnet-4-5",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-sonnet-4-5-20250929",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "claude-sonnet-4-5-thinking",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-2.0-flash-exp",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-2.5-flash",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-2.5-flash-lite",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-2.5-flash-thinking",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-flash",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-high",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-16x9",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-1x1",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-21x9",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-2k",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-2k-16x9",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-2k-1x1",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-2k-21x9",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-2k-3x4",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-2k-4x3",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-2k-9x16",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-3x4",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-4k",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-4k-16x9",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-4k-1x1",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-4k-21x9",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-4k-3x4",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-4k-4x3",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-4k-9x16",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-4x3",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-image-9x16",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-low",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gemini-3-pro-preview",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-3.5*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-3.5-turbo",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-3.5-turbo-0125",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-3.5-turbo-0613",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-3.5-turbo-1106",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-3.5-turbo-16k",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4-0125-preview",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4-0613",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4-1106-preview",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4-turbo",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4-turbo-preview",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4o",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4o*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4o-2024-05-13",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4o-2024-08-06",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4o-mini",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "gpt-4o-mini-2024-07-18",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "internal-background-task",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "o1-*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 },
+                 {
+                     "created":  1706745600,
+                     "id":  "o3-*",
+                     "object":  "model",
+                     "owned_by":  "antigravity"
+                 }
+             ],
+    "object":  "list"
+}

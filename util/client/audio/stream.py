@@ -73,6 +73,21 @@ class AudioStreamManager:
         
         import asyncio
         
+        # 计算音量并更新悬浮窗波形
+        try:
+            # RMS（均方根）音量计算
+            rms = np.sqrt(np.mean(indata ** 2))
+            # 映射到 0.0-1.0 范围（阈值 0.03 使正常说话声即可触发明显波动）
+            volume = min(1.0, rms / 0.03)
+            
+            # 更新悬浮窗
+            from util.client.ui.overlay_bridge import get_overlay_bridge
+            bridge = get_overlay_bridge()
+            if bridge:
+                bridge.set_volume(volume)
+        except Exception:
+            pass  # 忽略音量计算错误，不影响正常录音
+        
         # 将数据放入队列
         if self.state.loop and self.state.queue_in:
             asyncio.run_coroutine_threadsafe(
@@ -108,10 +123,14 @@ class AudioStreamManager:
             device = sd.query_devices(kind='input')
             self._channels = min(2, device['max_input_channels'])
             device_name = device.get('name', '未知设备')
-            console.print(
-                f'使用默认音频设备：[italic]{device_name}，声道数：{self._channels}',
-                end='\n\n'
-            )
+            # 在 GUI 模式下 console.print 可能因编码问题失败，捕获异常
+            try:
+                console.print(
+                    f'使用默认音频设备：[italic]{device_name}，声道数：{self._channels}',
+                    end='\n\n'
+                )
+            except (UnicodeEncodeError, OSError):
+                pass  # GUI 模式无控制台，忽略
             logger.info(f"找到音频设备: {device_name}, 声道数: {self._channels}")
         except UnicodeDecodeError:
             console.print(

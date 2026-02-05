@@ -80,4 +80,7 @@ def cleanup_client_resources():
         logger.warning(f"停止托盘图标时发生错误: {e}")
 
     logger.info("客户端资源清理完成")
-    console.print('[green4]再见！')
+    try:
+        console.print('[green4]再见！')
+    except (UnicodeEncodeError, OSError):
+        pass  # GUI 模式无控制台，忽略

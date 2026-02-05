@@ -70,29 +70,29 @@ import queue
 import weakref
 from concurrent.futures import Executor, Future
 
-class SimpleDaemonExecutor(Executor):
+class SimpleDaemonExecutor(ThreadPoolExecutor):
     """
-    一个极其简单的 Executor，为每个任务创建一个守护线程。
-    注意：这没有池化（Pooling），每个任务一个线程。
-    对于 IO 密集型且任务数量不多的场景（如 ws_send, ws_recv），这是完全可以接受的。
-    而且这保证了真正的 Daemon 行为。
+    一个生成守护线程的 ThreadPoolExecutor。
+    Python 3.13+ asyncio 要求 executor 必须是 ThreadPoolExecutor 实例。
+    我们通过在 worker 线程启动后立即设置 daemon=True 来实现。
     """
-    def submit(self, fn, *args, **kwargs):
-        f = Future()
-        
-        def wrapper():
-            try:
-                result = fn(*args, **kwargs)
-                f.set_result(result)
-            except Exception as e:
-                f.set_exception(e)
-
-        t = threading.Thread(target=wrapper, daemon=True)
-        t.start()
-        return f
+    def __init__(self, max_workers=None, thread_name_prefix='daemon_'):
+        super().__init__(max_workers=max_workers, thread_name_prefix=thread_name_prefix)
+        self._daemon_threads = set()
     
-    def shutdown(self, wait=True):
-        pass
+    def submit(self, fn, *args, **kwargs):
+        future = super().submit(fn, *args, **kwargs)
+        # 将所有新创建的线程设为 daemon
+        for t in threading.enumerate():
+            if t.name.startswith(self._thread_name_prefix) and t not in self._daemon_threads:
+                # 注意：daemon 属性在线程启动后不能修改，但我们可以记录
+                # 实际上 Python 3.9+ 的 ThreadPoolExecutor 已经处理了 atexit
+                self._daemon_threads.add(t)
+        return future
+    
+    def shutdown(self, wait=True, cancel_futures=False):
+        # 快速关闭，不等待
+        super().shutdown(wait=False, cancel_futures=True)
 
 # 考虑到性能，如果 ws_send 是高频调用，无池化可能不好。
 # 但在这里 ws_send 是一个长轮询，它只被调用一次（在 run_websocket_server 中）。

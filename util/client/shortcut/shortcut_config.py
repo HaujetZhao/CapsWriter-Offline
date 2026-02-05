@@ -22,6 +22,7 @@ class Shortcut:
         hold_mode: 长按模式。True=按下录音松开停止；False=单击开始再次单击停止
         threshold: 按下快捷键后触发语音识别的时间阈值（秒），用于防止误触。None 表示使用 Config.threshold
         enabled: 是否启用此快捷键
+        role: 绑定的 LLM 角色名称（如 'polish', 'translate'）。None 或空字符串表示使用默认角色
 
     注意：
         - 非阻塞模式下，对于可恢复的切换键（CapsLock/NumLock/ScrollLock），会自动补发以恢复状态
@@ -33,6 +34,7 @@ class Shortcut:
     hold_mode: bool = True
     threshold: Optional[float] = None  # None 表示使用 Config.threshold
     enabled: bool = True
+    role: Optional[str] = None  # 绑定的 LLM 角色名称
 
     # 鼠标特定配置
     mouse_button: Literal['x1', 'x2'] = 'x2'  # 仅当 type='mouse' 时有效

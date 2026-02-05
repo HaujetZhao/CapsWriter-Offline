@@ -11,3 +11,6 @@
 (艾特)\s*([一幺]六三)\s*点\s*     =     @163.
 (艾特)\s*(\w+)\s*(点)\s*(\w+)    =     @\2.\4
 欧拉玛   =  Ollama
+Side 8 = Sidebar
+Notebook nlm = Notebooklm
+Notebook 艾尔爱慕 = Notebooklm

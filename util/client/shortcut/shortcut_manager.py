@@ -62,6 +62,9 @@ class ShortcutManager:
         # 按键恢复状态追踪
         self._restoring_keys = set()
 
+        # 活动修饰键状态（用于组合键支持）
+        self._active_modifiers: set = set()
+
         # 事件处理器
         self._event_handler = ShortcutEventHandler(self.tasks, self._pool, self._emulator)
 
@@ -91,7 +94,8 @@ class ShortcutManager:
             if msg not in KEYBOARD_MESSAGES:
                 return True
 
-            key_name = KeyMapper.vk_to_name(data.vkCode)
+            vk_code = data.vkCode
+            key_name = KeyMapper.vk_to_name(vk_code)
 
             # 防自捕获检查
             if self._check_emulating(key_name, msg):
@@ -99,11 +103,26 @@ class ShortcutManager:
             if self._check_restoring(key_name, msg):
                 return True
 
-            # 查找匹配的快捷键
-            if key_name not in self.tasks:
+            # === 修饰键状态追踪 ===
+            if vk_code in MODIFIER_VK_MAP:
+                modifier = MODIFIER_VK_MAP[vk_code]
+                if msg in KEY_DOWN_MESSAGES:
+                    self._active_modifiers.add(modifier)
+                elif msg in KEY_UP_MESSAGES:
+                    self._active_modifiers.discard(modifier)
+                # 修饰键本身不触发快捷键，继续传递
                 return True
 
-            task = self.tasks[key_name]
+            # === 组合键匹配 ===
+            # 先尝试组合键匹配，再尝试单键匹配
+            combo_key = KeyMapper.build_combo_key(self._active_modifiers, key_name)
+            task = self.tasks.get(combo_key) or self.tasks.get(key_name)
+
+            # 调试日志
+            logger.debug(f"[ShortcutManager] key={key_name}, combo={combo_key}, modifiers={self._active_modifiers}, task={'found' if task else 'none'}")
+
+            if not task:
+                return True
 
             # 处理按键事件
             if msg in KEY_DOWN_MESSAGES:

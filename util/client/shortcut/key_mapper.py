@@ -57,6 +57,24 @@ RESTORABLE_KEYS = {
     'scroll_lock',  # 滚动锁定
 }
 
+# 修饰键集合（用于组合键支持）
+MODIFIER_KEYS = {'ctrl', 'alt', 'shift', 'cmd', 'win'}  # win 是 cmd 的别名
+
+# 修饰键 VK 码映射
+MODIFIER_VK_MAP = {
+    0xA0: 'shift',  # VK_LSHIFT
+    0xA1: 'shift',  # VK_RSHIFT
+    0x10: 'shift',  # VK_SHIFT
+    0xA2: 'ctrl',   # VK_LCONTROL
+    0xA3: 'ctrl',   # VK_RCONTROL
+    0x11: 'ctrl',   # VK_CONTROL
+    0xA4: 'alt',    # VK_LMENU
+    0xA5: 'alt',    # VK_RMENU
+    0x12: 'alt',    # VK_MENU
+    0x5B: 'win',    # VK_LWIN - 使用 win 而非 cmd
+    0x5C: 'win',    # VK_RWIN
+}
+
 
 class KeyMapper:
     """按键映射器"""
@@ -138,3 +156,48 @@ class KeyMapper:
 
         logger.warning(f"未知按键名称: {key_name}")
         return None
+
+    @staticmethod
+    def parse_combo_key(combo: str) -> tuple:
+        """
+        解析组合键字符串
+
+        Args:
+            combo: 组合键字符串，如 'shift+cmd+a' 或 'ctrl+alt+delete'
+
+        Returns:
+            (modifiers, main_key): 修饰键集合和主键名称
+        """
+        parts = combo.lower().split('+')
+        modifiers = set()
+        main_key = None
+
+        for part in parts:
+            part = part.strip()
+            if part in MODIFIER_KEYS:
+                modifiers.add(part)
+            else:
+                main_key = part
+
+        return modifiers, main_key
+
+    @staticmethod
+    def build_combo_key(active_modifiers: set, main_key: str) -> str:
+        """
+        从活动修饰键和主键构建组合键名称
+
+        Args:
+            active_modifiers: 当前按下的修饰键集合
+            main_key: 主键名称
+
+        Returns:
+            组合键名称，如 'shift+cmd+a'（修饰键按固定顺序排列）
+        """
+        if not active_modifiers:
+            return main_key
+
+        # 固定顺序：ctrl, alt, shift, win (cmd 作为 win 的别名处理)
+        order = ['ctrl', 'alt', 'shift', 'win', 'cmd']
+        sorted_mods = [m for m in order if m in active_modifiers]
+        return '+'.join(sorted_mods + [main_key])
+

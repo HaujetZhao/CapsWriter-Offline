@@ -83,6 +83,7 @@ class APIConfig:
         'moonshot': 10.0,     # Moonshot API
         'zhipu': 10.0,        # 智谱 API
         'cerebras': 10.0,     # Cerebras API
+
         'claude': 10.0,       # Claude API
         'gemini': 10.0,       # Gemini API
     }

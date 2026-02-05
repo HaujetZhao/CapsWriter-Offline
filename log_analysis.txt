@@ -1,0 +1,80 @@
+﻿22:49:49.295 - client - INFO - [task.py:91] - [esc] 使用 LLM 角色: 翻译
+
+22:49:52.844 - client - INFO - [result_processor.py:227] - 收到最终识别结果: 这是翻译说明。, 时延: 1.70s
+
+22:49:53.175 - client - INFO - [llm_handler.py:189] - 场景绑定角色: 翻译
+
+[LLM 请求] 角色: 翻译
+
+用户输入：这是翻译说明
+
+22:49:53.556 - client - INFO - [llm_processor.py:59] - [调试] 角色: 翻译, API Key前8位: N/A
+
+22:49:55.736 - client - ERROR - [llm_processor.py:109] - LLM API 调用失败: [gemini] AuthenticationError: Error code: 401 - {'error': {'message': "You didn't provide an API key. You need to provide your API key in an Authorization header using Bearer auth
+22:49:55.744 - client - WARNING - [llm_error_handler.py:80] - [翻译] API 认证失败，请检查 API Key 配置 - [gemini] AuthenticationError: Error code: 401 - {'error': {'message': "You didn't provide an API key. You need to provide your API key in an Authorization he
+22:49:55.744 - client - ERROR - [llm_error_handler.py:105] - Toast 显示失败: 'ToastMessageManager' object has no attribute 'finish_last_toast'
+
+22:55:18.135 - client - ERROR - [global_hotkey.py:128] - 启动 GlobalHotKeys 监听器失败: <escape>
+
+22:55:18.274 - client - INFO - [llm_handler.py:42] - 已加载角色: ['默认', 'polish', 'translate', '小助理', '润色', '翻译', '轻度润色']
+
+22:55:29.601 - client - INFO - [task.py:91] - [esc] 使用 LLM 角色: 翻译
+
+22:55:33.974 - client - INFO - [llm_handler.py:189] - 场景绑定角色: 翻译
+
+[LLM 请求] 角色: 翻译
+
+22:55:34.331 - client - INFO - [llm_processor.py:59] - [调试] 角色: 翻译, API Key前8位: N/A
+
+22:55:36.420 - client - ERROR - [llm_processor.py:109] - LLM API 调用失败: [gemini] AuthenticationError: Error code: 401 - {'error': {'message': "You didn't provide an API key. You need to provide your API key in an Authorization header using Bearer auth
+22:55:36.429 - client - WARNING - [llm_error_handler.py:80] - [翻译] API 认证失败，请检查 API Key 配置 - [gemini] AuthenticationError: Error code: 401 - {'error': {'message': "You didn't provide an API key. You need to provide your API key in an Authorization he
+22:55:36.430 - client - ERROR - [llm_error_handler.py:105] - Toast 显示失败: 'ToastMessageManager' object has no attribute 'finish_last_toast'
+
+22:59:02.130 - client - ERROR - [global_hotkey.py:128] - 启动 GlobalHotKeys 监听器失败: <escape>
+
+22:59:50.214 - client - ERROR - [global_hotkey.py:128] - 启动 GlobalHotKeys 监听器失败: <escape>
+
+23:00:41.850 - client - ERROR - [global_hotkey.py:128] - 启动 GlobalHotKeys 监听器失败: <escape>
+
+23:01:32.534 - client - ERROR - [global_hotkey.py:128] - 启动 GlobalHotKeys 监听器失败: <escape>
+
+23:02:44.332 - client - ERROR - [global_hotkey.py:128] - 启动 GlobalHotKeys 监听器失败: <escape>
+
+23:02:44.335 - client - INFO - [llm_role_loader.py:101] - [API继承] 精确匹配成功: provider=gemini, model=gemini-3-flash, api_key前4位=sk-f
+
+23:02:44.335 - client - INFO - [llm_role_loader.py:101] - [API继承] 精确匹配成功: provider=gemini, model=gemini-3-flash, api_key前4位=sk-f
+
+23:06:02.378 - client - ERROR - [global_hotkey.py:128] - 启动 GlobalHotKeys 监听器失败: <escape>
+
+23:06:02.540 - client - INFO - [llm_role_loader.py:101] - [API继承] 精确匹配成功: provider=gemini, model=gemini-3-flash, api_key前4位=sk-f
+
+23:06:02.541 - client - INFO - [llm_handler.py:42] - 已加载角色: ['默认', 'polish', 'translate', '小助理', '润色', '翻译', '轻度润色']
+
+23:06:06.608 - client - INFO - [task.py:91] - [esc] 使用 LLM 角色: 翻译
+
+23:06:09.414 - client - INFO - [result_processor.py:227] - 收到最终识别结果: 测试翻译功能。, 时延: 0.99s
+
+23:06:09.749 - client - INFO - [llm_handler.py:189] - 场景绑定角色: 翻译
+
+[LLM 请求] 角色: 翻译
+
+用户输入：测试翻译功能
+
+23:06:10.124 - client - INFO - [llm_processor.py:59] - [调试] 角色: 翻译, API Key前8位: sk-fb6e7
+
+23:06:10.845 - client - ERROR - [llm_processor.py:109] - LLM API 调用失败: [gemini] NotFoundError: Error code: 404
+
+23:06:10.857 - client - INFO - [llm_error_handler.py:126] - [翻译] 处理失败，降级到原文本: [gemini] NotFoundError: Error code: 404
+
+23:06:21.229 - client - INFO - [result_processor.py:227] - 收到最终识别结果: 翻译功能并不能自动翻译。, 时延: 0.26s
+
+[LLM 请求] 角色: 翻译
+
+用户输入：功能并不能自动翻译
+
+23:06:21.474 - client - INFO - [llm_processor.py:59] - [调试] 角色: 翻译, API Key前8位: sk-fb6e7
+
+23:06:21.528 - client - ERROR - [llm_processor.py:109] - LLM API 调用失败: [gemini] NotFoundError: Error code: 404
+
+23:06:21.531 - client - INFO - [llm_error_handler.py:126] - [翻译] 处理失败，降级到原文本: [gemini] NotFoundError: Error code: 404
+

@@ -13,8 +13,16 @@ class LLMResult:
     generation_time: float = 0.0   # 生成时间（秒，从第一个 token 开始）
 
 
-async def llm_process_text(text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
-    """润色文本并直接输出（外部主入口 - Shim）"""
+async def llm_process_text(text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None, role_name: str = None) -> Optional[LLMResult]:
+    """润色文本并直接输出（外部主入口 - Shim）
+    
+    Args:
+        text: 待润色的完整原始文本
+        return_result: 是否返回 LLMResult 对象
+        paste: 是否强制使用粘贴模式
+        matched_hotwords: 潜在热词列表
+        role_name: 指定角色名称（来自场景绑定）
+    """
     from util.llm.llm_handler import get_handler
     handler = get_handler()
-    return await handler.process_and_output(text, return_result, paste, matched_hotwords)
+    return await handler.process_and_output(text, return_result, paste, matched_hotwords, role_name=role_name)

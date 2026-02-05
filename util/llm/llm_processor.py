@@ -52,10 +52,13 @@ class LLMProcessor:
         Returns:
             (处理后的文本, 输出token数, 生成时间秒)
         """
+        # 在终端显式打印模型名称（方便调试）
+        print(f"\n[LLM] 模型: {role_config.model} | 角色: {role_config.name}")
         logger.info(f"开始 LLM 处理，模型: {role_config.model}")
 
         # 获取客户端
         logger.debug(f"获取 LLM 客户端，提供商: {role_config.provider}, API: {role_config.api_url}")
+        logger.info(f"[调试] 角色: {role_config.name}, API Key前8位: {role_config.api_key[:8] if role_config.api_key else 'N/A'}")
         client = self.client_pool.get_client(
             provider=role_config.provider,
             api_url=role_config.api_url,
