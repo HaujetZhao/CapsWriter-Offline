@@ -4,7 +4,7 @@ import numpy as np
 from typing import List, Tuple, Optional, Dict, Any
 
 from . import logger
-from .. import nano_llama
+from .. import llama
 from ..nano_ctc import decode_ctc, align_timestamps
 from ..nano_onnx import encode_audio
 from ..utils import vprint
@@ -61,96 +61,56 @@ class LLMDecoder:
         full_embd: np.ndarray,
         n_input_tokens: int,
         n_predict: int,
-        reporter: Optional[DisplayReporter] = None
+        stream_output: bool = False,
+        reporter: Optional[DisplayReporter] = None,
+        temperature: float = 0.3,
+        top_p: float = 1.0,
+        top_k: int = 50
     ) -> Tuple[str, int, float, float]:
-        
-        reporter = reporter or _SILENT_REPORTER
         
         t_inject_start = time.perf_counter()
         
         # 1. Inject
-        mem = nano_llama.llama_get_memory(self.models.ctx)
-        nano_llama.llama_memory_clear(mem, True)
+        self.models.ctx.clear_kv_cache()
         
-        batch_embd = nano_llama.llama_batch_init(n_input_tokens, full_embd.shape[1], 1)
-        batch_embd.n_tokens = n_input_tokens
-        batch_embd.token = ctypes.cast(None, ctypes.POINTER(nano_llama.llama_token))
-        
-        if not full_embd.flags['C_CONTIGUOUS']:
-            full_embd = np.ascontiguousarray(full_embd)
-        ctypes.memmove(batch_embd.embd, full_embd.ctypes.data, full_embd.nbytes)
+        batch_embd = llama.LlamaBatch(n_input_tokens, full_embd.shape[1], 1)
+        batch_embd.set_embd(full_embd)
+        batch_embd.struct.token = ctypes.cast(None, ctypes.POINTER(llama.llama_token))
 
-        for k in range(n_input_tokens):
-            batch_embd.pos[k] = k
-            batch_embd.n_seq_id[k] = 1
-            batch_embd.seq_id[k][0] = 0
-            batch_embd.logits[k] = 1 if k == n_input_tokens - 1 else 0
-
-        ret = nano_llama.llama_decode(self.models.ctx, batch_embd)
-        nano_llama.llama_batch_free(batch_embd)
+        ret = self.models.ctx.decode(batch_embd)
         if ret != 0: raise RuntimeError(f"Decode failed (ret={ret})")
         
         t_inject = time.perf_counter() - t_inject_start
 
         # 2. Generation Loop
         t_gen_start = time.perf_counter()
-        vocab_size = nano_llama.llama_vocab_n_tokens(self.models.vocab)
-        batch_text = nano_llama.llama_batch_init(1, 0, 1)
-        batch_text.n_tokens = 1
+        batch_text = llama.LlamaBatch(1, 0, 1)
 
-        generated_text = ""
         current_pos = n_input_tokens
-        decoder_utf8 = nano_llama.ByteDecoder()
-        tokens_generated = 0
+        asr_decoder = llama.ASRStreamDecoder(self.models.vocab, reporter if stream_output else None)
+        
+        with llama.LlamaSampler(temperature=temperature, top_k=top_k, top_p=top_p) as smpl:
+            for _ in range(n_predict):
+                # 使用面向对象接口采样
+                token_id = smpl.sample(self.models.ctx, -1)
 
-        for _ in range(n_predict):
-            logits_ptr = nano_llama.llama_get_logits(self.models.ctx)
-            logits_arr = np.ctypeslib.as_array(logits_ptr, shape=(vocab_size,))
-            token_id = int(np.argmax(logits_arr))
+                # 先提交异步解码任务
+                if self.models.ctx.decode_token(batch_text, token_id, current_pos) != 0:
+                    break
+                current_pos += 1
 
-            if token_id == self.models.eos_token or token_id in self.stop_tokens:
-                break
+                # 再检查 token id 和解码
+                if token_id == self.models.eos_token or token_id in self.stop_tokens:
+                    break
+                asr_decoder.push(token_id)
+        
+        asr_decoder.flush()
 
-            raw_bytes = nano_llama.token_to_bytes(self.models.vocab, token_id)
-            text_piece = decoder_utf8.decode(raw_bytes)
-            generated_text += text_piece
-            tokens_generated += 1
-            
-            # 熔断检测：防止 iGPU 溢出导致的无限重复
-            if _ == 0:
-                last_token_id = token_id
-                consecutive_cnt = 1
-            elif token_id == last_token_id:
-                consecutive_cnt += 1
-            else:
-                last_token_id = token_id
-                consecutive_cnt = 1
-            
-            if consecutive_cnt > 20:
-                print(f"\n[bold red]警告: 检测到异常重复输出 (可能由 iGPU 溢出引起)，已熔断。[/bold red]")
-                print(f"[dim]尝试在 config.py 中禁用 Vulkan 或强制 FP32 精度的修复。[/dim]")
-                break
-
-            reporter.stream(text_piece)
-
-            batch_text.token[0] = token_id
-            batch_text.pos[0] = current_pos
-            batch_text.n_seq_id[0] = 1
-            batch_text.seq_id[0][0] = 0
-            batch_text.logits[0] = 1
-
-            if nano_llama.llama_decode(self.models.ctx, batch_text) != 0: break
-            current_pos += 1
-
-        remaining = decoder_utf8.flush()
-        generated_text += remaining
-        if remaining:
-            reporter.stream(remaining)
-
-        nano_llama.llama_batch_free(batch_text)
+        # batch_text 会由 __del__ 自动释放
         t_gen = time.perf_counter() - t_gen_start
         
-        return generated_text, tokens_generated, t_inject, t_gen
+        return asr_decoder.generated_text, asr_decoder.tokens_generated, t_inject, t_gen
+
 
 class StreamDecoder:
     """协调完整流程的解码器"""
@@ -164,7 +124,11 @@ class StreamDecoder:
         stream: RecognitionStream,
         language: Optional[str] = None,
         context: Optional[str] = None,
-        reporter: Optional[DisplayReporter] = None
+        verbose: bool = True,
+        reporter: Optional[DisplayReporter] = None,
+        temperature: float = 0.3,
+        top_p: float = 1.0,
+        top_k: int = 50
     ) -> DecodeResult:
         
         reporter = reporter or _SILENT_REPORTER
@@ -222,7 +186,8 @@ class StreamDecoder:
             full_embd = np.concatenate([p_embd, audio_embd.astype(np.float32), s_embd], axis=0)
             text, n_gen, t_inj, t_gen = self.llm_decoder.decode(
                 full_embd, full_embd.shape[0], self.models.config.n_predict, 
-                reporter=reporter
+                stream_output=verbose, reporter=reporter,
+                temperature=temperature, top_p=top_p, top_k=top_k
             )
             text = text.strip()
             
@@ -286,3 +251,4 @@ class StreamDecoder:
             audio_embd=audio_embd, n_prefix=n_p, n_suffix=n_s,
             n_gen=n_gen, timings=timings, hotwords=hotwords
         )
+
