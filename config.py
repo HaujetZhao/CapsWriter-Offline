@@ -1,4 +1,5 @@
 import os
+import json
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -7,6 +8,25 @@ __version__ = '2.3'
 
 # 项目根目录
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_JSON_PATH = os.path.join(BASE_DIR, 'config.json')
+
+
+def _load_json_config():
+    """从 config.json 加载 GUI 配置"""
+    if os.path.exists(CONFIG_JSON_PATH):
+        try:
+            with open(CONFIG_JSON_PATH, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return None
+
+
+# 原始 JSON 配置访问类（用于 API 继承逻辑）
+class Config:
+    """全局配置访问类，提供对原始 config.json 的访问"""
+    raw = _load_json_config() or {}
+
 
 
 # 服务端配置
@@ -103,6 +123,11 @@ class ClientConfig:
     udp_control_addr = '127.0.0.1'  # UDP 控制监听地址（'0.0.0.0' 允许外部访问）
     udp_control_port = 6018         # UDP 控制监听端口
 
+    # 状态悬浮窗配置
+    enable_overlay = True           # 是否启用状态悬浮窗（显示录音/处理状态）
+    overlay_position = 'bottom_center'  # 悬浮窗位置：'bottom_left', 'bottom_center', 'bottom_right'
+    overlay_opacity = 0.9           # 悬浮窗透明度 (0.0-1.0)
+
 
 # 快捷键配置说明
 """
@@ -150,3 +175,81 @@ class ClientConfig:
   {'key': 'x2', 'type': 'mouse', 'suppress': True, 'hold_mode': True, 'enabled': True}, 
 """
 
+
+def _apply_json_config():
+    """
+    从 config.json 应用 GUI 配置到 ServerConfig 和 ClientConfig
+    """
+    config = _load_json_config()
+    if not config:
+        return
+    
+    # 更新原始配置引用（关键修复：让 Config.raw 保持最新）
+    Config.raw = config
+    
+    # 应用 ASR 配置
+    asr = config.get('asr', {})
+    if asr.get('model_type'):
+        ServerConfig.model_type = asr['model_type']
+    if 'vulkan_enable' in asr:
+        ServerConfig.vulkan_enable = asr['vulkan_enable']
+    if 'vulkan_force_fp32' in asr:
+        ServerConfig.vulkan_force_fp32 = asr['vulkan_force_fp32']
+    
+    # 应用场景配置到 shortcuts（核心！）
+    scenes = config.get('scenes', [])
+    if scenes:
+        shortcuts = []
+        for scene in scenes:
+            if not scene.get('enabled', True):
+                continue
+            # 转换 GUI 场景格式到 shortcuts 格式
+            key = scene.get('key', '')
+            if not key:
+                continue
+            
+            # 提取处理方式作为 LLM 角色
+            # '直出' 或 'direct'/'none' 表示不使用 LLM，其他值作为角色名
+            processor = scene.get('processor', '直出')
+            # 兼容旧值映射
+            legacy_map = {'none': '直出', 'direct': '直出', 'polish': '润色', 'translate': '翻译'}
+            processor = legacy_map.get(processor, processor)
+            # 直出不需要 LLM 角色
+            role = None if processor == '直出' else processor
+            
+            shortcuts.append({
+                'key': key,
+                'type': scene.get('type', 'keyboard'),
+                'suppress': True,  # 默认阻塞
+                'hold_mode': scene.get('mode', 'hold') == 'hold',
+                'enabled': scene.get('enabled', True),
+                'role': role,  # 场景绑定的 LLM 角色
+            })
+        if shortcuts:
+            ClientConfig.shortcuts = shortcuts
+    
+    # 应用 LLM 配置
+    llm = config.get('llm', {})
+    if llm.get('interrupt_key'):
+        ClientConfig.llm_stop_key = llm['interrupt_key']
+    
+    # 应用悬浮窗配置
+    overlay = config.get('overlay', {})
+    if 'enabled' in overlay:
+        ClientConfig.enable_overlay = overlay['enabled']
+    if overlay.get('position'):
+        ClientConfig.overlay_position = overlay['position']
+    if 'opacity' in overlay:
+        ClientConfig.overlay_opacity = overlay['opacity']
+
+
+def reload_config():
+    """
+    从 config.json 重新加载并应用 GUI 配置
+    外部模块可在监测到配置文件变化时调用此函数
+    """
+    _apply_json_config()
+
+
+# 模块加载时自动应用 JSON 配置
+reload_config()
