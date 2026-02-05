@@ -172,6 +172,7 @@ my_files = [
     'config.py',
     'core_client.py',
     'hot.txt',
+    'hot-server.txt',
     'hot-rule.txt',
     'hot-rectify.txt',
     'readme.md'

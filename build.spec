@@ -106,8 +106,7 @@ for name, src, type in a_1.binaries:
         ('\\cuda\\v' in src_lower and '\\bin\\' in src_lower)
     )
     is_unwanted_onnx_dll = (
-        'onnxruntime_providers_cuda.dll' in name.lower() or
-        'directml.dll' in name.lower()
+        'onnxruntime_providers_cuda.dll' in name.lower() 
     )
 
     if not is_system_cuda_dll and not is_unwanted_onnx_dll:
@@ -247,6 +246,7 @@ my_files = [
     'core_server.py',
     'core_client.py',
     'hot.txt',
+    'hot-server.txt',
     'hot-rectify.txt',
     'hot-rule.txt',
     'readme.md'

@@ -9,6 +9,12 @@
 
 ## 🚀 更新说明：
 
+v2.4新增：
+- **改进 [Fun-ASR-Nano-GGUF](https://github.com/HaujetZhao/Fun-ASR-GGUF) 模型，使 Encoder 支持通过 DML 用显卡（独显、集显均可）加速推理，Encoder 和 CTC 默认改为 FP16 精度，以便更好利用显卡算力**，短音频延迟最低可降至 200ms 以内。
+- 服务端 Fun-ASR-Nano 使用单独的热词文件 hot-server.txt ，只具备建议替换性，而客户端的热词具有强制替换性，二者不再混用
+- Fun-ASR-Nano 加入采样温度，避免极端情况下的因贪婪采样导致的无限复读
+- 服务端字母拼写合并处理
+
 v2.3新增：
 - **引入 [Fun-ASR-Nano-GGUF](https://github.com/HaujetZhao/Fun-ASR-GGUF) 模型支持，推理更轻快**
 - 重构了大文件转录逻辑，采用异步流式处理
@@ -39,7 +45,8 @@ v2.1 新增：
 -   **语音输入**：按住 `CapsLock` 键说话，松开即输入，默认去除末尾逗句号。支持对讲机模式和单击录音模式。
 -   **文件转录**：音视频文件往客户端一丢，字幕 (`.srt`)、文本 (`.txt`)、时间戳 (`.json`) 统统都有。
 -   **数字 ITN**：自动将「十五六个」转为「15~16个」，支持各种复杂数字格式。
--   **热词替换**：在 `hot.txt` 记下你的专业术语，支持拼音模糊匹配。
+-   **热词语境**：在 `hot-server.txt` 记下专业术语，经音素筛选后，用作 Fun-ASR-Nano 的语境增强识别 
+-   **热词替换**：在 `hot.txt` 记下偏僻词，通过音素模糊匹配，相似度大于阈值则强制替换。
 -   **正则替换**：在 `hot-rule.txt` 用正则或简单等号规则，精准强制替换。
 -   **纠错记录**：在 `hot-rectify.txt` 记录对识别结果的纠错，可辅助LLM润色。
 -   **LLM 角色**：预置了润色、翻译、代码助手等角色，当识别结果的开头匹配任一角色名字时，将交由该角色处理。
@@ -95,8 +102,8 @@ A: 请确认 `start_server.exe` 的黑窗口还在运行。若想在管理员权
 **Q: 为什么识别结果没字？**  
 A: 到 `年/月/assets` 文件夹中检查录音文件，看是不是没有录到音；听听录音效果，是不是麦克风太差，建议使用桌面 USB 麦克风；检查麦克风权限。
 
-**Q: FunASR-nano 模型几乎不能用？**  
-A: 默认使用的 int8 量化的 FunASR-nano 模型，在部分前几代 AMD CPU 上可能有问题。要么先切换为 sensevoice，等以后模型更新解决。要么到 [Models Release](https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/Models) 下载 `FunASR-Nano-LLM-fp16.zip`，把模型文件夹里的 `llm_prefill` 和 `llm_decode` 换成 fp16 的版本，并更新 `util/model_config.py` 里面的路径，但这样会多占很多内存，速度也会有一定下降。
+**Q: Fun-ASR-Nano 模型几乎不能用？**  
+A: Fun-ASR-Nano 的 LLM 解码器使用 llama.cpp 默认通过 Vulkan 实现显卡加速，部分集显在 FP16 矩阵计算时没有用 FP32 对加和缓存，可能导致数值溢出，影响识别效果，如果遇到了，可以到 config.py 中关闭 Vulkan，用 CPU 进行解码。
 
 **Q: 需要热词替换？**  
 A: 可在 `hot.txt` 中添加正确词汇（托盘菜单右键有快捷添加），或者在 `hot-rule.txt` 中用正则表达式强制替换。
