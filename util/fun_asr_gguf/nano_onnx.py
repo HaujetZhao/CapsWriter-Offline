@@ -28,7 +28,10 @@ def load_onnx_models(encoder_path, ctc_path, padding_secs=30):
     session_opts.add_session_config_entry("session.inter_op.allow_spinning", "0")
     session_opts.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
     
-    providers = ['DmlExecutionProvider', 'CPUExecutionProvider']
+    providers = ['CPUExecutionProvider']
+    if 'DmlExecutionProvider' in onnxruntime.get_available_providers():
+        providers.insert(0, 'DmlExecutionProvider') 
+    
     encoder_sess = onnxruntime.InferenceSession(
         encoder_path, 
         sess_options=session_opts, 
@@ -80,17 +83,19 @@ def encode_audio(audio, encoder_sess, padding_secs=30):
     audio_type = encoder_sess.get_inputs()[0].type
     dtype = np.float16 if 'float16' in audio_type else np.float32
 
-    # [FIX] 如果输入使用了 int16 范围，需要归一化
-    if np.max(np.abs(audio)) > 100:
-        audio = audio.astype(np.float32) / 32768.0
-
     # Padding logic
     actual_samples = len(audio)
+    
+    # [Optimize] 检测 Provider，如果是 CPU，跳过固定长度 Padding (因为 CPU 不存在 DML 的重编译开销)
+    if encoder_sess.get_providers()[0] == 'CPUExecutionProvider':
+        print('用 cpu ，不填充')
+        padding_secs = 0
+        
     target_samples = int(padding_secs * 16000)
     
     if actual_samples < target_samples:
         # print(f"   [Padding] {actual_samples/16000:.2f}s -> {padding_secs}s")
-        padded_audio = np.zeros(target_samples, dtype=np.float32)
+        padded_audio = np.zeros(target_samples, dtype=audio.dtype)
         padded_audio[:actual_samples] = audio
         audio = padded_audio
     
