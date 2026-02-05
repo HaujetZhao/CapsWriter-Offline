@@ -171,7 +171,7 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
             logger.debug(f"中间结果: {result.text[:30]}...")
             return result
 
-        # 8. 最终处理
+        # 8. 格式优化
         result.text = format_text(result.text, punc_model)
         result.text_accu = format_text(result.text_accu, punc_model)
         
