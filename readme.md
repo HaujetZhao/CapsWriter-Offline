@@ -1,4 +1,4 @@
-# CapsWriter-Offline (v2.3)
+# CapsWriter-Offline (v2.4)
 
 ![demo](assets/demo.png)
 
