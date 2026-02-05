@@ -1,6 +1,7 @@
 import numpy as np
 import base64
 import os
+import time
 from dataclasses import dataclass
 
 @dataclass
@@ -22,11 +23,45 @@ def load_ctc_tokens(filename):
             else:
                 t, i = parts
             id2token[int(i)] = t
+            
+            # Pre-decode base64 here to save time during inference
+            try:
+                # Some tokens might rely on being decoded, do it once
+                id2token[int(i)] = base64.b64decode(t).decode("utf-8")
+            except:
+                # If fail (not b64 or other issue), keep original or handle as needed
+                # For FunASR tokens, they seem to be always b64 per decode_ctc logic
+                pass
+                
     return id2token
 
 def decode_ctc(logits, id2token):
-    """解码 CTC Logits 并计算时间戳"""
-    indices = np.argmax(logits[0], axis=-1)
+    """
+    Greedy search 贪错解码。
+    
+    Args:
+        logits: 模型输出的概率分布 (T, V) 或已经是 indices (T,)
+        id2token: 词表映射 dict
+    """
+    t0 = time.perf_counter()
+    
+    # [OPTIMIZATION] 如果输入已经是 1D 数组或 (1, T)，说明是已经融合了 ArgMax 的 indices
+    if logits.ndim == 1 or (logits.ndim == 2 and logits.shape[0] == 1):
+        indices = logits.flatten()
+        t_cast = 0.0
+        t_argmax = 0.0
+    else:
+        # [Legacy] 兼容输出原始 Logits 的情况
+        # 优化策略：先转 float32，避免在 float16 上做大规模 argmax 的潜在精度问题或性能抖动
+        t_s = time.perf_counter()
+        logits_f32 = logits.astype(np.float32)
+        t_cast = time.perf_counter() - t_s
+        
+        t_s = time.perf_counter()
+        indices = np.argmax(logits_f32, axis=-1).flatten()
+        t_argmax = time.perf_counter() - t_s
+        
+    t0 = time.perf_counter() # 重置计数以精确测量循环耗时
     blank_id = max(id2token.keys()) if id2token else 0
     
     frame_shift_ms = 60
@@ -51,13 +86,14 @@ def decode_ctc(logits, id2token):
         if token_id == blank_id:
             continue
 
-        token_b64 = id2token.get(token_id, "")
-        if not token_b64: continue
+        token_text = id2token.get(token_id, "")
+        if not token_text: continue
 
-        try:
-            token_text = base64.b64decode(token_b64).decode("utf-8")
-        except:
-            continue
+        # [Optimized] Base64 decoding is now done in load_ctc_tokens
+        # try:
+        #     token_text = base64.b64decode(token_b64).decode("utf-8")
+        # except:
+        #     continue
 
         # Calculate time (只计算起始位置)
         t_start = max((start * frame_shift_ms + offset_ms) / 1000.0, 0.0)
@@ -68,7 +104,16 @@ def decode_ctc(logits, id2token):
         ))
                 
     full_text = "".join([r.text for r in results])
-    return full_text, results
+    t_loop = time.perf_counter() - t0
+    
+    # print(f"      [Profile] Cast: {t_cast*1000:.2f}ms, Argmax: {t_argmax*1000:.2f}ms, PyLoop: {t_loop*1000:.2f}ms")
+    
+    timings = {
+        "cast": t_cast,
+        "argmax": t_argmax,
+        "loop": t_loop
+    }
+    return full_text, results, timings
 
 def align_timestamps(ctc_results, llm_text):
     """
