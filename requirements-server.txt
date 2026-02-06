@@ -1,9 +1,9 @@
 # ASR core
 -f https://k2-fsa.github.io/sherpa/onnx/cuda-cn.html
-sherpa-onnx==1.12.20+cuda12.cudnn9
+sherpa-onnx
 numpy
 gguf
-onnxruntime
+onnxruntime-directml
 
 # basic
 rich
