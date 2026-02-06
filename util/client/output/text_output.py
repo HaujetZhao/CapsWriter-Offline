@@ -40,7 +40,8 @@ class TextOutput:
         """
         if not text:
             return text
-        return text.rstrip(Config.trash_punc)
+        clean_text = text.rstrip(Config.trash_punc)
+        return clean_text if clean_text else text
     
     async def output(self, text: str, paste: Optional[bool] = None) -> None:
         """
