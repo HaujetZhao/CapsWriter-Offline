@@ -37,6 +37,42 @@ def _setup_tray(state, base_dir):
         from util.client.ui import toast
         toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
 
+    def revoke_last_turn():
+        from util.llm.llm_handler import revoke_last_turn
+        from util.client.ui import toast
+        success, message = revoke_last_turn()
+        if success:
+            toast(message, duration=3000, bg="#075077")
+        else:
+            toast(message, duration=3000, bg="#d9534f")
+
+    def show_last_turn():
+        from util.llm.llm_handler import show_last_turn
+        from util.client.ui import toast
+        success, message = show_last_turn()
+        if success:
+            toast(message, duration=5000, bg="#075077")
+        else:
+            toast(message, duration=3000, bg="#d9534f")
+
+    def copy_all_context():
+        from util.llm.llm_handler import copy_all_context
+        from util.client.ui import toast
+        success, message = copy_all_context()
+        if success:
+            toast(message, duration=3000, bg="#075077")
+        else:
+            toast(message, duration=3000, bg="#d9534f")
+
+    def copy_current_role_context():
+        from util.llm.llm_handler import copy_current_role_context
+        from util.client.ui import toast
+        success, message = copy_current_role_context()
+        if success:
+            toast(message, duration=3000, bg="#075077")
+        else:
+            toast(message, duration=3000, bg="#d9534f")
+
     def add_hotword():
         try:
             from util.client.ui import on_add_hotword
@@ -63,6 +99,11 @@ def _setup_tray(state, base_dir):
         if text:
             from util.llm.llm_clipboard import copy_to_clipboard
             copy_to_clipboard(text)
+            from util.client.ui import toast
+            toast("复制成功：已复制结果到剪贴板", duration=3000, bg="#075077")
+        else:
+            from util.client.ui import toast
+            toast("复制失败：没有可复制的内容", duration=3000, bg="#d9534f")
 
     import os
     icon_path = os.path.join(base_dir, 'assets', 'icon.ico')
@@ -76,6 +117,10 @@ def _setup_tray(state, base_dir):
             ('✨ 添加热词', add_hotword),
             ('🛠️ 添加纠错', add_rectify),
             ('🧹 清除记忆', clear_memory),
+            ('↩️ 撤回上一轮', revoke_last_turn),
+            ('💬 显示最近对话', show_last_turn),
+            ('📄 复制所有上下文', copy_all_context),
+            ('📑 复制当前角色上下文', copy_current_role_context),
             ('🔄 重启音频', restart_audio),
         ]
     )

@@ -16,3 +16,6 @@ Pillow
 
 markdown
 tkhtmlview
+
+# 补充缺失报错
+tbb
