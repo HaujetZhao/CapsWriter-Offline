@@ -79,7 +79,7 @@ LLM 角色既可以使用 Ollama 运行的本地模型，又可以用 API 访问
 
 ## 🎤 模型说明
 
-你可以在 `config.py` 的 `model_type` 中切换：
+你可以在 `config_server.py` 的 `model_type` 中切换：
 
 -   **funasr_nano**（默认推荐）：目前的旗舰模型，速度较快，准确率最高。
 -   **sensevoice**：阿里新一代大模型，速度超快，准确率稍逊。
@@ -88,7 +88,7 @@ LLM 角色既可以使用 Ollama 运行的本地模型，又可以用 API 访问
 
 ## ⚙️ 个性化配置
 
-所有的设置都在根目录的 `config.py` 里：
+所有的设置都在根目录的 `config_server.py` 和 `config_client.py` 里：
 -   修改 `shortcut` 可以更换快捷键（如 `right shift`）。
 -   修改 `hold_mode = False` 可以切换为“点一下录音，再点一下停止”。
 -   修改 `llm_enabled` 来开启或关闭 AI 助手功能。
@@ -103,7 +103,7 @@ A: 请确认 `start_server.exe` 的黑窗口还在运行。若想在管理员权
 A: 到 `年/月/assets` 文件夹中检查录音文件，看是不是没有录到音；听听录音效果，是不是麦克风太差，建议使用桌面 USB 麦克风；检查麦克风权限。
 
 **Q: Fun-ASR-Nano 模型几乎不能用？**  
-A: Fun-ASR-Nano 的 LLM 解码器使用 llama.cpp 默认通过 Vulkan 实现显卡加速，部分集显在 FP16 矩阵计算时没有用 FP32 对加和缓存，可能导致数值溢出，影响识别效果，如果遇到了，可以到 config.py 中关闭 Vulkan，用 CPU 进行解码。
+A: Fun-ASR-Nano 的 LLM 解码器使用 llama.cpp 默认通过 Vulkan 实现显卡加速，部分集显在 FP16 矩阵计算时没有用 FP32 对加和缓存，可能导致数值溢出，影响识别效果，如果遇到了，可以到 config_server.py 中关闭 Vulkan，用 CPU 进行解码。
 
 **Q: 需要热词替换？**  
 A: 可在 `hot.txt` 中添加正确词汇（托盘菜单右键有快捷添加），或者在 `hot-rule.txt` 中用正则表达式强制替换。
@@ -127,7 +127,7 @@ A: `Win+R` 输入 `shell:startup` 打开启动文件夹，将服务端、客户�
 A: 加入 GPU 支持会增加打包大小，且边际效益很低，没有做。但从源码运行可以，把源码中的模型的 provider 改为 cuda 即可。
 
 **Q: 低性能电脑转录太慢？**  
-A: 更改 `config.py` 中的 `model_type` 模型类型，或更改 `util/model_config.py` 中的 `num_threads`。
+A: 更改 `config_server.py` 中的 `model_type` 模型类型，或更改 `num_threads`。
 
 ## 🚀 我的其他优质项目推荐
 

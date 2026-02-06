@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Optional
 
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from util.client.state import console
 from util.client.websocket_manager import WebSocketManager
 from util.hotword import get_hotword_manager

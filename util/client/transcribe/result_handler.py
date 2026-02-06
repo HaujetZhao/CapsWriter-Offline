@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from util.tools import srt_from_txt
 from . import logger
 

@@ -15,7 +15,7 @@ import keyboard
 import pyclip
 from pynput import keyboard as pynput_keyboard
 
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from . import logger
 
 

@@ -23,7 +23,7 @@ from typing import List
 import colorama
 import typer
 
-from config import ClientConfig as Config, __version__
+from config_client import ClientConfig as Config, __version__
 from util.logger import setup_logger
 from util.common.lifecycle import lifecycle
 from util.client.cleanup import cleanup_client_resources, request_exit_from_tray

@@ -15,7 +15,7 @@ import socket
 import threading
 from typing import TYPE_CHECKING
 
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from . import logger
 
 if TYPE_CHECKING:

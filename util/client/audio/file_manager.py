@@ -20,7 +20,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from . import logger
 
 

@@ -116,7 +116,7 @@ a_2.binaries = filtered_binaries
 
 
 # 排除不要打包的模块（这些将作为源文件复制）
-private_module = ['util', 'config', 'LLM', 
+private_module = ['util', 'config_client', 'config_server', 'LLM', 
                   'core_server',
                   'core_client',
                   ]
@@ -169,7 +169,7 @@ coll = COLLECT(
 
 # 复制额外所需的文件（只复制用户自己写的文件）
 my_files = [
-    'config.py',
+    'config_client.py',
     'core_client.py',
     'hot.txt',
     'hot-server.txt',
@@ -207,7 +207,7 @@ from platform import system
 from subprocess import run
 
 if system() == 'Windows':
-    link_folders = ['assets', 'util', 'LLM', '2026', 'log']
+    link_folders = ['assets', 'util', 'LLM', 'log']
     for folder in link_folders:
         if not exists(folder):
             continue

@@ -33,6 +33,23 @@ class ModelManager:
         
         self._initialized = False
 
+    def _apply_vulkan_config(self):
+        """根据配置应用 Vulkan 相关的环境变量"""
+        if not self.config.vulkan_enable:
+            # 强制禁用 Vulkan 推理
+            os.environ["VK_ICD_FILENAMES"] = "none"
+            logger.info("GPU 加速: 已禁用 (vulkan_enable=False)")
+        else:
+            # 启用 Vulkan 并根据配置调整精度
+            if self.config.vulkan_force_fp32:
+                os.environ["GGML_VK_DISABLE_F16"] = "1"
+                logger.info("GPU 加速: 已启用 Vulkan (强制 FP32 模式)")
+            else:
+                # 清理环境变量，确保不残留之前的设置
+                os.environ.pop("GGML_VK_DISABLE_F16", None)
+                os.environ.pop("VK_ICD_FILENAMES", None)
+                logger.info("GPU 加速: 已启用 Vulkan (自动精度模式)")
+
     def initialize(self, verbose: bool = True) -> bool:
         if self._initialized:
             return True
@@ -40,11 +57,15 @@ class ModelManager:
         try:
             t_start = time.perf_counter()
             
+            # 0. 应用 GPU 配置
+            self._apply_vulkan_config()
+            
             # 1. ONNX
             vprint("[1/6] 加载 ONNX 模型...", verbose)
             self.encoder_sess, self.ctc_sess, _ = load_onnx_models(
                 self.config.encoder_onnx_path,
-                self.config.ctc_onnx_path
+                self.config.ctc_onnx_path,
+                dml_enable=self.config.dml_enable
             )
 
             # 2. GGUF

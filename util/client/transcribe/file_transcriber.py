@@ -16,7 +16,7 @@ import websockets
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from util.client.state import console
 from util.client.websocket_manager import WebSocketManager
 from .media_tool import MediaTool

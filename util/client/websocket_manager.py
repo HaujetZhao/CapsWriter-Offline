@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Optional
 import websockets
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from . import logger
 
 if TYPE_CHECKING:

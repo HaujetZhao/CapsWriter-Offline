@@ -70,7 +70,7 @@ class ShortcutManager:
 
     def _init_tasks(self) -> None:
         """初始化所有快捷键任务"""
-        from config import ClientConfig as Config
+        from config_client import ClientConfig as Config
 
         for shortcut in self.shortcuts:
             if not shortcut.enabled:

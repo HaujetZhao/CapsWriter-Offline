@@ -8,7 +8,7 @@ LLM 输出中断监控
 import logging
 import threading
 from typing import Optional
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from . import logger
 
 

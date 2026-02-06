@@ -2,6 +2,7 @@ import onnxruntime
 import time
 import os
 import numpy as np
+from . import logger
 
 """
 ONNX 推理底层工具 - DirectML (DML) 性能优化指南
@@ -18,7 +19,7 @@ ONNX 推理底层工具 - DirectML (DML) 性能优化指南
    提供物理长度信息，在输出端进对结果进行精确裁切，确保 100% 的识别精度。
 """
 
-def load_onnx_models(encoder_path, ctc_path, padding_secs=30):
+def load_onnx_models(encoder_path, ctc_path, padding_secs=30, dml_enable=True):
     """步骤 1: 加载 ONNX 音频编码器和 CTC Head 并进行热身"""
     # print("\n[1] 加载 ONNX Models (Encoder + CTC)...")
     
@@ -29,8 +30,9 @@ def load_onnx_models(encoder_path, ctc_path, padding_secs=30):
     session_opts.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
     
     providers = ['CPUExecutionProvider']
-    if 'DmlExecutionProvider' in onnxruntime.get_available_providers():
+    if dml_enable and 'DmlExecutionProvider' in onnxruntime.get_available_providers():
         providers.insert(0, 'DmlExecutionProvider') 
+    logger.info(f"Onnxruntime providers: {providers}")
     
     encoder_sess = onnxruntime.InferenceSession(
         encoder_path, 

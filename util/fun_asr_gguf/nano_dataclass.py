@@ -146,6 +146,9 @@ class ASREngineConfig:
     similar_threshold: float = 0.6
     max_hotwords: int = 10
     sample_rate: int = 16000
+    dml_enable: bool = True
+    vulkan_enable: bool = True
+    vulkan_force_fp32: bool = False
 
 
 # ==================== CTC 结果相关 ====================

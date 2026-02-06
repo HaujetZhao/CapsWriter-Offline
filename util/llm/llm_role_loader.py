@@ -18,7 +18,7 @@ class RoleLoader:
 
     def __init__(self):
         self.roles_registry: Dict[str, RoleConfig] = {}
-        from config import BASE_DIR
+        from config_client import BASE_DIR
         self.llm_dir = Path(BASE_DIR) / 'LLM'
         self.load_all_roles()
 

@@ -44,7 +44,7 @@ class LLMFileWatcher(FileSystemEventHandler):
         self._get_roles = get_roles
         
         self.observer = Observer()
-        from config import BASE_DIR
+        from config_client import BASE_DIR
         self.base_dir = Path(BASE_DIR)
         self.llm_dir = self.base_dir / 'LLM'
 

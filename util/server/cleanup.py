@@ -9,7 +9,7 @@ import os
 import asyncio
 from rich.console import Console
 
-from config import ClientConfig as Config, __version__
+from config_server import ServerConfig as Config, __version__
 from . import logger
 from util.common.lifecycle import lifecycle
 from util.server.state import get_state

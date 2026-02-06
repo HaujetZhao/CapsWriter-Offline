@@ -51,7 +51,7 @@ class Logger:
 
         # 确定日志目录
         if log_dir is None:
-            from config import BASE_DIR
+            from config_client import BASE_DIR
             log_dir = os.path.join(BASE_DIR, 'logs')
 
         # 创建日志目录

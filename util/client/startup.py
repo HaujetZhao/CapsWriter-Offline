@@ -4,7 +4,7 @@ from pathlib import Path
 from platform import system
 from util.client.state import get_state
 from . import logger
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from util.client.cleanup import request_exit_from_tray
 from util.client.ui import TipsDisplay
 from util.hotword import get_hotword_manager

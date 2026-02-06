@@ -86,7 +86,7 @@ async def handle_toast_mode(text: str, role_config=None, matched_hotwords=None, 
             result_text = TextOutput.strip_punc(result_text)
             
             from util.llm.llm_output_typing import output_text
-            from config import ClientConfig as Config
+            from config_client import ClientConfig as Config
             await output_text(result_text, Config.paste)
             return (result_text, 0, 0.0)
         else:

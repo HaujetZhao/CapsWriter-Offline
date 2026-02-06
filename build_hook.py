@@ -12,8 +12,3 @@ sys.path.insert(0, executable_dir)
 internal_dir = join(executable_dir, 'internal')
 if exists(internal_dir):
     sys.path.insert(0, internal_dir)
-
-# 将 llama.cpp 的 bin 路径加到 path
-internal_dir = join(executable_dir, 'utiil', 'fun_asr_gguf', 'bin')
-if exists(internal_dir):
-    sys.path.insert(0, internal_dir)

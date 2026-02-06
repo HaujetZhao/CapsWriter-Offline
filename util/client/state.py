@@ -190,7 +190,7 @@ class ClientState:
         Args:
             text: 输出文本内容
         """
-        from config import ClientConfig as Config
+        from config_client import ClientConfig as Config
         
         # 更新状态
         self.last_output_text = text

@@ -23,7 +23,7 @@ from .hot_rectification import RectificationRAG
 
 # 尝试导入主项目的统一组件，失败则使用本地默认值（独立运行模式）
 try:
-    from config import ClientConfig
+    from config_client import ClientConfig
     HOT_THRESH = ClientConfig.hot_thresh
     HOT_SIMILAR = ClientConfig.hot_similar
     RECTIFY_THRESH = ClientConfig.hot_rectify

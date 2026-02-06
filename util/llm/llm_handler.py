@@ -257,7 +257,7 @@ def get_handler() -> LLMHandler:
 
 def init_llm_system():
     """初始化 LLM 系统（便捷函数）"""
-    from config import ClientConfig as Config
+    from config_client import ClientConfig as Config
     if Config.llm_enabled:
         try:
             get_handler()

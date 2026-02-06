@@ -12,7 +12,7 @@ import os
 from rich.markdown import Markdown
 
 from util.client.state import console
-from config import ClientConfig as Config, __version__
+from config_client import ClientConfig as Config, __version__
 from . import logger
 
 

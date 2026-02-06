@@ -11,7 +11,7 @@ import threading
 import tkinter as tk
 from typing import Optional
 
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from util.client.state import console
 from . import logger
 

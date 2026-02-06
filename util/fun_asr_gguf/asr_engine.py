@@ -27,6 +27,9 @@ class FunASREngine:
         n_threads: int = None,
         similar_threshold: float = 0.6,
         max_hotwords: int = 10,
+        dml_enable: bool = True,
+        vulkan_enable: bool = True,
+        vulkan_force_fp32: bool = False,
     ):
         # 封装配置
         self.config = ASREngineConfig(
@@ -39,7 +42,10 @@ class FunASREngine:
             n_predict=n_predict,
             n_threads=n_threads,
             similar_threshold=similar_threshold,
-            max_hotwords=max_hotwords
+            max_hotwords=max_hotwords,
+            dml_enable=dml_enable,
+            vulkan_enable=vulkan_enable,
+            vulkan_force_fp32=vulkan_force_fp32
         )
 
         # 初始化组件
@@ -120,6 +126,9 @@ def create_asr_engine(
     n_threads: int = None,
     similar_threshold: float = 0.6,
     max_hotwords: int = 10,
+    dml_enable: bool = True,
+    vulkan_enable: bool = True,
+    vulkan_force_fp32: bool = False,
     verbose: bool = True,
 ) -> FunASREngine:
     """创建并初始化 ASR 引擎的快捷入口"""
@@ -134,6 +143,9 @@ def create_asr_engine(
         n_threads=n_threads,
         similar_threshold=similar_threshold,
         max_hotwords=max_hotwords,
+        dml_enable=dml_enable,
+        vulkan_enable=vulkan_enable,
+        vulkan_force_fp32=vulkan_force_fp32,
     )
     if not engine.initialize(verbose=verbose):
         raise RuntimeError("Failed to initialize ASR engine")

@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 import websockets
 
-from config import ClientConfig as Config
+from config_client import ClientConfig as Config
 from util.client.state import console
 from util.client.audio.file_manager import AudioFileManager
 from . import logger

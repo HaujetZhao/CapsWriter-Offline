@@ -8,8 +8,8 @@
 import sys
 from pathlib import Path
 
-from config import ServerConfig as Config
-from util.model_config import ModelPaths, ModelDownloadLinks
+from config_server import ServerConfig as Config
+from config_server import ModelPaths, ModelDownloadLinks
 from util.server.server_cosmic import console
 from util.common.lifecycle import lifecycle
 from . import logger
@@ -61,7 +61,7 @@ def check_model() -> None:
         console.print(f'''
     [bold red]不支持的模型类型：{Config.model_type}[/bold red]
 
-    请在 config.py 中将 ServerConfig.model_type 设置为：
+    请在 config_server.py 中将 ServerConfig.model_type 设置为：
     - 'fun_asr_nano'
     - 'sensevoice'
     - 'paraformer'
