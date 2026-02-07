@@ -84,7 +84,7 @@ class ClientConfig:
 
 
 # 快捷键配置说明
-"""
+r"""
 快捷键配置字段说明：
   key        - 按键名称（见下方可用按键列表）
   type       - 输入类型：'keyboard'（键盘）或 'mouse'（鼠标）
