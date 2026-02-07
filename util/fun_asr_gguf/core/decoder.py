@@ -103,7 +103,11 @@ class LLMDecoder:
                 if token_id == self.models.eos_token or token_id in self.stop_tokens:
                     break
                 asr_decoder.push(token_id)
-        
+                if len(asr_decoder.generated_text) > 10: 
+                    if len(set(asr_decoder.generated_text[-10:])) == 1:
+                        generated_text += "解码异常，强制熔断，可能是 DML 或 Vulkan 不兼容，可到 config_server.py 中关闭 DML 或 Vulkan 看能否解决"
+                        break
+
         asr_decoder.flush()
 
         # batch_text 会由 __del__ 自动释放
