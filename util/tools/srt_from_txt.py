@@ -43,7 +43,7 @@ def lines_match_words(text_lines: List[str], words: List) -> List[srt.Subtitle]:
     
     # 标点和清理模式：动态涵盖所有已知中英文标点
     from util.constants import Punctuation
-    punc_pattern = re.compile(f'[{re.escape(Punctuation.ALL)}\s\d]')
+    punc_pattern = re.compile(rf'[{re.escape(Punctuation.ALL)}\s\d]')
     
     # 建立 token_idx 到字符偏移的映射
     token_chars = []

@@ -200,7 +200,7 @@ def convert_range_expression(text):
 _unit_suffix_pattern = re.compile(rf'({common_units}|[a-zA-Z]+)$')
 
 # 总模式，筛选出可能需要替换的内容
-pattern = re.compile(f"""(?ix)
+pattern = re.compile(rf"""(?ix)
 ([a-z]\s*)?
 (
   (

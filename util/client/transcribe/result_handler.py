@@ -26,7 +26,7 @@ class ResultHandler:
         
         # 强标点（必须换行）
         strong_punct = {'。', '？', '.', '?', '!'}
-        punct_chars = set('，。？,.\?!')
+        punct_chars = set(r'，。？,.?!')
         
         for part in parts:
             clean_part = part.strip()
