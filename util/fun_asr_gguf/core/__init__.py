@@ -1,3 +1,4 @@
-from .. import logger
+from .. import logger, console
 
-__all__ = ['logger']
+
+__all__ = ['logger', 'console']

@@ -1,16 +1,40 @@
 import os
+import sys
 import time
 import ctypes
 from pathlib import Path
 from typing import Optional, Tuple
+from rich.markdown import Markdown
 
-from .. import llama, logger
+from .. import llama, logger, console
 from ..nano_ctc import load_ctc_tokens
 from ..nano_onnx import load_onnx_models
 from ..hotword.manager import get_hotword_manager
 from ..utils import vprint
 from ..prompt_utils import PromptBuilder
 from ..nano_dataclass import ASREngineConfig
+
+
+def gguf_load_fail():
+    markdown = '''
+Fun-ASR-Nano 的 LLM Decoder 载入失败。
+
+LLM Decoder 默认使用 Vulkan 进行显卡加速，如果与系统不兼容，则有可能失败。
+
+解决方案：
+
+1. 编辑 `config_server.py` ，将其中的 `vulkan_enable` 设为 `False`，保存后重启服务端，使用 CPU 推理 Decoder
+
+2. 如果有 Nvidia 独显，系统不兼容 Vulkan，仍想使用显卡加速，可以使用 CUDA 方案，请确保电脑安装了 CUDA，然后到 llama.cpp 的 发行页下载对应 CUDA 版本的压缩包 ，解压后，将其 DLL 文件放入 `util/fun_asr_gguf/bin` 文件夹中，替换原来的 DLL
+
+llama.cpp 发行页地址： https://github.com/ggml-org/llama.cpp/releases 
+
+如果两者种方案都不行，请携 `logs` 文件夹中的最新 server log 到 Github 发 issue，让作者看一下
+    '''
+    console.print(Markdown(markdown), highlight=True)
+    console.input(f'\n按下回车退出……')
+    sys.exit()
+    
 
 class ModelManager:
     """管理所有模型组件的代码"""
@@ -54,70 +78,69 @@ class ModelManager:
         if self._initialized:
             return True
         
-        try:
-            t_start = time.perf_counter()
-            
-            # 0. 应用 GPU 配置
-            self._apply_vulkan_config()
-            
-            # 1. ONNX
-            vprint("[1/6] 加载 ONNX 模型...", verbose)
-            self.encoder_sess, self.ctc_sess, _ = load_onnx_models(
-                self.config.encoder_onnx_path,
-                self.config.ctc_onnx_path,
-                dml_enable=self.config.dml_enable
-            )
+        t_start = time.perf_counter()
+        
+        # 0. 应用 GPU 配置
+        self._apply_vulkan_config()
+        
+        # 1. ONNX
+        vprint("[1/6] 加载 ONNX 模型...", verbose)
+        self.encoder_sess, self.ctc_sess, _ = load_onnx_models(
+            self.config.encoder_onnx_path,
+            self.config.ctc_onnx_path,
+            dml_enable=self.config.dml_enable
+        )
 
-            # 2. GGUF
-            vprint("[2/6] 加载 GGUF LLM Decoder...", verbose)
-            self.model = llama.LlamaModel(self.config.decoder_gguf_path, n_gpu_layers=-1)
-            self.vocab = self.model.vocab
-            self.eos_token = self.model.eos_token
+        # 2. GGUF
+        vprint("[2/6] 加载 GGUF LLM Decoder...", verbose)
+        self.model = llama.LlamaModel(self.config.decoder_gguf_path, n_gpu_layers=-1)
+        if not self.model.ptr:
+            gguf_load_fail()
+        
+        self.vocab = self.model.vocab
+        self.eos_token = self.model.eos_token
 
-            # 3. Embeddings
-            vprint("[3/6] 加载 Embedding 权重...", verbose)
-            self.embedding_table = llama.get_token_embeddings_gguf(self.config.decoder_gguf_path)
-            
-            # 4. Context
-            vprint("[4/6] 创建 LLM 上下文...", verbose)
-            self.ctx = llama.LlamaContext(
-                self.model,
-                n_ctx=2048,
-                n_batch=2048,
-                n_ubatch=self.config.n_ubatch,
-                n_threads=self.config.n_threads,
-                n_threads_batch=self.config.n_threads_batch
-            )
-            
-            # 5. CTC & Prompt
-            vprint("[5/6] 加载 CTC 词表与 Prompt 构建器...", verbose)
-            self.ctc_id2token = load_ctc_tokens(self.config.tokens_path)
-            self.prompt_builder = PromptBuilder(self.vocab, self.embedding_table)
+        # 3. Embeddings
+        vprint("[3/6] 加载 Embedding 权重...", verbose)
+        self.embedding_table = llama.get_token_embeddings_gguf(self.config.decoder_gguf_path)
+        
+        # 4. Context
+        vprint("[4/6] 创建 LLM 上下文...", verbose)
+        self.ctx = llama.LlamaContext(
+            self.model,
+            n_ctx=2048,
+            n_batch=2048,
+            n_ubatch=self.config.n_ubatch,
+            n_threads=self.config.n_threads,
+            n_threads_batch=self.config.n_threads_batch
+        )
+        
+        # 5. CTC & Prompt
+        vprint("[5/6] 加载 CTC 词表与 Prompt 构建器...", verbose)
+        self.ctc_id2token = load_ctc_tokens(self.config.tokens_path)
+        self.prompt_builder = PromptBuilder(self.vocab, self.embedding_table)
 
-            # 6. Hotwords
-            vprint("[6/6] 初始化热词管理器...", verbose)
-            hw_path = self.config.hotwords_path
-            if not hw_path:
-                # 默认逻辑
-                script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                hw_path = os.path.join(script_dir, "hot.txt")
-                
-            self.hotword_manager = get_hotword_manager(
-                hotword_file=Path(hw_path),
-                threshold=1.0,
-                similar_threshold=self.config.similar_threshold
-            )
-            self.hotword_manager.load()
-            self.hotword_manager.start_file_watcher()
-            self.corrector = self.hotword_manager.get_corrector()
+        # 6. Hotwords
+        vprint("[6/6] 初始化热词管理器...", verbose)
+        hw_path = self.config.hotwords_path
+        if not hw_path:
+            # 默认逻辑
+            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            hw_path = os.path.join(script_dir, "hot.txt")
             
-            self._initialized = True
-            vprint(f"✓ 模型加载完成 (耗时: {time.perf_counter() - t_start:.2f}s)", verbose)
-            return True
+        self.hotword_manager = get_hotword_manager(
+            hotword_file=Path(hw_path),
+            threshold=1.0,
+            similar_threshold=self.config.similar_threshold
+        )
+        self.hotword_manager.load()
+        self.hotword_manager.start_file_watcher()
+        self.corrector = self.hotword_manager.get_corrector()
+        
+        self._initialized = True
+        vprint(f"✓ 模型加载完成 (耗时: {time.perf_counter() - t_start:.2f}s)", verbose)
+        return True
             
-        except Exception as e:
-            logger.error(f"✗ 初始化失败: {e}", exc_info=True)
-            return False
 
     def cleanup(self):
         if self.hotword_manager:

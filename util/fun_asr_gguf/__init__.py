@@ -7,10 +7,16 @@ API 兼容 sherpa-onnx，可直接替换使用。
 """
 
 import sys
-from util import get_logger
 
 # 统一使用通过 util 获取的 'server' logger
+from util import get_logger
 logger = get_logger('server')
+
+try:
+    from util.server import console 
+except:
+    from rich.console import Console
+    console = Console(highlight=False)
 
 
 # ==================== 导入主要组件 ====================

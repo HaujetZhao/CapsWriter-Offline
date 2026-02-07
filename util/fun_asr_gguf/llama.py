@@ -361,9 +361,15 @@ def load_model(model_path: str):
     Returns:
         model: llama_model 指针
     """
+    # 明确路径
     lib_dir = Path(__file__).parent / 'bin'
-    model_path = Path(model_path).resolve()
+    model_path = Path(model_path)
     model_rel = Path(relpath(model_path, lib_dir))
+
+    # 日志记录
+    logger.info(f'当前路径：{Path.cwd()}')
+    logger.info(f'模型路径：{model_path.as_posix()}')
+    logger.info(f'模型可访问性：{model_path.exists()}')
 
     # 跳转到 dll 所在目录，并将其加到 Path
     original_cwd = Path.cwd()
@@ -380,17 +386,13 @@ def load_model(model_path: str):
         model_rel.as_posix().encode('utf-8'),
         model_params
     )
+    
+    # 跳转回软件根目录
+    os.chdir(original_cwd)
+    logger.info(f"Restored directory to: {Path.cwd()}")
 
-    if model:
-        os.chdir(original_cwd)
-        logger.info(f"Restored directory to: {Path.cwd()}")
-        return model
-    else:
-        logger.error(f'当前路径：{Path.cwd()}')
-        logger.error(f'模型绝对路径：{model_path.as_posix()}')
-        logger.error(f'模型可访问性：{model_path.exists()}')
-        logger.error(f"模型加载失败: {model_path}")
-        return None
+
+    return model
 
 
 def create_context(model, n_ctx=2048, n_batch=2048, n_ubatch=512, n_seq_max=1, 
@@ -421,10 +423,11 @@ class LlamaModel:
     """模型的面向对象封装"""
     def __init__(self, path, n_gpu_layers=-1):
 
-        self.model = load_model(path)
-            
-        self.vocab = llama_model_get_vocab(self.model)
-        self.n_embd = llama_model_n_embd(self.model)
+        self.ptr = load_model(path)
+        if not self.ptr:
+            return 
+        self.vocab = llama_model_get_vocab(self.ptr)
+        self.n_embd = llama_model_n_embd(self.ptr)
         self.eos_token = llama_vocab_eos(self.vocab)
 
     def tokenize(self, text: str, add_special: bool = False, parse_special: bool = True) -> List[int]:
@@ -458,9 +461,9 @@ class LlamaModel:
         return res[0] if res else -1
 
     def __del__(self):
-        if hasattr(self, 'ptr') and self.model:
-            llama_model_free(self.model)
-            self.model = None
+        if hasattr(self, 'ptr') and self.ptr:
+            llama_model_free(self.ptr)
+            self.ptr = None
 
 class LlamaContext:
     """上下文的面向对象封装"""
@@ -491,7 +494,7 @@ class LlamaContext:
         else:
             params.n_threads_batch = n_threads if n_threads else cpu_count
 
-        self.ptr = llama_init_from_model(model.model, params)
+        self.ptr = llama_init_from_model(model.ptr, params)
         if not self.ptr:
             raise RuntimeError("上下文初始化失败")
 
