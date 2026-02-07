@@ -1,4 +1,6 @@
 import time
+import sys
+import os 
 from multiprocessing import Queue
 import signal
 import atexit
@@ -46,11 +48,12 @@ def signal_handler(signum, frame):
 
 
 
-def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id):
+def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id, stdin_fn):
     global _resources_initialized
 
     logger.info("识别子进程启动")
     logger.debug(f"系统平台: {system()}")
+    sys.stdin=os.fdopen(stdin_fn)
 
     # 注册信号处理器
     signal.signal(signal.SIGINT, signal_handler)

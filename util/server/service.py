@@ -1,5 +1,7 @@
 
 import asyncio
+import sys 
+import os 
 from multiprocessing import Process, Manager
 import queue
 from util.server.server_cosmic import Cosmic, console
@@ -17,10 +19,12 @@ def start_recognizer_process():
 
     state = get_state()
     Cosmic.sockets_id = Manager().list()
+    stdin_fn = sys.stdin.fileno()
     recognize_process = Process(target=init_recognizer,
                                 args=(Cosmic.queue_in,
                                       Cosmic.queue_out,
-                                      Cosmic.sockets_id),
+                                      Cosmic.sockets_id, 
+                                      stdin_fn),
                                 daemon=False)
     recognize_process.start()
     state.recognize_process = recognize_process
@@ -33,7 +37,10 @@ def start_recognizer_process():
             Cosmic.queue_out.get(timeout=0.1)
             break
         except queue.Empty:
-            continue
+            if recognize_process.is_alive():
+                continue
+            else:
+                break
         except (InterruptedError, OSError) as e:
             # 处理被信号中断的情况 (Errno 4 Interrupted function call)
             # 这通常发生在 Anti-Shake 触发时 (第一次 Ctrl+C)
@@ -41,16 +48,15 @@ def start_recognizer_process():
                 continue
             raise
 
-        # 检查子进程是否存活
-        if not recognize_process.is_alive():
-            logger.error("识别子进程意外退出（可能是因为模型文件缺失或加载失败）")
-            # 退出码不为0，说明可能出错
-            if recognize_process.exitcode != 0:
-                logger.error(f"子进程退出码: {recognize_process.exitcode}")
-            
-            # 主动抛出异常或直接退出
-            lifecycle.shutdown()
-            raise RuntimeError("识别子进程启动失败")
+    # 检查子进程是否存活
+    if not recognize_process.is_alive():
+        logger.error("识别子进程意外退出（可能是因为模型文件缺失或加载失败）")
+        # 退出码不为0，说明可能出错
+        if recognize_process.exitcode != 0:
+            logger.error(f"子进程退出码: {recognize_process.exitcode}")
+        
+        # 主动抛出异常或直接退出
+        lifecycle.request_shutdown()
 
     if lifecycle.is_shutting_down:
         logger.warning("在加载模型时收到退出请求")
