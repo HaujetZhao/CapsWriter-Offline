@@ -1,5 +1,4 @@
 # ASR core
--f https://k2-fsa.github.io/sherpa/onnx/cuda-cn.html
 sherpa-onnx
 numpy
 gguf
@@ -9,6 +8,7 @@ onnxruntime-directml
 rich
 websockets
 watchdog
+pypinyin
 
 # tray and image
 pystray
