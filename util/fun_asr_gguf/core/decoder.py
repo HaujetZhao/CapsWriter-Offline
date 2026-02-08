@@ -105,7 +105,7 @@ class LLMDecoder:
                 asr_decoder.push(token_id)
                 if len(asr_decoder.generated_text) > 10: 
                     if len(set(asr_decoder.generated_text[-10:])) == 1:
-                        generated_text += "解码异常，强制熔断，可能是 DML 或 Vulkan 不兼容，可到 config_server.py 中关闭 DML 或 Vulkan 看能否解决"
+                        asr_decoder.generated_text += "解码异常，强制熔断，可能是 DML 或 Vulkan 不兼容，可到 config_server.py 中关闭 DML 或 Vulkan 看能否解决"
                         break
 
         asr_decoder.flush()
