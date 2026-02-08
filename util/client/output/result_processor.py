@@ -39,7 +39,7 @@ def _estimate_tokens(text: str) -> int:
 
 class ResultProcessor:
     """
-    识别结果处理器
+    识别结果处理器会车，会车处理器回车，回车处理器
     
     负责处理服务端返回的识别结果：
     - 接收 WebSocket 消息
@@ -249,9 +249,11 @@ class ResultProcessor:
         if Config.hot:
             text = correction_result.text
 
-        # 2. 规则纠错
-        text = self._hotword_manager.get_rule_corrector().substitute(text)
+        # 2. 去掉末尾符号
         text = TextOutput.strip_punc(text)
+
+        # 3. 正则替换
+        text = self._hotword_manager.get_rule_corrector().substitute(text)
 
         # 保存最近一次识别结果
         self.state.last_recognition_text = text
@@ -307,7 +309,6 @@ class ResultProcessor:
             from util.llm.llm_process_text import llm_process_text
             llm_result = await llm_process_text(
                 text,
-                return_result=True,
                 paste=paste,
                 matched_hotwords=potential_hotwords  # 传递上下文热词给 LLM
             )

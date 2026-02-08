@@ -35,23 +35,18 @@ class RoleDetector:
         # logger.debug(f"检测角色，输入文本: {text[:50]}...")
 
         for role_name, role_config in self.role_loader.get_roles().items():
-            if role_name == '默认':
+            if role_name == '默认' or role_name == '':
                 continue
 
             # 检查是否启用前缀匹配
             if not role_config.match:
                 continue
 
-            name = role_config.name
-            # 空名字和「默认」都不作为前缀匹配
-            if not name or name == '默认':
-                continue
-
-            if name and text.startswith(name):
-                remaining_text = text[len(name):]
+            if role_name and text.startswith(role_name):
+                remaining_text = text[len(role_name):]
                 remaining_text = remaining_text.lstrip('：，。,. ')
 
-                # logger.debug(f"匹配到角色: {name}, 去除前缀后: {remaining_text[:50]}...")
+                # logger.debug(f"匹配到角色: {role_name}, 去除前缀后: {remaining_text[:50]}...")
                 return role_config, remaining_text
 
         # 未匹配，使用默认角色

@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import platform
 from typing import Optional
+import re
 
 import keyboard
 import pyclip
@@ -30,7 +31,7 @@ class TextOutput:
     @staticmethod
     def strip_punc(text: str) -> str:
         """
-        消除末尾标点
+        消除末尾最后一个标点
         
         Args:
             text: 原始文本
@@ -40,8 +41,8 @@ class TextOutput:
         """
         if not text:
             return text
-        clean_text = text.rstrip(Config.trash_punc)
-        return clean_text if clean_text else text
+        clean_text = re.sub(f"(?<=.)[{Config.trash_punc}]$", "", text)
+        return clean_text
     
     async def output(self, text: str, paste: Optional[bool] = None) -> None:
         """
@@ -55,9 +56,6 @@ class TextOutput:
         """
         if not text:
             return
-        
-        # 消除末尾标点
-        text = self.strip_punc(text)
         
         # 确定输出方式
         if paste is None:

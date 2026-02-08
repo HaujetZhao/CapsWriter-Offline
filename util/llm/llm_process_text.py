@@ -13,8 +13,8 @@ class LLMResult:
     generation_time: float = 0.0   # 生成时间（秒，从第一个 token 开始）
 
 
-async def llm_process_text(text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
+async def llm_process_text(text: str, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
     """润色文本并直接输出（外部主入口 - Shim）"""
     from util.llm.llm_handler import get_handler
     handler = get_handler()
-    return await handler.process_and_output(text, return_result, paste, matched_hotwords)
+    return await handler.process_and_output(text, paste, matched_hotwords)

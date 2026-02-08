@@ -157,13 +157,12 @@ class LLMHandler:
 
         return result_text, token_count, gen_time
 
-    async def process_and_output(self, text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
+    async def process_and_output(self, text: str, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
         """
         统一入口：处理输入文本并根据配置执行输出（打字或弹屏）
         
         Args:
             text: 待润色的完整原始文本（含可能的前缀）
-            return_result: 是否返回 LLMResult 对象
             paste: 是否强制使用粘贴模式（None 则遵循配置）
             matched_hotwords: 潜在热词列表
         """
@@ -177,35 +176,19 @@ class LLMHandler:
         # 1. 角色检测
         role_config, content = self.detect_role(text)
 
-        # 2. 如果不匹配任何需要处理的角色（或者默认角色被禁用）
+        # 2. 如果不匹配任何需要处理的角色
         if not role_config:
-            result_text = TextOutput.strip_punc(text)
-            await output_text(result_text, paste)
+
+            # 打字输出
+            await output_text(text, paste)
             
             # 更新全局状态并 UDP 广播
             from util.client.state import get_state
-            get_state().set_output_text(result_text)
+            get_state().set_output_text(text)
 
-            if return_result:
-                return LLMResult(result=result_text, role_name=None, processed=False, 
-                                 token_count=0, polish_time=0, input_text=text)
-            return None
+            return LLMResult(result=text, role_name=None, processed=False, 
+                                token_count=0, polish_time=0, input_text=text)
 
-        # 3. 检查是否启用 LLM 处理
-        display_name = role_config.name or RoleConfig.DEFAULT_ROLE_NAME
-        if not role_config.process:
-            # 角色匹配但禁用 LLM（如只是占位符），原样输出
-            result_text = TextOutput.strip_punc(content)
-            await output_text(result_text, paste)
-            
-            # 更新全局状态并 UDP 广播
-            from util.client.state import get_state
-            get_state().set_output_text(result_text)
-
-            if return_result:
-                return LLMResult(result=result_text, role_name=display_name, processed=False,
-                                 token_count=0, polish_time=0, input_text=content)
-            return None
 
         # 4. 根据输出模式分发处理
         if role_config.output_mode == 'toast':
@@ -219,17 +202,15 @@ class LLMHandler:
             from util.client.state import get_state
             get_state().set_output_text(result)
 
-        if return_result:
-            return LLMResult(
-                result=result,
-                role_name=display_name,
-                processed=True,
-                token_count=token_count,
-                polish_time=time.time() - start_time,
-                input_text=content,
-                generation_time=gen_time
-            )
-        return None
+        return LLMResult(
+            result=result,
+            role_name=display_name,
+            processed=True,
+            token_count=token_count,
+            polish_time=time.time() - start_time,
+            input_text=content,
+            generation_time=gen_time
+        )
 
 
 # ======================================================================
@@ -267,10 +248,10 @@ def init_llm_system():
             logger.error(f"LLM 系统初始化失败: {e}", exc_info=True)
 
 
-async def llm_process_text(text: str, return_result: bool = False, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
+async def llm_process_text(text: str, paste: bool = None, matched_hotwords=None) -> Optional[LLMResult]:
     """润色文本并直接输出（外部主入口）"""
     handler = get_handler()
-    return await handler.process_and_output(text, return_result, paste, matched_hotwords)
+    return await handler.process_and_output(text, paste, matched_hotwords)
 
 
 def clear_llm_history():
@@ -280,7 +261,7 @@ def clear_llm_history():
 
 
 # ======================================================================
-# --- 测试 ---
+# --- 测试 ---你好，你好。你好？
 
 if __name__ == "__main__":
     print("=" * 60)
