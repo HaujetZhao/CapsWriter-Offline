@@ -1,4 +1,5 @@
 import time
+import re
 import ctypes
 import numpy as np
 from typing import List, Tuple, Optional, Dict, Any
@@ -93,25 +94,37 @@ class LLMDecoder:
         seed = int(np.random.randint(0, 2**31 - 1))
         with llama.LlamaSampler(temperature=temperature, top_k=top_k, top_p=top_p, seed=seed) as smpl:
             for _ in range(n_predict):
-                # 使用面向对象接口采样
+                # 采样
                 token_id = smpl.sample(self.models.ctx, -1)
 
-                # 先提交异步解码任务
+                # 提交异步解码任务
                 if self.models.ctx.decode_token(batch_text, token_id, current_pos) != 0:
                     break
                 current_pos += 1
 
-                # 再检查 token id 和解码
+                # 检查 token id 是否为中止符
                 if token_id == self.models.eos_token or token_id in self.stop_tokens:
                     break
                 
+                # 解码 token id
                 asr_decoder.push(token_id)
                 
                 # 熔断检查
-                if len(asr_decoder.generated_text) > 15: 
-                    if len(set(asr_decoder.generated_text[-15:])) <= 3:
+                if len(asr_decoder.tokens) <= 30: 
+                    continue
+                
+                # 尾部无限循环，熔断
+                if len(set(asr_decoder.tokens[-30:])) <= 3:
+                    res.is_aborted = True
+                    break
+
+                # 达到30个token时还没生成标点，熔断
+                if len(asr_decoder.tokens) == 30: 
+                    if not re.search(r'[，。？！、；：,\.?!;:]', asr_decoder.generated_text):
                         res.is_aborted = True
                         break
+
+
         
         asr_decoder.flush()
 
@@ -196,8 +209,8 @@ class StreamDecoder:
             
             full_embd = np.concatenate([p_embd, audio_embd.astype(np.float32), s_embd], axis=0)
 
-            # LLM 解码循环：若熔断则加温重试（最多重试 5 次）
-            for _ in range(6):
+            # LLM 解码循环：若熔断则加温重试（最多重试 3 次）
+            for _ in range(4):
                 llm_res = self.llm_decoder.decode(
                     full_embd, full_embd.shape[0], self.models.config.n_predict, 
                     stream_output=verbose, reporter=reporter,
@@ -206,7 +219,7 @@ class StreamDecoder:
                 if not llm_res.is_aborted: break
                 temperature += 0.3
                 llm_res.text += "====解码有误，强制熔断===="
-                print(f"\n\n[!] 片段触发重试 (温度设为 {temperature:.1f})\n")
+                print(f"\n\n[!] 解码有误，熔断重试 (温度设为 {temperature:.1f})\n")
 
             text = llm_res.text.strip()
             timings.inject = llm_res.t_inject

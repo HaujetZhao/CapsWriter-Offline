@@ -712,14 +712,16 @@ class ASRStreamDecoder:
         self.byte_decoder = codecs.getincrementaldecoder("utf-8")(errors='replace')
         self.generated_text = ""
         self.tokens_generated = 0
+        self.tokens = []
 
     def push(self, token_id: int):
         """推入 Token，返回新解码的文字片段"""
         raw_bytes = token_to_bytes(self.vocab, token_id)
         text_piece = self.byte_decoder.decode(raw_bytes, final=False)
+        self.tokens.append(text_piece)
+        self.tokens_generated += 1
         
         self.generated_text += text_piece
-        self.tokens_generated += 1
         
         if self.reporter:
             self.reporter.stream(text_piece)
@@ -729,6 +731,7 @@ class ASRStreamDecoder:
     def flush(self):
         """清空残余字节并返回"""
         remaining = self.byte_decoder.decode(b"", final=True)
+        self.tokens.append(remaining)
         self.generated_text += remaining
         return remaining
 
