@@ -42,7 +42,7 @@ v2.1 新增：
 
 ## ✨ 核心特性
 
--   **语音输入**：按住 `CapsLock` 键说话，松开即输入，默认去除末尾逗句号。支持对讲机模式和单击录音模式。
+-   **语音输入**：按住 `CapsLock键` 或 `鼠标侧键X2` 说话，松开即输入，默认去除末尾逗句号。支持对讲机模式和单击录音模式。
 -   **文件转录**：音视频文件往客户端一丢，字幕 (`.srt`)、文本 (`.txt`)、时间戳 (`.json`) 统统都有。
 -   **数字 ITN**：自动将「十五六个」转为「15~16个」，支持各种复杂数字格式。
 -   **热词语境**：在 `hot-server.txt` 记下专业术语，经音素筛选后，用作 Fun-ASR-Nano 的语境增强识别 
@@ -74,7 +74,7 @@ LLM 角色既可以使用 Ollama 运行的本地模型，又可以用 API 访问
 2.  **下载解压**：下载 [Latest Release](https://github.com/HaujetZhao/CapsWriter-Offline/releases/latest) 里的软件本体，再到 [Models Release](https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/models) 下载模型压缩包，将模型解压，放入 `models` 文件夹中对应模型的文件夹里。
 3.  **启动服务**：双击 `start_server.exe`，它会自动最小化到托盘菜单。
 4.  **启动听写**：双击 `start_client.exe`，它会自动最小化到托盘菜单。
-5.  **开始录音**：按住 `CapsLock` 就可以说话了！
+5.  **开始录音**：按住 `CapsLock键` 或 `鼠标侧键X2` 就可以说话了！
 
 
 ## 🎤 模型说明
