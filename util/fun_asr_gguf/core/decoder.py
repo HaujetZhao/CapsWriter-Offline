@@ -8,7 +8,7 @@ from .. import llama
 from ..nano_ctc import decode_ctc, align_timestamps
 from ..nano_onnx import encode_audio
 from ..utils import vprint
-from ..nano_dataclass import DecodeResult, Timings, RecognitionStream
+from ..nano_dataclass import DecodeResult, Timings, RecognitionStream, LLMDecodeResult
 from ..display import DisplayReporter
 from .model_manager import ModelManager
 
@@ -66,8 +66,9 @@ class LLMDecoder:
         temperature: float = 0.3,
         top_p: float = 1.0,
         top_k: int = 50
-    ) -> Tuple[str, int, float, float]:
+    ) -> LLMDecodeResult:
         
+        res = LLMDecodeResult()
         t_inject_start = time.perf_counter()
         
         # 1. Inject
@@ -80,7 +81,7 @@ class LLMDecoder:
         ret = self.models.ctx.decode(batch_embd)
         if ret != 0: raise RuntimeError(f"Decode failed (ret={ret})")
         
-        t_inject = time.perf_counter() - t_inject_start
+        res.t_inject = time.perf_counter() - t_inject_start
 
         # 2. Generation Loop
         t_gen_start = time.perf_counter()
@@ -89,7 +90,8 @@ class LLMDecoder:
         current_pos = n_input_tokens
         asr_decoder = llama.ASRStreamDecoder(self.models.vocab, reporter if stream_output else None)
         
-        with llama.LlamaSampler(temperature=temperature, top_k=top_k, top_p=top_p) as smpl:
+        seed = int(np.random.randint(0, 2**31 - 1))
+        with llama.LlamaSampler(temperature=temperature, top_k=top_k, top_p=top_p, seed=seed) as smpl:
             for _ in range(n_predict):
                 # 使用面向对象接口采样
                 token_id = smpl.sample(self.models.ctx, -1)
@@ -102,18 +104,23 @@ class LLMDecoder:
                 # 再检查 token id 和解码
                 if token_id == self.models.eos_token or token_id in self.stop_tokens:
                     break
+                
                 asr_decoder.push(token_id)
-                if len(asr_decoder.generated_text) > 10: 
-                    if len(set(asr_decoder.generated_text[-10:])) == 1:
-                        asr_decoder.generated_text += "解码异常，强制熔断，可能是 DML 或 Vulkan 不兼容，可到 config_server.py 中关闭 DML 或 Vulkan 看能否解决"
+                
+                # 熔断检查
+                if len(asr_decoder.generated_text) > 15: 
+                    if len(set(asr_decoder.generated_text[-15:])) <= 3:
+                        res.is_aborted = True
                         break
-
+        
         asr_decoder.flush()
 
         # batch_text 会由 __del__ 自动释放
-        t_gen = time.perf_counter() - t_gen_start
+        res.text = asr_decoder.generated_text
+        res.n_gen = asr_decoder.tokens_generated
+        res.t_gen = time.perf_counter() - t_gen_start
         
-        return asr_decoder.generated_text, asr_decoder.tokens_generated, t_inject, t_gen
+        return res
 
 
 class StreamDecoder:
@@ -188,17 +195,24 @@ class StreamDecoder:
             reporter.print("=" * 70)
             
             full_embd = np.concatenate([p_embd, audio_embd.astype(np.float32), s_embd], axis=0)
-            text, n_gen, t_inj, t_gen = self.llm_decoder.decode(
-                full_embd, full_embd.shape[0], self.models.config.n_predict, 
-                stream_output=verbose, reporter=reporter,
-                temperature=temperature, top_p=top_p, top_k=top_k
-            )
-            text = text.strip()
+
+            # LLM 解码循环：若熔断则加温重试（最多重试 5 次）
+            for _ in range(6):
+                llm_res = self.llm_decoder.decode(
+                    full_embd, full_embd.shape[0], self.models.config.n_predict, 
+                    stream_output=verbose, reporter=reporter,
+                    temperature=temperature, top_p=top_p, top_k=top_k
+                )
+                if not llm_res.is_aborted: break
+                temperature += 0.3
+                llm_res.text += "====解码有误，强制熔断===="
+                print(f"\n\n[!] 片段触发重试 (温度设为 {temperature:.1f})\n")
+
+            text = llm_res.text.strip()
+            timings.inject = llm_res.t_inject
+            timings.llm_generate = llm_res.t_gen
             
-            if not hasattr(timings, 'inject'): timings.inject = 0.0
-            if not hasattr(timings, 'llm_generate'): timings.llm_generate = 0.0
-            timings.inject += t_inj
-            timings.llm_generate += t_gen
+            if reporter: reporter.print("\n" + "=" * 70)
             
             reporter.print("\n" + "=" * 70)
 
@@ -253,6 +267,7 @@ class StreamDecoder:
         return DecodeResult(
             text=text, ctc_results=ctc_results, aligned=aligned,
             audio_embd=audio_embd, n_prefix=n_p, n_suffix=n_s,
-            n_gen=n_gen, timings=timings, hotwords=hotwords
+            n_gen=llm_res.n_gen, timings=timings, hotwords=hotwords,
+            is_aborted=llm_res.is_aborted
         )
 

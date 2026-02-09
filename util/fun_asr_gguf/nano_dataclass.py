@@ -232,6 +232,25 @@ class DecodeResult:
     n_gen: int = 0
     timings: Timings = field(default_factory=Timings)
     hotwords: List[str] = field(default_factory=list)
+    is_aborted: bool = False
+
+@dataclass
+class LLMDecodeResult:
+    """
+    LLM 解码结果
+
+    Attributes:
+        text: 生成的文本
+        n_gen: 生成的 token 数
+        t_inject: 注入耗时
+        t_gen: 生成耗时
+        is_aborted: 是否触发熔断
+    """
+    text: str = ""
+    n_gen: int = 0
+    t_inject: float = 0.0
+    t_gen: float = 0.0
+    is_aborted: bool = False
 
 
 # ==================== 导出列表 ====================
@@ -242,6 +261,7 @@ __all__ = [
     'RecognitionStream',
     'TranscriptionResult',
     'DecodeResult',
+    'LLMDecodeResult',
 
     # 配置
     'ASREngineConfig',
