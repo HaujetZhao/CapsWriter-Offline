@@ -39,7 +39,7 @@ class TextOutput:
         Returns:
             去除末尾标点后的文本
         """
-        if not text:
+        if not text or not Config.trash_punc:
             return text
         clean_text = re.sub(f"(?<=.)[{Config.trash_punc}]$", "", text)
         return clean_text
