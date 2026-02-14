@@ -72,7 +72,9 @@ class MessageBuilder:
 
         # 2. 对话历史
         if context_manager:
-            if hasattr(context_manager, 'history') and isinstance(context_manager.history, list):
+            if hasattr(context_manager, 'get_history') and callable(context_manager.get_history):
+                messages.extend(context_manager.get_history())
+            elif hasattr(context_manager, 'history') and isinstance(context_manager.history, list):
                 messages.extend(context_manager.history)
             elif isinstance(context_manager, list):
                 messages.extend(context_manager)
