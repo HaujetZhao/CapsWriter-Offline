@@ -11,6 +11,7 @@ from util.server.server_check_model import check_model
 from util.server.server_cosmic import console
 from util.server.server_recognize import recognize
 from util.fun_asr_gguf import create_asr_engine
+from util.tools.empty_working_set import empty_current_working_set
 
 from . import logger
 
@@ -130,6 +131,10 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id, stdin_fn):
 
     queue_out.put(True)  # 通知主进程加载完了
     logger.info("识别器初始化完成，开始处理任务")
+
+    # 清空物理内存工作集
+    if system() == 'Windows':
+        empty_current_working_set()
 
     # 标记资源已初始化
     _resources_initialized = True
