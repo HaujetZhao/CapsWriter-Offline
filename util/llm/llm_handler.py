@@ -204,7 +204,7 @@ class LLMHandler:
 
         return LLMResult(
             result=result,
-            role_name=display_name,
+            role_name=role_config.name or RoleConfig.DEFAULT_ROLE_NAME,
             processed=True,
             token_count=token_count,
             polish_time=time.time() - start_time,
@@ -261,7 +261,7 @@ def clear_llm_history():
 
 
 # ======================================================================
-# --- 测试 ---你好，你好。你好？
+# --- 测试 ---
 
 if __name__ == "__main__":
     print("=" * 60)
