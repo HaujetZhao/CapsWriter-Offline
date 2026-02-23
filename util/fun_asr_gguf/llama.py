@@ -159,7 +159,7 @@ def init_llama_lib():
     global llama_log_set, llama_backend_init, llama_backend_free
     global llama_model_default_params, llama_model_load_from_file, llama_model_free, llama_model_get_vocab
     global llama_context_default_params, llama_init_from_model, llama_free
-    global llama_batch_init, llama_batch_free
+    global llama_batch_init, llama_batch_free, llama_batch_get_one
     global llama_decode, llama_get_logits, llama_get_logits_ith, llama_get_embeddings, llama_tokenize
     global llama_get_memory, llama_memory_clear, llama_model_n_embd
     global llama_vocab_n_tokens, llama_vocab_eos, llama_token_to_piece
@@ -259,6 +259,10 @@ def init_llama_lib():
     llama_batch_free = llama.llama_batch_free
     llama_batch_free.argtypes = [llama_batch]
     llama_batch_free.restype = None
+    
+    llama_batch_get_one = llama.llama_batch_get_one
+    llama_batch_get_one.argtypes = [ctypes.POINTER(llama_token), ctypes.c_int32]
+    llama_batch_get_one.restype = llama_batch
 
     # Decode
     llama_decode = llama.llama_decode
@@ -498,14 +502,14 @@ class LlamaContext:
             raise RuntimeError("上下文初始化失败")
 
     def decode(self, batch):
-        return llama_decode(self.ptr, batch.struct)
+        struct = batch.struct if hasattr(batch, 'struct') else batch
+        return llama_decode(self.ptr, struct)
 
-    def decode_token(self, batch, token_id, pos, seq_id=0):
+    def decode_token(self, token_id):
         """
         原子操作：设置单 Token Batch 并执行解码
         """
-        batch.set_token(token_id, pos, seq_id)
-        return self.decode(batch)
+        return self.decode(get_one_batch(token_id))
 
     def get_logits(self):
         """获取 Batch 中最后一个启用 Logits 的 Token 的输出"""
@@ -599,29 +603,18 @@ class LlamaBatch:
         
         return self
 
-    def set_token(self, token_id: int, pos: Union[np.ndarray, int] = 0, seq_id: int = 0, logits: bool = True):
-        """
-        高阶接口：设置 Batch 中的单个 Token
-        """
-        self.n_tokens = 1
-        self.struct.token[0] = token_id
-        
-        # 处理位置
-        if isinstance(pos, int):
-            self.pos[0] = pos
-        elif isinstance(pos, np.ndarray):
-            # 针对 M-RoPE 等 4D 位置，直接拷贝前 4 个元素或对应长度
-            ctypes.memmove(self.pos, pos.ctypes.data, pos.nbytes)
-        
-        self.n_seq_id[0] = 1
-        self.seq_id[0][0] = seq_id
-        self.logits[0] = 1 if logits else 0
-        return self
-
     def __del__(self):
         if hasattr(self, 'struct'):
             llama_batch_free(self.struct)
 
+def get_one_batch(token_id: int):
+    """
+    底层极限优化：用于单 Token 生成的无分配 Batch 构造。
+    相当于 C++ 的 llama_batch_get_one(&token, 1)。
+    它不依赖 llama_batch_init 的内存分配，并允许底层自动推断 pos。
+    """
+    token_arr = (llama_token * 1)(token_id)
+    return llama_batch_get_one(token_arr, 1)
 
 class LlamaSampler:
     """采样器的面向对象封装"""

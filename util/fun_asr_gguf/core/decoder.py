@@ -98,7 +98,7 @@ class LLMDecoder:
                 token_id = smpl.sample(self.models.ctx, -1)
 
                 # 提交异步解码任务
-                if self.models.ctx.decode_token(batch_text, token_id, current_pos) != 0:
+                if self.models.ctx.decode_token(token_id) != 0:
                     break
                 current_pos += 1
 
