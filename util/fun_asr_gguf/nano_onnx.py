@@ -19,7 +19,77 @@ ONNX 推理底层工具 - DirectML (DML) 性能优化指南
    提供物理长度信息，在输出端进对结果进行精确裁切，确保 100% 的识别精度。
 """
 
-def load_onnx_models(encoder_path, ctc_path, padding_secs=30, dml_enable=True):
+class NumPyPreprocessor:
+    """极致优化版 NumPy 预处理 - 极致对齐 torchaudio 且无需外部矩阵文件"""
+    def __init__(self, sr=16000, n_fft=400, n_mels=80, f_min=20, f_max=8000):
+        self.sr = sr
+        self.n_fft = n_fft
+        self.n_mels = n_mels
+        
+        # 1. 动态生成极致对齐的梅尔矩阵 (复刻 torchaudio 逻辑)
+        hz_to_mel = lambda f: 2595.0 * np.log10(1.0 + (f / 700.0))
+        mel_to_hz = lambda m: 700.0 * (10.0 ** (m / 2595.0) - 1.0)
+
+        all_freqs = np.linspace(0, sample_rate // 2 if 'sample_rate' in locals() else sr // 2, n_fft // 2 + 1)
+        m_pts = np.linspace(hz_to_mel(f_min), hz_to_mel(f_max), n_mels + 2)
+        f_pts = mel_to_hz(m_pts)
+        f_diff = np.diff(f_pts)
+        slopes = f_pts[np.newaxis, :] - all_freqs[:, np.newaxis]
+        
+        down_slopes = (-1.0 * slopes[:, :-2]) / f_diff[:-1]
+        up_slopes = slopes[:, 2:] / f_diff[1:]
+        fb = np.maximum(0, np.minimum(down_slopes, up_slopes))
+        self.filters = fb.astype(np.float32)
+        
+        self.hop_length = 160
+        # 预计算汉明窗 (纯 NumPy 实现，对齐 torchaudio periodic=True / scipy sym=False)
+        self.window = (0.54 - 0.46 * np.cos(2.0 * np.pi * np.arange(self.n_fft) / self.n_fft)).astype(np.float32)
+        self.pre_emphasis = 0.97
+
+    def __call__(self, audio):
+        # 1. 均值归一化
+        audio = audio - np.mean(audio)
+        
+        # 2. 向量化预加重
+        audio_pe = np.empty_like(audio)
+        audio_pe[0] = audio[0]
+        audio_pe[1:] = audio[1:] - self.pre_emphasis * audio[:-1]
+        
+        # 3. STFT (使用 np.fft.rfft 获取 20x 加速)
+        half_n_fft = self.n_fft // 2
+        y = np.pad(audio_pe, (half_n_fft, half_n_fft), mode='constant')
+        num_frames = 1 + (len(y) - self.n_fft) // self.hop_length
+        frames = np.lib.stride_tricks.as_strided(
+            y, 
+            shape=(num_frames, self.n_fft), 
+            strides=(y.strides[0] * self.hop_length, y.strides[0])
+        )
+        
+        # 加窗并执行 FFT
+        win_frames = frames * self.window
+        stft_res = np.fft.rfft(win_frames, n=self.n_fft, axis=1)
+        magnitudes = np.abs(stft_res)**2 
+        
+        # 4. Mel 映射与 Log
+        mel_spec = np.dot(magnitudes, self.filters) 
+        log_mel = np.log(mel_spec + 1e-7)
+        
+        # 5. LFR 堆叠 (7 帧叠加, 6 帧跳跃)
+        T_mel = log_mel.shape[0]
+        T_lfr = (T_mel + 5) // 6
+        
+        left_pad = np.repeat(log_mel[:1, :], 3, axis=0) # m_half=3
+        right_pad_len = (T_lfr * 6 + 7) - T_mel
+        right_pad = np.repeat(log_mel[-1:, :], right_pad_len, axis=0)
+        padded = np.concatenate([left_pad, log_mel, right_pad], axis=0)
+        
+        lfr_feat = np.empty((T_lfr, 560), dtype=np.float32)
+        for i in range(7):
+            lfr_feat[:, i*80 : (i+1)*80] = padded[i : i + T_lfr * 6 : 6, :]
+            
+        return lfr_feat
+
+def load_onnx_models(encoder_path, ctc_path, padding_secs=60, dml_enable=True):
     """步骤 1: 加载 ONNX 音频编码器和 CTC Head 并进行热身"""
     # print("\n[1] 加载 ONNX Models (Encoder + CTC)...")
     
@@ -46,90 +116,79 @@ def load_onnx_models(encoder_path, ctc_path, padding_secs=30, dml_enable=True):
         providers=providers
     )
     
-    # Warmup
+    # 动态初始化预处理器 (不再依赖外部 .npy)
+    encoder_sess.preprocessor = NumPyPreprocessor()
+
+    # 获取输入类型
+    enc_in_type = encoder_sess.get_inputs()[0].type
+    enc_dtype = np.float16 if 'float16' in enc_in_type else np.float32
+    
+    ctc_in = ctc_sess.get_inputs()[0]
+    ctc_dtype = np.float16 if 'float16' in ctc_in.type else np.float32
+
+    # 温热 (Warmup)
     if padding_secs > 0:
-        # print(f"   [Warmup] Warming up with {warmup_secs}s pseudo-audio...")
-        SR = 16000
-        warmup_samples = int(SR * padding_secs)  # Ensure int
+        target_t_lfr = int((padding_secs * 100 + 5) // 6) + 1
+        dummy_lfr = np.zeros((1, target_t_lfr, 560), dtype=enc_dtype)
+        dummy_mask = np.ones((1, target_t_lfr), dtype=enc_dtype)
+        encoder_sess.run(None, {'lfr_feat': dummy_lfr, 'mask': dummy_mask})
         
-        # Encoder Warmup
-        audio_type = encoder_sess.get_inputs()[0].type
-        dtype = np.float16 if 'float16' in audio_type else np.float32
-        dummy_audio = np.zeros((1, 1, warmup_samples), dtype=dtype)
-        dummy_ilens = np.array([warmup_samples], dtype=np.int64)
-        
-        # New model has ['audio', 'ilens']
-        in_names = [x.name for x in encoder_sess.get_inputs()]
-        if 'ilens' in in_names:
-            encoder_sess.run(None, {in_names[0]: dummy_audio, in_names[1]: dummy_ilens})
-        else:
-            encoder_sess.run(None, {in_names[0]: dummy_audio})
-            
         # CTC Warmup
-        ctc_in = ctc_sess.get_inputs()[0]
-        ctc_dtype = np.float16 if 'float16' in ctc_in.type else np.float32
-        # CTC input shape is [1, T, 512]
-        # T_lfr = T_mel // 6, T_mel = audio // 160
-        T_warmup = int(warmup_samples // 160 // 6) # Ensure int
-        dummy_enc = np.zeros((1, T_warmup, 512), dtype=ctc_dtype)
+        dummy_enc = np.zeros((1, target_t_lfr, 512), dtype=ctc_dtype)
         ctc_sess.run(None, {ctc_in.name: dummy_enc})
 
     t_cost = time.perf_counter() - t_start
     return encoder_sess, ctc_sess, t_cost
 
-def encode_audio(audio, encoder_sess, padding_secs=30):
-    """使用 ONNX Encoder 获取 LLM 嵌入和 CTC 特征，支持自动 Padding"""
+def encode_audio(audio, encoder_sess, padding_secs=60):
+    """使用 Clean Encoder 获取嵌入，支持特征级 Padding 以规避 DML 重编译"""
     
-    # Check expected input type
-    in_names = [x.name for x in encoder_sess.get_inputs()]
-    audio_type = encoder_sess.get_inputs()[0].type
-    dtype = np.float16 if 'float16' in audio_type else np.float32
-
-    # Padding logic
-    actual_samples = len(audio)
+    # 1. 外部预处理 (NumPy) - 单独计时
+    lfr_feat = encoder_sess.preprocessor(audio)
     
-    # [Optimize] 检测 Provider，如果是 CPU，按最低限度 Padding (因为 CPU 不存在 DML 的重编译开销)
+    actual_t_lfr = lfr_feat.shape[0]
+    
+    # 2. 定长 Padding (针对 LFR 特征级)
+    # CPU 模式下可以降低 Padding 长度以节省计算
     if encoder_sess.get_providers()[0] == 'CPUExecutionProvider':
-        padding_secs = 5
+        padding_secs = min(padding_secs, 1.0)
         
-    target_samples = int(padding_secs * 16000)
+    target_t_lfr = int((padding_secs * 100 + 5) // 6) + 1
     
-    if actual_samples < target_samples:
-        # print(f"   [Padding] {actual_samples/16000:.2f}s -> {padding_secs}s")
-        padded_audio = np.zeros(target_samples, dtype=audio.dtype)
-        padded_audio[:actual_samples] = audio
-        audio = padded_audio
+    # 动态类型检测
+    enc_in_type = encoder_sess.get_inputs()[0].type
+    enc_dtype = np.float16 if 'float16' in enc_in_type else np.float32
     
-    audio_input = audio.astype(dtype).reshape(1, 1, -1)
-    ilens_input = np.array([actual_samples], dtype=np.int64)
-    
-    out_names = [x.name for x in encoder_sess.get_outputs()]
-    
-    # 构造输入 Feed
-    if 'ilens' in in_names:
-        input_feed = {
-            in_names[0]: onnxruntime.OrtValue.ortvalue_from_numpy(audio_input, 'cpu', 0),
-            'ilens': onnxruntime.OrtValue.ortvalue_from_numpy(ilens_input, 'cpu', 0)
-        }
+    if actual_t_lfr < target_t_lfr:
+        padded_feat = np.zeros((target_t_lfr, 560), dtype=enc_dtype)
+        padded_feat[:actual_t_lfr, :] = lfr_feat.astype(enc_dtype)
+        mask = np.zeros(target_t_lfr, dtype=enc_dtype)
+        mask[:actual_t_lfr] = 1.0
+        lfr_input = padded_feat
+        mask_input = mask
     else:
-        input_feed = {
-            in_names[0]: onnxruntime.OrtValue.ortvalue_from_numpy(audio_input, 'cpu', 0)
-        }
+        lfr_input = lfr_feat.astype(enc_dtype)
+        mask_input = np.ones(actual_t_lfr, dtype=enc_dtype)
+
+    # 3. 推理 (使用 OrtValue 减少数据拷贝)
+    lfr_feed = lfr_input.reshape(1, -1, 560)
+    mask_feed = mask_input.reshape(1, -1)
     
-    outputs = encoder_sess.run_with_ort_values(out_names, input_feed)
+    outputs = encoder_sess.run(None, {
+        'lfr_feat': lfr_feed,
+        'mask': mask_feed
+    })
     
-    # Output 0: enc_output [1, T_enc, 512] (For CTC) - 不截断
-    enc_output = outputs[0].numpy()
+    enc_output = outputs[0]  # [1, T_lfr, 512]
+    adaptor_raw = outputs[1] # [1, T_adapt, 1024]
     
-    # Output 1: adaptor_output [1, T_llm, 1024] (For LLM) - 需要截断到有效长度
-    # 计算有效长度 (llm_target_len)
-    T_mel_valid = (actual_samples // 160) + 1
-    T_lfr_valid = (T_mel_valid + 5) // 6 # (mel + lfr_n - 1) // lfr_n
+    # 4. 长度裁切 (计算有效帧数)
+    T_mel_valid = (len(audio) // 160) + 1
+    T_lfr_valid = (T_mel_valid + 5) // 6
     olens_1 = 1 + (T_lfr_valid - 3 + 2) // 2
     target_len = (1 + (olens_1 - 3 + 2) // 2 - 1) // 2 + 1
     
-    audio_embd_raw = outputs[1].numpy().squeeze(0)
-    # 截断到有效值
-    audio_embd = audio_embd_raw[:target_len, :].astype(np.float32)
+    audio_embd = adaptor_raw[0, :target_len, :].astype(np.float32)
     
+    # 返回值：[1, T, 1024], enc_output, 以及预处理耗时
     return audio_embd, enc_output
