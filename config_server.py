@@ -57,9 +57,9 @@ class ModelPaths:
     # 默认启用了 DML 对 Encoder 和 CTC 进行加速，显卡用 fp16 模型会更快
     # 但若禁用了 DML，则建议把 Encoder 和 CTC 的 fp16 改为 int8，让可以 CPU 运行更快
     fun_asr_nano_gguf_dir = model_dir / 'Fun-ASR-Nano' / 'Fun-ASR-Nano-GGUF'
-    fun_asr_nano_gguf_encoder_adaptor = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Encoder-Adaptor.int8.onnx'
-    fun_asr_nano_gguf_ctc = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-CTC.int8.onnx'
-    fun_asr_nano_gguf_llm_decode = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Decoder.q8_0.gguf'
+    fun_asr_nano_gguf_encoder_adaptor = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Encoder-Adaptor.int4.onnx'
+    fun_asr_nano_gguf_ctc = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-CTC.int4.onnx'
+    fun_asr_nano_gguf_llm_decode = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Decoder.q5_k.gguf'
     fun_asr_nano_gguf_token = fun_asr_nano_gguf_dir / 'tokens.txt'
     fun_asr_nano_gguf_hotwords = Path() / 'hot-server.txt'
 

@@ -89,7 +89,7 @@ class NumPyPreprocessor:
             
         return lfr_feat
 
-def load_onnx_models(encoder_path, ctc_path, padding_secs=60, dml_enable=True):
+def load_onnx_models(encoder_path, ctc_path, padding_secs=30, dml_enable=True):
     """步骤 1: 加载 ONNX 音频编码器和 CTC Head 并进行热身"""
     # print("\n[1] 加载 ONNX Models (Encoder + CTC)...")
     
@@ -140,7 +140,7 @@ def load_onnx_models(encoder_path, ctc_path, padding_secs=60, dml_enable=True):
     t_cost = time.perf_counter() - t_start
     return encoder_sess, ctc_sess, t_cost
 
-def encode_audio(audio, encoder_sess, padding_secs=60):
+def encode_audio(audio, encoder_sess, padding_secs=30):
     """使用 Clean Encoder 获取嵌入，支持特征级 Padding 以规避 DML 重编译"""
     
     # 1. 外部预处理 (NumPy) - 单独计时

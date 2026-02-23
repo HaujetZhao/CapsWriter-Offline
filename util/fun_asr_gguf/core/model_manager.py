@@ -108,8 +108,8 @@ class ModelManager:
         vprint("[4/6] 创建 LLM 上下文...", verbose)
         self.ctx = llama.LlamaContext(
             self.model,
-            n_ctx=2048,
-            n_batch=2048,
+            n_ctx=1024,
+            n_batch=1024,
             n_ubatch=self.config.n_ubatch,
             n_threads=self.config.n_threads,
             n_threads_batch=self.config.n_threads_batch
