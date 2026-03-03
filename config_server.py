@@ -63,6 +63,12 @@ class ModelPaths:
     fun_asr_nano_gguf_token = fun_asr_nano_gguf_dir / 'tokens.txt'
     fun_asr_nano_gguf_hotwords = Path() / 'hot-server.txt'
 
+    # Qwen3-ASR 模型路径，自带标点
+    qwen3_asr_gguf_dir = model_dir / 'Qwen3-ASR' / 'Qwen3-ASR-1.7B'
+    qwen3_asr_gguf_encoder_frontend = qwen3_asr_gguf_dir / 'qwen3_asr_encoder_frontend.int4.onnx'
+    qwen3_asr_gguf_encoder_backend = qwen3_asr_gguf_dir / 'qwen3_asr_encoder_backend.int4.onnx'
+    qwen3_asr_gguf_llm_decode = qwen3_asr_gguf_dir / 'qwen3_asr_llm.q4_k.gguf'
+
 
 
 class ParaformerArgs:
@@ -111,5 +117,23 @@ class FunASRNanoGGUFArgs:
     n_threads = None            # 线程数，None 表示自动
     similar_threshold = 0.6     # 热词相似度阈值
     max_hotwords = 20           # 每次替换的最大热词数
+    verbose = False
+
+class Qwen3ASRGGUFArgs:
+    """Fun-ASR-Nano-GGUF 模型参数配置"""
+
+    # 模型路径
+    encoder_frontend_path = ModelPaths.fun_asr_nano_gguf_encoder_adaptor.as_posix()
+    encoder_backend_path = ModelPaths.fun_asr_nano_gguf_encoder_adaptor.as_posix()
+    decoder_gguf_path = ModelPaths.fun_asr_nano_gguf_encoder_adaptor.as_posix()
+
+    # 显卡加速
+    dml_enable = False          # 是否启用 DirectML 加速 ONNX 模型，实测 AMD 显卡上会慢，因此默认关闭
+    vulkan_enable = True        # 是否启用 Vulkan 加速 GGUF 模型
+    vulkan_force_fp32 = False   # 是否强制 FP32 计算（如果 GPU 是 Intel 集显且出现精度溢出，可设为 True）
+    
+    # 模型细节
+    n_predict = 512             # LLM 最大生成 token 数
+    n_threads = None            # 线程数，None 表示自动
     verbose = False
 
