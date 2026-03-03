@@ -4,13 +4,13 @@ import ctypes
 import codecs
 import struct
 import time
+from collections import deque, Counter
 import numpy as np
 import gguf
 from gguf.constants import GGML_QUANT_SIZES, GGMLQuantizationType
-from typing import List, Union
+from typing import List, Union, Set, Optional
 from pathlib import Path
 from os.path import relpath
-from typing import Union
 from . import logger
 
 # =========================================================================
@@ -152,6 +152,9 @@ llama_sampler_init_top_k = None
 llama_sampler_init_top_p = None
 llama_sampler_sample = None
 llama_sampler_free = None
+llama_sampler_init_min_p = None
+llama_sampler_init_penalties = None
+llama_sampler_accept = None
 
 def init_llama_lib():
     """初始化 llama.cpp 库，支持跨平台加载"""
@@ -166,6 +169,7 @@ def init_llama_lib():
     global llama_sampler_chain_default_params, llama_sampler_chain_init, llama_sampler_chain_add
     global llama_sampler_init_greedy, llama_sampler_init_dist, llama_sampler_init_temp
     global llama_sampler_init_top_k, llama_sampler_init_top_p, llama_sampler_sample, llama_sampler_free
+    global llama_sampler_init_min_p, llama_sampler_init_penalties, llama_sampler_accept
     global llama_sampler_init_logit_bias
     global _log_callback_ref
 
@@ -357,6 +361,18 @@ def init_llama_lib():
     llama_sampler_init_logit_bias = llama.llama_sampler_init_logit_bias
     llama_sampler_init_logit_bias.argtypes = [ctypes.c_int32, ctypes.c_int32, ctypes.POINTER(llama_logit_bias)]
     llama_sampler_init_logit_bias.restype = ctypes.c_void_p
+
+    llama_sampler_init_min_p = llama.llama_sampler_init_min_p
+    llama_sampler_init_min_p.argtypes = [ctypes.c_float, ctypes.c_size_t]
+    llama_sampler_init_min_p.restype = ctypes.c_void_p
+
+    llama_sampler_init_penalties = llama.llama_sampler_init_penalties
+    llama_sampler_init_penalties.argtypes = [ctypes.c_int32, ctypes.c_float, ctypes.c_float, ctypes.c_float]
+    llama_sampler_init_penalties.restype = ctypes.c_void_p
+
+    llama_sampler_accept = llama.llama_sampler_accept
+    llama_sampler_accept.argtypes = [ctypes.c_void_p, llama_token]
+    llama_sampler_accept.restype = None
 
 
 def load_model(model_path: str):
@@ -618,7 +634,20 @@ def get_one_batch(token_id: int):
 
 class LlamaSampler:
     """采样器的面向对象封装"""
-    def __init__(self, temperature=0.8, top_k=50, top_p=1.0, seed=None, logit_bias=None, n_vocab=0):
+    def __init__(
+        self, 
+        temperature: float = 0.8, 
+        top_k: int = 50, 
+        top_p: float = 1.0, 
+        min_p: float = 0.0,
+        repeat_penalty: float = 1.0,
+        frequency_penalty: float = 0.0,
+        presence_penalty: float = 0.0,
+        penalty_last_n: int = 64,
+        seed: Optional[int] = None, 
+        logit_bias: Optional[dict] = None, 
+        n_vocab: int = 0
+    ):
         import time
         if seed is None:
             seed = int(time.time())
@@ -626,63 +655,70 @@ class LlamaSampler:
         sparams = llama_sampler_chain_default_params()
         self.ptr = llama_sampler_chain_init(sparams)
         
-        # Logit Bias (支持范围/掩码)
+        # 1. Logit Bias (最高优先级)
         if logit_bias and n_vocab > 0 and isinstance(logit_bias, dict):
             n_bias = len(logit_bias)
             BiasArray = llama_logit_bias * n_bias
             bias_data = BiasArray()
-            
             for i, (token, bias) in enumerate(logit_bias.items()):
                 bias_data[i].token = token
                 bias_data[i].bias = bias
-            
             llama_sampler_chain_add(self.ptr, llama_sampler_init_logit_bias(n_vocab, n_bias, bias_data))
 
+        # 2. Penalties (重复/频率/存在惩罚)
+        has_penalty = (repeat_penalty != 1.0 or frequency_penalty != 0.0 or presence_penalty != 0.0)
+        if has_penalty:
+            # llama.cpp 会自动管理历史 rings
+            llama_sampler_chain_add(self.ptr, llama_sampler_init_penalties(
+                penalty_last_n, repeat_penalty, frequency_penalty, presence_penalty
+            ))
+
+        # 3. 采样过滤器 (顺序很重要)
         if temperature > 0:
-            llama_sampler_chain_add(self.ptr, llama_sampler_init_top_k(top_k))
-            llama_sampler_chain_add(self.ptr, llama_sampler_init_top_p(top_p, 1))
+            if top_k > 0:
+                llama_sampler_chain_add(self.ptr, llama_sampler_init_top_k(top_k))
+            if top_p < 1.0:
+                llama_sampler_chain_add(self.ptr, llama_sampler_init_top_p(top_p, 1))
+            if 0.0 < min_p < 1.0:
+                llama_sampler_chain_add(self.ptr, llama_sampler_init_min_p(min_p, 1))
+            
             llama_sampler_chain_add(self.ptr, llama_sampler_init_temp(temperature))
             llama_sampler_chain_add(self.ptr, llama_sampler_init_dist(seed))
         else:
             llama_sampler_chain_add(self.ptr, llama_sampler_init_greedy())
 
-        self._neg_inf = -1e9
+        self._neg_inf = -1e10
 
-    def sample(self, ctx, idx=-1, limit_start=None, limit_end=None):
-        """
-        采样一个 Token
-        
-        Args:
-            limit_start (int, optional): 限制采样范围的起始 Index (包含)
-            limit_end (int, optional): 限制采样范围的结束 Index (不包含)
-        """
-        ctx_ptr = ctx
-        if hasattr(ctx, 'ptr'):
-            ctx_ptr = ctx.ptr
+    def accept(self, token_id: int):
+        """同步 Token 到采样链历史 (native)"""
+        if self.ptr:
+            llama_sampler_accept(self.ptr, token_id)
+
+    def sample(self, ctx, idx=-1, limit_start=None, limit_end=None, allow_tokens=None):
+        """采样一个 Token，支持范围限制和白名单豁免"""
+        ctx_ptr = ctx.ptr if hasattr(ctx, 'ptr') else ctx
             
-        # 动态范围限制 (直接操作 Logits 内存，极速)
-        if (limit_start is not None or limit_end is not None) and hasattr(ctx, 'get_logits') and hasattr(ctx, 'model'):
-            # 需要获取 n_vocab
-            # LlamaContext -> LlamaModel -> vocab -> n_tokens
-            if hasattr(ctx.model, 'vocab'):
-                n_vocab = llama_vocab_n_tokens(ctx.model.vocab)
-                
-                # 获取 Logits Numpy View
-                logits_ptr = ctx.get_logits()
-                logits = np.ctypeslib.as_array(logits_ptr, shape=(n_vocab,))
-                
-                # In-place 修改
-                # 注意：这会修改 ctx 中的 logits，影响本次采样。
-                # 下一次 decode 会覆盖，所以是安全的。
-                
-                s = max(0, limit_start) if limit_start is not None else 0
-                e = min(n_vocab, limit_end) if limit_end is not None else n_vocab
-                
-                if s > 0:
-                    logits[0:s] = self._neg_inf
-                if e < n_vocab:
-                    logits[e:] = self._neg_inf
+        # 处理 Logits 约束 (Range Limit + Allow-list)
+        if (limit_start is not None or limit_end is not None) and hasattr(ctx, 'get_logits'):
+            n_vocab = llama_vocab_n_tokens(ctx.model.vocab)
+            logits_ptr = ctx.get_logits_ith(idx) # 获取指定索引的 logits
+            logits = np.ctypeslib.as_array(logits_ptr, shape=(n_vocab,))
+            
+            s = max(0, limit_start) if limit_start is not None else 0
+            e = min(n_vocab, limit_end) if limit_end is not None else n_vocab
+            
+            # 创建掩码：默认全灭，然后开启指定范围和白名单
+            mask = np.ones(n_vocab, dtype=bool)
+            mask[s:e] = False # 范围内的不抹除
+            if allow_tokens:
+                for t in allow_tokens:
+                    if 0 <= t < n_vocab:
+                        mask[t] = False # 白名单内地不抹除
+            
+            logits[mask] = self._neg_inf
         
+        # 使用原生 Chain 进行采样。
+        # 注意：llama_sampler_sample 会自动对 Chain 调用 accept()。
         return llama_sampler_sample(self.ptr, ctx_ptr, idx)
 
     def free(self):
