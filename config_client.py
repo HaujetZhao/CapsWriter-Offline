@@ -17,7 +17,7 @@ class ClientConfig:
     # 快捷键配置列表
     shortcuts = [
         {
-            'key': 'f1',     # 监听大写锁定键
+            'key': 'caps_lock',     # 监听大写锁定键
             'type': 'keyboard',     # 是键盘快捷键
             'suppress': True,      # 不阻塞按键（但录音结束会补发）
             'hold_mode': True,      # 长按模式
