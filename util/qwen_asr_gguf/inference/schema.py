@@ -89,6 +89,8 @@ class ASREngineConfig:
     enable_aligner: bool = False
     align_config: Optional[AlignerConfig] = None
     pad_to: Optional[int] = None # Encoder 填充时长
+    vulkan_enable: bool = True
+    vulkan_force_fp32: bool = False
 
     def __post_init__(self):
         # 如果没有显式设置 Encoder 填充时长，则默认与 LLM 分段识别时长对齐

@@ -103,6 +103,8 @@ def create_asr_engine(
     n_ctx: int = 2048,
     chunk_size: float = 40.0,
     pad_to: int = 30, 
+    vulkan_enable: bool = True,
+    vulkan_force_fp32: bool = False,
     verbose: bool = True,
     **kwargs
 ) -> QwenASREngine:
@@ -117,6 +119,8 @@ def create_asr_engine(
         n_ctx=n_ctx,
         chunk_size=chunk_size,
         pad_to = pad_to, 
+        vulkan_enable=vulkan_enable,
+        vulkan_force_fp32=vulkan_force_fp32,
         verbose=verbose,
         enable_aligner=False # 强制关闭对齐以符合需求
     )

@@ -29,7 +29,13 @@ class QwenASREngine:
     def __init__(self, config: ASREngineConfig):
         self.config = config
         self.verbose = config.verbose
-        if self.verbose: print(f"--- [QwenASR] 初始化引擎 (DML: {config.use_dml}) ---")
+        if self.verbose: print(f"--- [QwenASR] 初始化引擎 (DML: {config.use_dml}, Vulkan: {config.vulkan_enable}) ---")
+
+        # 设置图形加速环境
+        if not config.vulkan_enable:
+            os.environ["VK_ICD_FILENAMES"] = "none"       # 禁止 Vulkan
+        if config.vulkan_force_fp32:
+            os.environ["GGML_VK_DISABLE_F16"] = "1"       # 禁止 VulkanFP16 计算（Intel集显fp16有溢出问题）
 
         self.llama_mod = llama # keep reference
         

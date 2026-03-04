@@ -16,6 +16,12 @@ class ModelManager:
     def __init__(self, config: ASREngineConfig):
         self.config = config
         
+        # 设置图形加速环境
+        if not self.config.vulkan_enable:
+            os.environ["VK_ICD_FILENAMES"] = "none"       # 禁止 Vulkan
+        if self.config.vulkan_force_fp32:
+            os.environ["GGML_VK_DISABLE_F16"] = "1"       # 禁止 VulkanFP16 计算（Intel集显fp16有溢出问题）
+
         # 运行时组件
         self.encoder = None
         self.ctc_decoder = None
