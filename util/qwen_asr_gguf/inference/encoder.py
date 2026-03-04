@@ -118,8 +118,13 @@ def get_feat_extract_output_lengths(input_lengths):
 
 class QwenAudioEncoder:
     """Qwen3 音频编码器 (Split Frontend + Backend)"""
-    def __init__(self, frontend_path: str, backend_path: str, use_dml: bool = True, warmup_sec: float = 5.0, verbose: bool = True):
+    def __init__(self, frontend_path: str, backend_path: str, use_dml: bool = True, pad_to: int = 30, verbose: bool = True):
         self.verbose = verbose
+        self.active_dml = False
+        self.pad_to = pad_to
+        
+        # 预计算目标长度：每 1 秒对应 13 帧 hidden_states
+        self.h_target_len = self.pad_to * 13
         
         # 初始化 ONNX Session Options
         sess_opts = ort.SessionOptions()
@@ -131,9 +136,10 @@ class QwenAudioEncoder:
         providers = ['CPUExecutionProvider']
         if use_dml and 'DmlExecutionProvider' in ort.get_available_providers():
             providers.insert(0, 'DmlExecutionProvider') 
+            self.active_dml = True
             
         if self.verbose: 
-            print(f"--- [Encoder] 加载 Split ONNX 模型 (DML: {use_dml}) ---")
+            print(f"--- [Encoder] 加载 Split ONNX 模型 (DML: {self.active_dml}, Pad: {pad_to}s) ---")
             print(f"    Frontend: {os.path.basename(frontend_path)}")
             print(f"    Backend:  {os.path.basename(backend_path)}")
 
@@ -150,12 +156,17 @@ class QwenAudioEncoder:
         except:
             self.input_dtype = np.float32
 
-        # 预热选项
-        if warmup_sec > 0:
-            if self.verbose: print(f"--- [Encoder] 正在预热 ({warmup_sec}s 随机音频)... ---")
-            dummy_wav = np.random.randn(int(16000 * warmup_sec)).astype(np.float32)
+        # 预热处理
+        if self.pad_to > 0 and self.active_dml:
+            if self.verbose: print(f"--- [Encoder] 正在预热 (固定形状: {self.pad_to}s)... ---")
+            dummy_wav = np.zeros(int(16000 * self.pad_to)).astype(np.float32)
             _ = self.encode(dummy_wav)
-            if self.verbose: print("--- [Encoder] 预热完成 ---")
+        else:
+            # 非 DML 模式下，预热一个短音频即可，无需 Padding
+            if self.verbose: print(f"--- [Encoder] 正在预热 (非 DML 模式)... ---")
+            dummy_wav = np.zeros(int(16000 * 2.0)).astype(np.float32)
+            _ = self.encode(dummy_wav)
+        if self.verbose: print("--- [Encoder] 预热完成 ---")
 
     def _run_frontend(self, mel: np.ndarray) -> np.ndarray:
         """前端推理流水线：Pad -> Chunk Loop -> Concat -> Slice"""
@@ -190,19 +201,33 @@ class QwenAudioEncoder:
         return hidden_states
 
     def _run_backend(self, hidden_states: np.ndarray) -> np.ndarray:
-        """后端推理流水线：Mask -> Transformer"""
+        """后端推理流水线：Mask -> Transformer (支持固定形状 Padding)"""
         batch, seq_len, dim = hidden_states.shape
         
-        # 1. 构造全 0 Mask (表示全关注)
-        # 维度: (Batch, 1, T, T)
-        mask = np.zeros((batch, 1, seq_len, seq_len), dtype=self.input_dtype)
+        # 1. 形状检查与 Padding (仅在 DML 开启时执行)
+        if self.active_dml and seq_len < self.h_target_len:
+            pad_width = self.h_target_len - seq_len
+            # 对 hidden_states 进行零填充 -> (Batch, T_fixed, D)
+            hidden_input = np.pad(hidden_states, ((0,0), (0, pad_width), (0,0)), mode='constant')
+            
+            # 构造 Mask：前 seq_len 为 0 (关注)，后 pad_width 为 -10000.0 (屏蔽)
+            # 维度需要广播到 (Batch, 1, T_fixed, T_fixed)
+            mask = np.full((batch, 1, self.h_target_len, self.h_target_len), -10000.0, dtype=self.input_dtype)
+            mask[:, :, :, :seq_len] = 0.0
+        else:
+            hidden_input = hidden_states
+            mask = np.zeros((batch, 1, seq_len, seq_len), dtype=self.input_dtype)
         
         # 2. 执行推理
         audio_embd = self.sess_be.run(None, {
-            "hidden_states": hidden_states,
+            "hidden_states": hidden_input,
             "attention_mask": mask
         })[0]
         
+        # 3. 截断输出 -> (Batch, seq_len, D)
+        if audio_embd.shape[1] > seq_len:
+            audio_embd = audio_embd[:, :seq_len, :]
+            
         return audio_embd
 
     def encode(self, audio: np.ndarray) -> tuple:
@@ -218,6 +243,7 @@ class QwenAudioEncoder:
         
         # 3. Backend (Transformer)
         audio_embd = self._run_backend(hidden_states)
+        
         
         # 4. 去除 Batch 维 -> (T, D)
         if audio_embd.ndim == 3: 

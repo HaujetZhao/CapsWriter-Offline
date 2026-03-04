@@ -147,6 +147,7 @@ class ASREngineConfig:
     max_hotwords: int = 10
     sample_rate: int = 16000
     dml_enable: bool = True
+    pad_to: int = 30
     vulkan_enable: bool = True
     vulkan_force_fp32: bool = False
 

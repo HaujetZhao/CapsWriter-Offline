@@ -1,13 +1,99 @@
+import onnxruntime
 import numpy as np
 import base64
 import os
 import time
 from dataclasses import dataclass
+from typing import List, Tuple, Dict, Any, Optional
+from . import logger
 
 @dataclass
 class Token:
     text: str
     start: float
+
+class CTCDecoder:
+    """FunASR CTC 推理与解码器 (合并低层引擎与高层策略)"""
+    def __init__(self, model_path: str, tokens_path: str, dml_enable: bool = True, pad_to: int = 30, corrector: Optional[Any] = None):
+        self.model_path = model_path
+        self.tokens_path = tokens_path
+        self.dml_enable = dml_enable
+        self.pad_to = pad_to
+        self.corrector = corrector
+        
+        self.sess = None
+        self.id2token = {}
+        self.input_dtype = np.float32
+        
+        self._initialize_session()
+        self._load_tokens()
+        self.warmup()
+
+    def _initialize_session(self):
+        session_opts = onnxruntime.SessionOptions()
+        session_opts.add_session_config_entry("session.intra_op.allow_spinning", "0")
+        session_opts.add_session_config_entry("session.inter_op.allow_spinning", "0")
+        session_opts.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        
+        providers = ['CPUExecutionProvider']
+        if self.dml_enable and 'DmlExecutionProvider' in onnxruntime.get_available_providers():
+            providers.insert(0, 'DmlExecutionProvider') 
+            
+        logger.info(f"[CTC] 加载模型: {os.path.basename(self.model_path)} (Providers: {providers})")
+        
+        self.sess = onnxruntime.InferenceSession(
+            self.model_path, 
+            sess_options=session_opts, 
+            providers=providers
+        )
+        
+        # 检测模型输入精度
+        in_type = self.sess.get_inputs()[0].type
+        self.input_dtype = np.float16 if 'float16' in in_type else np.float32
+
+    def _load_tokens(self):
+        self.id2token = load_ctc_tokens(self.tokens_path)
+        logger.info(f"[CTC] 加载词表: {len(self.id2token)} tokens")
+
+    def warmup(self):
+        if self.pad_to <= 0:
+            return
+        target_t_lfr = int((self.pad_to * 100 + 5) // 6) + 1
+        dummy_enc = np.zeros((1, target_t_lfr, 512), dtype=self.input_dtype)
+        in_name = self.sess.get_inputs()[0].name
+        logger.info(f"[CTC] 正在预热 (固定形状: {self.pad_to}s)...")
+        self.sess.run(None, {in_name: dummy_enc})
+
+    def decode(self, enc_output: np.ndarray, enable_ctc: bool, max_hotwords: int) -> Tuple[List[Token], List[str], Dict[str, float]]:
+        """执行推理、解码和热词过滤"""
+        t_stats = {"infer": 0.0, "decode": 0.0, "hotword": 0.0}
+        if not enable_ctc or self.sess is None:
+            return [], [], t_stats
+
+        # 1. 执行推理
+        t0 = time.perf_counter()
+        ctc_logits = self.sess.run(None, {"enc_output": enc_output})[0]
+        t_stats["infer"] = time.perf_counter() - t0
+        
+        # 2. 执行贪婪解码
+        t0 = time.perf_counter()
+        ctc_text, ctc_results, ctc_details = decode_ctc(ctc_logits, self.id2token)
+        t_stats["decode"] = time.perf_counter() - t0
+        t_stats.update(ctc_details)
+
+        # 3. 热词过滤 (重打分)
+        hotwords = []
+        t0 = time.perf_counter()
+        if self.corrector and self.corrector.hotwords and ctc_text:
+            res = self.corrector.correct(ctc_text, k=max_hotwords)
+            candidates = set()
+            for _, hw, _ in res.matchs: candidates.add(hw)
+            for _, hw, _ in res.similars: candidates.add(hw)
+            hotwords = list(candidates)
+        t_stats["hotword"] = time.perf_counter() - t0
+            
+        return ctc_results, hotwords, t_stats
+
 
 def load_ctc_tokens(filename):
     """加载 CTC 词表"""
@@ -22,29 +108,26 @@ def load_ctc_tokens(filename):
                 t, i = " ", parts[0]
             else:
                 t, i = parts
-            id2token[int(i)] = t
             
             # Pre-decode base64 here to save time during inference
             try:
                 # Some tokens might rely on being decoded, do it once
-                id2token[int(i)] = base64.b64decode(t).decode("utf-8")
+                token_text = base64.b64decode(t).decode("utf-8")
             except:
-                # If fail (not b64 or other issue), keep original or handle as needed
-                # For FunASR tokens, they seem to be always b64 per decode_ctc logic
-                pass
+                token_text = t
+                
+            id2token[int(i)] = token_text
                 
     return id2token
 
 def decode_ctc(logits, id2token):
     """
-    Greedy search 贪错解码。
+    Greedy search 贪心解码。
     
     Args:
         logits: 模型输出的概率分布 (T, V) 或已经是 indices (T,)
         id2token: 词表映射 dict
     """
-    t0 = time.perf_counter()
-    
     # [OPTIMIZATION] 如果输入已经是 1D 数组或 (1, T)，说明是已经融合了 ArgMax 的 indices
     if logits.ndim == 1 or (logits.ndim == 2 and logits.shape[0] == 1):
         indices = logits.flatten()
@@ -89,12 +172,6 @@ def decode_ctc(logits, id2token):
         token_text = id2token.get(token_id, "")
         if not token_text: continue
 
-        # [Optimized] Base64 decoding is now done in load_ctc_tokens
-        # try:
-        #     token_text = base64.b64decode(token_b64).decode("utf-8")
-        # except:
-        #     continue
-
         # Calculate time (只计算起始位置)
         t_start = max((start * frame_shift_ms + offset_ms) / 1000.0, 0.0)
 
@@ -105,8 +182,6 @@ def decode_ctc(logits, id2token):
                 
     full_text = "".join([r.text for r in results])
     t_loop = time.perf_counter() - t0
-    
-    # print(f"      [Profile] Cast: {t_cast*1000:.2f}ms, Argmax: {t_argmax*1000:.2f}ms, PyLoop: {t_loop*1000:.2f}ms")
     
     timings = {
         "cast": t_cast,
@@ -230,3 +305,5 @@ def align_timestamps(ctc_results, llm_text):
         final_chars.append({"char": char, "start": s})
 
     return final_chars
+
+

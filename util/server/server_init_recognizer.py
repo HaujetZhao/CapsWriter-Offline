@@ -6,11 +6,12 @@ import signal
 import atexit
 from platform import system
 from config_server import ServerConfig as Config
-from config_server import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoGGUFArgs
+from config_server import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoGGUFArgs, Qwen3ASRGGUFArgs
 from util.server.server_check_model import check_model
 from util.server.server_cosmic import console
 from util.server.server_recognize import recognize
-from util.fun_asr_gguf import create_asr_engine
+from util.fun_asr_gguf import create_asr_engine as create_fun_asr_engine
+from util.qwen_asr_gguf import create_asr_engine as create_qwen_asr_engine
 from util.tools.empty_working_set import empty_current_working_set
 
 from . import logger
@@ -88,15 +89,22 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id, stdin_fn):
             # recognizer = sherpa_onnx.OfflineRecognizer.from_funasr_nano(
             #     **{key: value for key, value in FunASRNanoArgs.__dict__.items() if not key.startswith('_')}
             # )
-            recognizer = create_asr_engine(
+            recognizer = create_fun_asr_engine(
                 **{key: value for key, value in FunASRNanoGGUFArgs.__dict__.items() if not key.startswith('_')}
             )
+        elif model_type == 'qwen_asr':
+            logger.debug("使用 Qwen-ASR 模型")
+            recognizer = create_qwen_asr_engine(
+                **{key: value for key, value in Qwen3ASRGGUFArgs.__dict__.items() if not key.startswith('_')}
+            )
         elif model_type == 'sensevoice':
+            import sherpa_onnx
             logger.debug("使用 SenseVoice 模型")
             recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
                 **{key: value for key, value in SenseVoiceArgs.__dict__.items() if not key.startswith('_')}
             )
         elif model_type == 'paraformer':
+            import sherpa_onnx
             logger.debug("使用 Paraformer 模型")
             recognizer = sherpa_onnx.OfflineRecognizer.from_paraformer(
                 **{key: value for key, value in ParaformerArgs.__dict__.items() if not key.startswith('_')}

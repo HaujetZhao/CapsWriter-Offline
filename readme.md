@@ -1,4 +1,4 @@
-# CapsWriter-Offline (v2.4)
+# CapsWriter-Offline (v2.5)
 
 ![demo](assets/demo.png)
 
@@ -9,8 +9,16 @@
 
 ## 🚀 更新说明：
 
+v2.5-alpha 新增：
+- **初步引入 [Qwen3-ASR-1.7B](https://github.com/HaujetZhao/Qwen3-ASR-GGUF) 模型支持，140ms 极速推理，准确率夯爆**
+  - Qwen3-ASR-1.7B 只是初步引入，只支持语音输入，没有时间戳，无法转录文件
+  - Decoder Vulkan 加速默认打开，需占 1.6GB 显存
+  - 显卡空闲时，会降低显存频率，冷启动转录延迟升至 300ms 
+  - 若用管理员权限运行 `nvidia-smi -lmc 9000` 锁定显存不降频，实测 RTX5050 转录延迟可降至 100ms
+
 v2.4新增：
 - **改进 [Fun-ASR-Nano-GGUF](https://github.com/HaujetZhao/Fun-ASR-GGUF) 模型，使 Encoder 支持通过 DML 用显卡（独显、集显均可）加速推理，Encoder 和 CTC 默认改为 FP16 精度，以便更好利用显卡算力**，短音频延迟最低可降至 200ms 以内。
+  - 若用管理员权限运行 `nvidia-smi -lmc 9000` 锁定显存不降频，实测 RTX5050 转录延迟可降至 100ms
 - 服务端 Fun-ASR-Nano 使用单独的热词文件 hot-server.txt ，只具备建议替换性，而客户端的热词具有强制替换性，二者不再混用
 - 可以在句子的开头或结尾说「逗号、句号、回车」，自动转换为对应标点符号，支持说连续多个回车。
 - Fun-ASR-Nano 加入采样温度，避免极端情况下的因贪婪采样导致的无限复读
@@ -82,9 +90,10 @@ LLM 角色既可以使用 Ollama 运行的本地模型，又可以用 API 访问
 
 你可以在 `config_server.py` 的 `model_type` 中切换：
 
--   **funasr_nano**（默认推荐）：目前的旗舰模型，速度较快，准确率最高。
--   **sensevoice**：阿里新一代大模型，速度超快，准确率稍逊。
--   **paraformer**：v1 版本的主导模型，现主要作为兼容备份。
+-   **qwen_asr**：    自带标点，CPU 速度及格，独显加速超快，准确率：夯爆了。
+-   **fun_asr_nano**：自带标点，CPU 速度较快，独显加速超快，准确率：顶级。
+-   **sensevoice**：  自带标点，CPU 速度超快，准确率：人上人。
+-   **paraformer**：  外挂标点，CPU 速度超快，准确率：人上人。
 
 
 ## ⚙️ 个性化配置
@@ -104,12 +113,12 @@ A: 请确认 `start_client.exe` 的黑窗口还在运行。若想在管理员权
 A: 到 `年/月/assets` 文件夹中检查录音文件，看是不是没有录到音；听听录音效果，是不是麦克风太差，建议使用桌面 USB 麦克风；检查麦克风权限。
 
 **Q: 我可以用显卡加速吗？**  
-A: 目前 Fun-ASR-Nano 模型支持显卡加速，且默认开启，Encoder 使用 DirectML 加速，Decoder 使用 Vulkan 加速。但是对于高U低显的集显用户，显卡加速的效果可能还不如CPU，可以到 `config_server.py` 中把 `dml_enable` 或 `vulkan_enable` 设为 False 以禁用显卡加速。Paraformer 和 SenseVoice 本身在 CPU 上就已经超快，用 DirectML 加速反而每次识别会有 200ms 启动开销，因此对它们没有开启显卡加速。
+A: 目前 Fun-ASR-Nano 模型支持显卡加速，Encoder 使用 DirectML 加速（默认关闭），Decoder 使用 Vulkan 加速。但是对于高U低显的集显用户，显卡加速的效果可能还不如CPU，可以到 `config_server.py` 中把 `dml_enable` 或 `vulkan_enable` 设为 False 以禁用显卡加速。Paraformer 和 SenseVoice 本身在 CPU 上就已经超快，用 DirectML 加速反而每次识别会有 200ms 启动开销，因此对它们没有支持显卡加速。
 
 **Q: 低性能电脑转录太慢？**  
 A:  
-1. 对于短音频，`Fun-ASR-Nano` 在独显上可以 200~300ms 左右转录完毕，`sensevoice` 或 `paraformer` 在 CPU 上可以 100ms 左右转录完毕，这是参考延迟。
-2. 如果 `Fun-ASR-Nano` 太慢，尝试到 `config_server.py` 中把 `dml_enable` 或 `vulkan_enable` 设为 False 以禁用显卡加速。
+1. 对于短音频，`Qwen3-ASR-1.7B` 和 `Fun-ASR-Nano` 在独显上冷启动可以 200~300ms 左右转录完毕，若用管理员权限运行 `nvidia-smi -lmc 9000` 锁定显存不降频，实测 RTX5050 转录延迟可降至 100ms，`sensevoice` 或 `paraformer` 在 CPU 上可以 100ms 左右转录完毕，这是参考延迟。
+2. 如果 `Qwen3-ASR-1.7B` 和 `Fun-ASR-Nano` 在集显上太慢，尝试到 `config_server.py` 中把 `dml_enable` 或 `vulkan_enable` 设为 False 以禁用显卡加速。
 3. 如果性能较差，还是慢，就更改 `config_server.py` 中的 `model_type` ，切换模型为 `sensevoice` 或 `paraformer`。
 4. 如果性能太差，连 `sensevoice` 或 `paraformer` 都还是慢，就把 `num_threads` 降低。
 

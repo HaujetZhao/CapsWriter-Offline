@@ -70,6 +70,7 @@ class AlignerConfig:
     llm_fn: str = "qwen3_aligner_llm.q4_k.gguf" 
     use_dml: bool = False
     n_ctx: int = 2048       # 对于 Aligner Decoder，每秒音频+文字，约占 30 个 token
+    pad_to: Optional[int] = None # Encoder 填充时长
 
 @dataclass
 class ASREngineConfig:
@@ -87,13 +88,21 @@ class ASREngineConfig:
     verbose: bool = True
     enable_aligner: bool = False
     align_config: Optional[AlignerConfig] = None
+    pad_to: Optional[int] = None # Encoder 填充时长
 
     def __post_init__(self):
+        # 如果没有显式设置 Encoder 填充时长，则默认与 LLM 分段识别时长对齐
+        if self.pad_to is None:
+            object.__setattr__(self, 'pad_to', int(self.chunk_size))
+            
         if self.align_config is None:
-            self.align_config = AlignerConfig(
+            object.__setattr__(self, 'align_config', AlignerConfig(
                 model_dir=self.model_dir,
-                use_dml=self.use_dml
-            )
+                use_dml=self.use_dml,
+                pad_to=self.pad_to # Aligner 默认也跟随主 pad_to
+            ))
+        elif self.align_config.pad_to is None:
+             object.__setattr__(self.align_config, 'pad_to', int(self.chunk_size))
 
 @dataclass
 class TranscribeResult:

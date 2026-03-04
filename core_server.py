@@ -42,8 +42,8 @@ async def run_websocket_server():
     loop.set_default_executor(SimpleDaemonExecutor())
 
     # 清空物理内存工作集
-    if system() == 'Windows':
-        empty_current_working_set()
+    # if system() == 'Windows':
+    #     empty_current_working_set()
 
     # 2. 启动服务器
     logger.info(f"WebSocket 服务器正在启动，监听地址: {Config.addr}:{Config.port}")

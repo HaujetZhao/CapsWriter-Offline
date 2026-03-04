@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 # 版本信息
-__version__ = '2.4'
+__version__ = '2.5-alpha'
 
 # 项目根目录
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -17,7 +17,7 @@ class ClientConfig:
     # 快捷键配置列表
     shortcuts = [
         {
-            'key': 'caps_lock',     # 监听大写锁定键
+            'key': 'f1',     # 监听大写锁定键
             'type': 'keyboard',     # 是键盘快捷键
             'suppress': True,      # 不阻塞按键（但录音结束会补发）
             'hold_mode': True,      # 长按模式

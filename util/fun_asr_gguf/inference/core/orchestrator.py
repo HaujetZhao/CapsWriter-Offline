@@ -3,11 +3,11 @@ import time
 import numpy as np
 from typing import Optional, List
 
-from ..nano_audio import load_audio
+from ..audio import load_audio
 from ..text_merge import merge_transcription_results
 from ..srt_utils import generate_srt_file
 from ..display import DisplayReporter
-from ..nano_dataclass import TranscriptionResult, Statistics, RecognitionStream
+from ..schema import TranscriptionResult, Statistics, RecognitionStream
 from .model_manager import ModelManager
 from .decoder import StreamDecoder
 

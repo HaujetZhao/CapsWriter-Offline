@@ -7,12 +7,12 @@ from .aligner import QwenForcedAligner
 
 def do_encode_task(msg, encoder, from_enc_q):
     """处理音频编码任务"""
-    audio_embd, encode_time = encoder.encode(msg.data)
+    audio_embd, encode_time, = encoder.encode(msg.data)
     from_enc_q.put(StreamingMessage(
         msg_type=MsgType.MSG_EMBD, 
         data=audio_embd, 
         is_last=msg.is_last, 
-        encode_time=encode_time
+        encode_time=encode_time,
     ))
 
 def do_align_task(msg, aligner, from_align_q):
@@ -51,14 +51,16 @@ def asr_helper_worker_proc(to_worker_q, from_enc_q, from_align_q, config: ASREng
             frontend_path=frontend_path,
             backend_path=backend_path,
             use_dml=config.use_dml,
-            warmup_sec=config.chunk_size,
-            verbose=False
+            pad_to=config.pad_to,
+            verbose=config.verbose
         )
         
         aligner = None
         if config.enable_aligner and config.align_config:
             from .aligner import QwenForcedAligner
-            aligner = QwenForcedAligner(config.align_config)
+            aligner = QwenForcedAligner(
+                config.align_config
+            )
             
         from_enc_q.put(StreamingMessage(MsgType.MSG_READY))
     except Exception as e:

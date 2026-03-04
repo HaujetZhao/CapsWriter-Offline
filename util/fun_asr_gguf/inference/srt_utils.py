@@ -6,7 +6,6 @@ import os
 from datetime import timedelta
 from typing import List, Dict, Any
 import srt
-from util.constants import Punctuation
 
 def generate_srt_file(
     segments: List[Dict[str, Any]], 
@@ -27,7 +26,7 @@ def generate_srt_file(
     subtitles = []
     
     # 分句参考
-    puncs = set(Punctuation.ALL + " ")
+    puncs = set("，。！？；,.!?;")
     pause_threshold = 0.4      # 停顿超过 0.4s 则考虑切分
     min_chars_to_break = 5    # 至少积累了 5 个字才允许因为停顿而切分
     long_pause_threshold = 1.0 # 如果停顿超过 1.0s，则无视字数强制切分
@@ -70,7 +69,7 @@ def generate_srt_file(
 
             content = "".join(current_chars).strip()
             # 移除内容末尾的标点符号，让字幕更干净
-            content = content.rstrip(Punctuation.ALL + " ")
+            content = content.rstrip(''.join(puncs) + ' ')
             
             if content:
                 subtitles.append(srt.Subtitle(
