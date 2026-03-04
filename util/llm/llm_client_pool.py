@@ -6,7 +6,8 @@ LLM 客户端池
 2. 根据 provider 和 api_url 创建和获取客户端
 """
 from openai import OpenAI
-from typing import Dict
+from typing import Dict, Any, Union
+from ollama import Client as OllamaClient
 from util.llm.llm_constants import APIConfig
 
 
@@ -14,10 +15,10 @@ class ClientPool:
     """OpenAI 客户端池"""
 
     def __init__(self):
-        self._clients: Dict[str, OpenAI] = {}
+        self._clients: Dict[str, Any] = {}
 
-    def get_client(self, provider: str, api_url: str = '', api_key: str = '') -> OpenAI:
-        """获取 OpenAI 客户端（带缓存）
+    def get_client(self, provider: str, api_url: str = '', api_key: str = '') -> Any:
+        """获取 LLM 客户端（带缓存）
 
         Args:
             provider: API 提供商（如 'ollama', 'openai'）
@@ -25,7 +26,7 @@ class ClientPool:
             api_key: API Key（可选）
 
         Returns:
-            OpenAI 客户端实例
+            OpenAI 或 ollama.Client 客户端实例
         """
         cache_key = f"{provider}_{api_url}"
 
@@ -40,11 +41,17 @@ class ClientPool:
             timeout = APIConfig.DEFAULT_TIMEOUTS.get(provider, APIConfig.DEFAULT_TIMEOUT)
 
             # 创建客户端
-            self._clients[cache_key] = OpenAI(
-                base_url=final_url,
-                api_key=final_key,
-                timeout=timeout,
-            )
+            if provider == 'ollama':
+                self._clients[cache_key] = OllamaClient(
+                    host=final_url,
+                    timeout=timeout,
+                )
+            else:
+                self._clients[cache_key] = OpenAI(
+                    base_url=final_url,
+                    api_key=final_key,
+                    timeout=timeout,
+                )
 
         return self._clients[cache_key]
 

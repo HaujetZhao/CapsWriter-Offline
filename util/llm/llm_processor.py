@@ -64,10 +64,8 @@ class LLMProcessor:
 
         # 构建请求参数
         request_params = self._build_request_params(role_config, messages)
-        logger.debug(f"请求参数: model={role_config.model}, stream=True")
-
+        
         try:
-            logger.debug("开始调用 LLM API（流式）")
             return self._stream_request(
                 client,
                 request_params,
@@ -81,10 +79,22 @@ class LLMProcessor:
         except OpenAIErrorWrapper:
             # 已包装的 OpenAI 异常，直接重新抛出
             raise
-        except APIException:
-            # 其他 API 相关异常，直接重新抛出
-            raise
         except Exception as e:
+            # 处理已包装的 OpenAI 异常
+            if isinstance(e, (OpenAIErrorWrapper, APIException)):
+                raise
+
+            # 捕获 Ollama SDK 原生异常
+            if role_config.provider == 'ollama':
+                try:
+                    import ollama
+                    if isinstance(e, (ollama.ResponseError, ollama.RequestError)):
+                        error_msg = f"Ollama API 调用失败: {e}"
+                        logger.error(error_msg)
+                        raise APIException(error_msg, role_config.provider) from e
+                except ImportError:
+                    pass
+
             # 捕获 OpenAI SDK 原生异常并包装
             import openai
 
@@ -119,37 +129,32 @@ class LLMProcessor:
         role_config: RoleConfig,
         messages: List[Dict[str, str]]
     ) -> Dict[str, Any]:
-        """构建请求参数"""
-        request_params = {
+        """统一构建请求参数"""
+        params = {
             'model': role_config.model,
             'messages': messages,
+            'temperature': role_config.temperature,
+            'top_p': role_config.top_p,
         }
 
-        # 添加生成参数
-        if role_config.temperature is not None:
-            request_params['temperature'] = role_config.temperature
-
-        if role_config.top_p is not None:
-            request_params['top_p'] = role_config.top_p
-
         if role_config.max_tokens > 0:
-            request_params['max_tokens'] = role_config.max_tokens
-            logger.debug(f"最大tokens: {role_config.max_tokens}")
+            params['max_tokens'] = role_config.max_tokens
+            # 为 Ollama 映射 num_predict
+            if role_config.provider == 'ollama':
+                params['num_predict'] = role_config.max_tokens
 
         # 处理停止序列
-        stop = role_config.stop
-        if stop:
-            if isinstance(stop, str):
-                request_params['stop'] = [s.strip() for s in stop.split(',')]
-            else:
-                request_params['stop'] = stop
-            logger.debug(f"停止序列: {request_params['stop']}")
+        if role_config.stop:
+            stop_list = role_config.stop
+            if isinstance(stop_list, str):
+                stop_list = [s.strip() for s in stop_list.split(',')]
+            params['stop'] = stop_list
 
         # 合并额外选项
         if role_config.extra_options:
-            request_params.update(role_config.extra_options)
+            params.update(role_config.extra_options)
 
-        return request_params
+        return params
 
     def _stream_request(
         self,
@@ -161,78 +166,113 @@ class LLMProcessor:
         context_manager: Optional[IContextManager],
         messages: List[Dict[str, str]]
     ) -> Tuple[str, int, float]:
-        """执行流式请求
+        """执行流式请求并协调不同处理引擎"""
+        
+        if role_config.provider == 'ollama':
+            result = self._process_ollama_stream(
+                client, role_config, messages, callback, should_stop_check
+            )
+        else:
+            result = self._process_openai_stream(
+                client, request_params, callback, should_stop_check
+            )
 
-        Returns:
-            (响应文本, token数, 生成时间秒)
-        """
-        request_params['stream'] = True
-        stream = client.chat.completions.create(**request_params)
+        full_response, total_tokens, generation_time = result
 
-        full_response = ""
-        total_tokens = 0
-        chunk_count = 0
-
-        # 计时：从第一个 token 开始
-        first_token_time = None
-        generation_start_time = None
-
-        for chunk in stream:
-            chunk_count += 1
-            # 检查是否应该停止
-            if should_stop_check and should_stop_check():
-                logger.debug(f"收到停止信号，当前已接收 {chunk_count} 个 chunks")
-                # 关闭流式响应，终止模型继续生成
-                try:
-                    stream.close()
-                except:
-                    pass
-                # 中断循环，返回已生成的部分
-                break
-
-            if chunk.choices[0].delta.content:
-                content_chunk = chunk.choices[0].delta.content
-                full_response += content_chunk
-
-                # 记录第一个 token 到达时间
-                if first_token_time is None:
-                    first_token_time = time.time()
-                    generation_start_time = first_token_time
-
-                if callback:
-                    callback(content_chunk)
-
-            # 统计 token 数（在最后一个 chunk 中获取）
-            # 注意：某些提供商（如 Ollama）的流式响应不包含 usage
-            if hasattr(chunk, 'usage') and chunk.usage:
-                if hasattr(chunk.usage, 'completion_tokens'):
-                    tokens = chunk.usage.completion_tokens or 0
-                    if tokens > 0:
-                        # 使用最后一个非零的 token 数
-                        total_tokens = tokens
-
-        # 计算生成时间（从第一个 token 到最后一个 token）
-        generation_time = 0.0
-        if generation_start_time is not None:
-            generation_end_time = time.time()
-            generation_time = generation_end_time - generation_start_time
-
-        # 如果 API 没有返回 token 数，使用估算（针对 Ollama 等不返回 usage 的提供商）
+        # Token 估算兜底（针对 Ollama 等不返回 usage 的提供商）
         if total_tokens == 0 and full_response:
             from util.llm.llm_constants import estimate_tokens
             total_tokens = estimate_tokens(full_response)
-            logger.debug(f"API 未返回 token 数，使用估算值: {total_tokens}")
-
-        logger.debug(f"LLM 响应完成，接收 {chunk_count} 个 chunks, 输出tokens: {total_tokens}, 响应长度: {len(full_response)}, 生成时间: {generation_time:.3f}秒")
-        # 记录响应内容（截断过长内容）
-        preview_len = min(len(full_response), 500)
-        logger.debug(f"LLM 响应内容: {full_response[:preview_len]}{'...' if len(full_response) > preview_len else ''}")
+            result = (full_response, total_tokens, generation_time)
 
         # 更新历史
         if role_config.enable_history and context_manager:
-            # 保存完整的用户提示词（包含剪贴板、热词等）
             context_manager.add_message('user', messages[-1]['content'])
             context_manager.add_message('assistant', full_response)
             logger.debug(f"已更新历史记录")
 
-        return (full_response.strip(), total_tokens, generation_time)
+        return result
+
+    def _process_ollama_stream(
+        self,
+        client: Any,
+        role_config: RoleConfig,
+        messages: List[Dict[str, str]],
+        callback: Optional[Callable[[str], None]],
+        should_stop_check: Optional[Callable[[], bool]]
+    ) -> Tuple[str, int, float]:
+        """专门处理 Ollama 原生流响应"""
+        
+        # 1. 统一构建参数并提取 Ollama 选项
+        params = self._build_request_params(role_config, messages)
+        ollama_options = {
+            k: v for k, v in params.items() 
+            if k in ['temperature', 'top_p', 'stop', 'num_predict']
+        }
+        
+        # 2. 发起请求
+        stream = client.chat(
+            model=role_config.model,
+            messages=messages,
+            stream=True,
+            options=ollama_options,
+            think=role_config.enable_thinking
+        )
+
+        # 3. 迭代处理
+        full_response, total_tokens, generation_start_time = "", 0, None
+        
+        for chunk in stream:
+            if should_stop_check and should_stop_check():
+                break
+
+            if hasattr(chunk, 'message') and chunk.message.content:
+                content = chunk.message.content
+                full_response += content
+                if generation_start_time is None:
+                    generation_start_time = time.time()
+                if callback:
+                    callback(content)
+
+            if hasattr(chunk, 'done') and chunk.done:
+                total_tokens = getattr(chunk, 'eval_count', 0)
+
+        generation_time = time.time() - generation_start_time if generation_start_time else 0.0
+        return full_response.strip(), total_tokens, generation_time
+
+    def _process_openai_stream(
+        self,
+        client: Any,
+        params: Dict[str, Any],
+        callback: Optional[Callable[[str], None]],
+        should_stop_check: Optional[Callable[[], bool]]
+    ) -> Tuple[str, int, float]:
+        """专门处理 OpenAI 兼容 API 流响应"""
+        
+        # 排除 Ollama 专用的参数
+        openai_params = {k: v for k, v in params.items() if k != 'num_predict'}
+        openai_params['stream'] = True
+        
+        stream = client.chat.completions.create(**openai_params)
+
+        full_response, total_tokens, generation_start_time = "", 0, None
+
+        for chunk in stream:
+            if should_stop_check and should_stop_check():
+                try: stream.close()
+                except: pass
+                break
+
+            if chunk.choices and chunk.choices[0].delta.content:
+                content = chunk.choices[0].delta.content
+                full_response += content
+                if generation_start_time is None:
+                    generation_start_time = time.time()
+                if callback:
+                    callback(content)
+
+            if hasattr(chunk, 'usage') and chunk.usage:
+                total_tokens = getattr(chunk.usage, 'completion_tokens', 0)
+
+        generation_time = time.time() - generation_start_time if generation_start_time else 0.0
+        return full_response.strip(), total_tokens, generation_time
