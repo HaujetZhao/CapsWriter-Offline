@@ -65,7 +65,6 @@ hiddenimports += [
     'rich._unicode_data.unicode17-0-0',
     'keyboard',
     'pyclip', 
-    'scipy', 
     'numpy',
     'numba', 
     'sounddevice',

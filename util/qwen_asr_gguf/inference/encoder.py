@@ -3,10 +3,10 @@ import os
 import time
 import numpy as np
 import onnxruntime as ort
-import scipy.signal
+
 
 class FastWhisperMel:
-    """基于 NumPy 和 SciPy 的纯净版 Mel 提取器 (彻底干掉 librosa 的 numba JIT 启动延时)"""
+    """基于 NumPy 的纯净版 Mel 提取器 (彻底干掉 librosa 的 numba JIT 启动延时)"""
     def __init__(self, filter_path: str = None, n_mels=128, sr=16000, n_fft=400, f_min=0, f_max=8000, norm="slaney", mel_scale="slaney"):
         self.n_fft = n_fft
         self.hop_length = 160
@@ -18,7 +18,7 @@ class FastWhisperMel:
             self.filters = self._generate_filters(sr, n_fft, n_mels, f_min, f_max, norm, mel_scale)
             
         # 提前计算并缓存好汉明窗 (Qwen3/Whisper/Librosa 使用 Hann 窗)
-        self.window = scipy.signal.get_window('hann', self.n_fft, fftbins=True)
+        self.window = 0.5 - 0.5 * np.cos(2 * np.pi * np.arange(self.n_fft) / self.n_fft)
         
     def _generate_filters(self, sr, n_fft, n_mels, f_min, f_max, norm, mel_scale):
         """
@@ -122,7 +122,6 @@ class QwenAudioEncoder:
         self.verbose = verbose
         self.active_dml = False
         self.pad_to = pad_to
-        
         # 预计算目标长度：每 1 秒对应 13 帧 hidden_states
         self.h_target_len = self.pad_to * 13
         
@@ -212,8 +211,8 @@ class QwenAudioEncoder:
             
             # 构造 Mask：前 seq_len 为 0 (关注)，后 pad_width 为 -10000.0 (屏蔽)
             # 维度需要广播到 (Batch, 1, T_fixed, T_fixed)
-            mask = np.full((batch, 1, self.h_target_len, self.h_target_len), -10000.0, dtype=self.input_dtype)
-            mask[:, :, :, :seq_len] = 0.0
+            mask = np.zeros((batch, 1, self.h_target_len, self.h_target_len), dtype=self.input_dtype)
+            mask[:, :, :, seq_len:] = -10000.0
         else:
             hidden_input = hidden_states
             mask = np.zeros((batch, 1, seq_len, seq_len), dtype=self.input_dtype)
@@ -243,7 +242,6 @@ class QwenAudioEncoder:
         
         # 3. Backend (Transformer)
         audio_embd = self._run_backend(hidden_states)
-        
         
         # 4. 去除 Batch 维 -> (T, D)
         if audio_embd.ndim == 3: 
