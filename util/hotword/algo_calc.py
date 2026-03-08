@@ -159,7 +159,7 @@ def find_best_match(main_seq: List[Phoneme], sub_seq: List[Phoneme]) -> Tuple[fl
     """
     # DEBUG
     import logging
-    logger = logging.getLogger('client')
+    logger = logging.getLogger('fun_asr_gguf.hotword.algo_calc')
     logger.debug(f"[DEBUG] find_best_match: main_seq type={type(main_seq)}, len={len(main_seq)}")
     logger.debug(f"[DEBUG] find_best_match: sub_seq type={type(sub_seq)}, len={len(sub_seq)}")
     if main_seq:
@@ -438,26 +438,74 @@ def fuzzy_substring_search_constrained(hw_info: List[Tuple], input_info: List[Tu
             dp[0][j] = 0.0
             path[0][j] = (0, j)
 
+    # [性能优化] 预提取 input 信息，减少循环内索引/解包开销
+    # input_info 元素是 (值, 语言, 字始, 字终, 是调, 始位, 终位)
+    input_vals = [t[0] for t in input_info]
+    input_langs = [t[1] for t in input_info]
+    input_starts = [t[2] for t in input_info]
+    input_ends = [t[3] for t in input_info]
+    input_phones = [t[4] for t in input_info]
+
+    hw_vals = [t[0] for t in hw_info]
+    hw_langs = [t[1] for t in hw_info]
+    hw_phones = [t[4] for t in hw_info]
+
+    # 初始化第一行：允许从任何词起始边界开始匹配
+    for j in range(m + 1):
+        if j == 0 or (j < m and input_starts[j]):
+            dp[0][j] = 0.0
+            path[0][j] = (0, j)
+
     # 填充 DP
     for i in range(1, n + 1):
+        h_v, h_l, h_p = hw_vals[i-1], hw_langs[i-1], hw_phones[i-1]
+        row_min = float('inf')
+        
         for j in range(1, m + 1):
-            cost = _get_tuple_cost(hw_info[i-1], input_info[j-1])
+            # 获取 cost 的优化版
+            # --- Inline _get_tuple_cost start ---
+            i_v, i_l, i_p = input_vals[j-1], input_langs[j-1], input_phones[j-1]
+            if h_l != i_l: cost = 1.0
+            elif h_v == i_v: cost = 0.0
+            elif h_l == 'zh':
+                if h_p: cost = 0.5
+                else:
+                    pair = {h_v, i_v}
+                    cost = 1.0
+                    for s in SIMILAR_PHONEMES:
+                        if pair.issubset(s):
+                            cost = 0.5
+                            break
+            elif h_l == 'en':
+                lcs = _lcs_length(h_v, i_v)
+                cost = 1.0 - (lcs / max(len(h_v), len(i_v)))
+            else: cost = 1.0
+            # --- Inline _get_tuple_cost end ---
 
-            # 候选路径：匹配、删除热词音素、插入额外音素
             dist_match = dp[i-1][j-1] + cost
-            dist_del = dp[i-1][j] + 1.0    # 只有在匹配英文时我们宽容长度差异
+            dist_del = dp[i-1][j] + 1.0
             dist_ins = dp[i][j-1] + 1.0
 
-            # 选最小并记录路径
-            min_dist = min(dist_match, dist_del, dist_ins)
-            dp[i][j] = min_dist
-            
-            if min_dist == dist_match:
-                path[i][j] = path[i-1][j-1]
-            elif min_dist == dist_del:
-                path[i][j] = path[i-1][j]
+            if dist_match <= dist_del:
+                if dist_match <= dist_ins:
+                    dp[i][j] = dist_match
+                    path[i][j] = path[i-1][j-1]
+                else:
+                    dp[i][j] = dist_ins
+                    path[i][j] = path[i][j-1]
             else:
-                path[i][j] = path[i][j-1]
+                if dist_del <= dist_ins:
+                    dp[i][j] = dist_del
+                    path[i][j] = path[i-1][j]
+                else:
+                    dp[i][j] = dist_ins
+                    path[i][j] = path[i][j-1]
+            
+            if dp[i][j] < row_min: row_min = dp[i][j]
+        
+        # [性能优化] Early Exit：如果这一行的最小值已经超过了阈值允许的最大差异
+        if row_min > n * (1.0 - threshold) + 2: # 稍微放宽一点点
+            break
 
     # 收集结果
     results = []

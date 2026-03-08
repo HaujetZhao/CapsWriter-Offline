@@ -5,7 +5,7 @@
 使用音素编辑距离进行模糊匹配，实现智能热词替换。
 """
 
-import logging
+
 import os
 import time
 import threading
@@ -93,7 +93,7 @@ class PhonemeCorrector:
         similars = []
         
         # 预先根据相似度阈值过滤 fast_results，减少重复计算
-        for hw, fast_score in fast_results:
+        for hw, fast_score, approx_end_idx in fast_results:
             hw_phonemes = self.hotwords[hw]
             hw_compare = [p.info[:5] for p in hw_phonemes]
             
@@ -101,13 +101,25 @@ class PhonemeCorrector:
             # 为 Similar 列表使用更宽松的 initial 阈值，确保能抓到压线匹配
             search_threshold = min(self.threshold, self.similar_threshold) - 0.1
             
+            # [性能优化] 仅在 FastRAG 预测的结束位置附近进行搜索
+            # 窗口大小：热词长度 + 左右各 5 个音素的缓冲
+            window_size = len(hw_compare) + 10
+            window_start = max(0, approx_end_idx - window_size)
+            window_end = min(len(input_processed), approx_end_idx + 5)
+            
+            local_input = input_processed[window_start:window_end]
+            
             # 搜索匹配
-            found_segments = fuzzy_substring_search_constrained(hw_compare, input_processed, threshold=search_threshold)
+            found_segments = fuzzy_substring_search_constrained(hw_compare, local_input, threshold=search_threshold)
             
             for score, start_phon_idx, end_phon_idx in found_segments:
+                # 转换回全局索引
+                global_start_idx = window_start + start_phon_idx
+                global_end_idx = window_start + end_phon_idx
+                
                 # 从 input_processed 直接拿 char 索引
-                char_start = input_processed[start_phon_idx][5]
-                char_end = input_processed[end_phon_idx-1][6]
+                char_start = input_processed[global_start_idx][5]
+                char_end = input_processed[global_end_idx-1][6]
                 
                 res = MatchResult(char_start, char_end, score, hw)
                 origin_val = text[char_start:char_end]
@@ -222,8 +234,8 @@ class PhonemeCorrector:
 
 
 if __name__ == "__main__":
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
+    from .. import setup_logging
+    setup_logging(level=logging.DEBUG)
     
     print("\n--- PhonemeCorrector 测试 ---")
     corrector = PhonemeCorrector(threshold=0.7)
@@ -243,7 +255,6 @@ Python
 Microsoft
 iPhone
 7-Zip
-Fun-ASR
 
 # 杂项
 Claude
@@ -268,8 +279,7 @@ VsCode
         "我想去吃买当劳和啃得鸡",
         "喜欢刷Bili Bili",
         "请把那个锯子发给我一下",
-        "现在有了 Cloud，已经可以了。",
-        "传给服务端，对于 FUNAS2 模型就有效利用这一个 context。"
+        "我很喜欢 cloud",
     ]
     for text in test_cases_zh:
         result = corrector.correct(text)

@@ -3,75 +3,18 @@
 高性能 RAG 加速模块
 
 使用以下技术优化检索性能：
-1. Numba JIT 编译核心 DP 算法
-2. 首音素倒排索引减少候选
-3. 长度过滤跳过不可能的匹配
+1. 锚点搜索 (Anchor Scanning) 缩小搜索范围
+2. 首音素倒排索引极速过滤
+3. 纯 Python 极限循环优化 (属性提取与剪枝)
 """
 
-import numpy as np
+# 彻底移除 Numba 兼容逻辑，保持代码清晰
 from typing import List, Dict, Tuple, Set, Union
 from collections import defaultdict
 import time
 from . import logger
 
-# 尝试导入 Numba
-try:
-    from numba import jit, njit
-    import numba
-    HAS_NUMBA = True
-    logger.debug("Numba 可用，使用 JIT 加速")
-except ImportError:
-    HAS_NUMBA = False
-    logger.debug("Numba 不可用，使用纯 Python")
-
-
-# =============================================================================
-# Numba 加速版本
-# =============================================================================
-
-if HAS_NUMBA:
-    @njit(cache=True)
-    def _fuzzy_substring_distance_numba(main_codes: np.ndarray, sub_codes: np.ndarray) -> float:
-        """
-        Numba 加速的模糊子串距离计算
-        
-        使用整数编码代替字符串，大幅提升性能。
-        """
-        n = len(sub_codes)
-        m = len(main_codes)
-        
-        if n == 0 or m == 0:
-            return float(n)
-        
-        # DP 矩阵
-        dp = np.zeros((n + 1, m + 1), dtype=np.float32)
-        
-        # 初始化第一列
-        for i in range(1, n + 1):
-            dp[i, 0] = float(i)
-        
-        # 填充 DP 矩阵
-        for i in range(1, n + 1):
-            for j in range(1, m + 1):
-                # 计算代价：相同=0，不同=1
-                if sub_codes[i-1] == main_codes[j-1]:
-                    cost = 0.0
-                else:
-                    cost = 1.0
-                
-                dp[i, j] = min(
-                    dp[i-1, j] + 1.0,       # 删除
-                    dp[i, j-1] + 1.0,       # 插入
-                    dp[i-1, j-1] + cost     # 替换/匹配
-                )
-        
-        # 找最小距离
-        min_dist = dp[n, 1]
-        for j in range(2, m + 1):
-            if dp[n, j] < min_dist:
-                min_dist = dp[n, j]
-        
-        return min_dist
+HAS_NUMBA = False
 
 
 # =============================================================================
@@ -82,7 +25,7 @@ from .algo_phoneme import Phoneme
 from .algo_calc import SIMILAR_PHONEMES
 
 class PhonemeEncoder:
-    """将音素字符串编码为整数，用于 Numba 加速"""
+    """将音素字符串编码为整数，加速比较效率"""
     
     def __init__(self):
         self.phoneme_to_code: Dict[str, int] = {}
@@ -96,8 +39,21 @@ class PhonemeEncoder:
             self.next_code += 1
         return self.phoneme_to_code[phoneme]
     
-    def encode_sequence(self, phonemes: List[str]) -> np.ndarray:
-        return np.array([self.encode(p) for p in phonemes], dtype=np.int32)
+    def encode_sequence(self, phonemes: List[str]) -> List[int]:
+        """将音素序列编码为整数列表"""
+        return [self.encode(p) for p in phonemes]
+
+    def get_similar_codes(self, code: int) -> List[int]:
+        """获取相似音素的编码列表"""
+        if not hasattr(self, '_sim_map'):
+            # 延迟初始化相似地图
+            self._sim_map = defaultdict(list)
+            for s_set in SIMILAR_PHONEMES:
+                codes = [self.phoneme_to_code.get(p) for p in s_set if p in self.phoneme_to_code]
+                for c1 in codes:
+                    for c2 in codes:
+                        if c1 != c2: self._sim_map[c1].append(c2)
+        return self._sim_map.get(code, [])
 
 
 # =============================================================================
@@ -115,9 +71,9 @@ class PhonemeIndex:
     
     def __init__(self):
         self.encoder = PhonemeEncoder()
-        # {音素编码: [(热词原文, 音素编码数组), ...]}
-        self.index: Dict[int, List[Tuple[str, np.ndarray]]] = defaultdict(list)
-        self.all_hotwords: List[Tuple[str, np.ndarray]] = []
+        # {音素编码: [(热词原文, 整数列表), ...]}
+        self.index: Dict[int, List[Tuple[str, List[int]]]] = defaultdict(list)
+        self.all_hotwords: List[Tuple[str, List[int]]] = []
         
     def add(self, hotword: str, phonemes: List[Phoneme]):
         """添加热词到索引，内部自动决定索引哪些位置"""
@@ -142,53 +98,32 @@ class PhonemeIndex:
             
         self.all_hotwords.append((hotword, codes))
         
-    def get_candidates(self, input_phonemes: List[Phoneme]) -> List[Tuple[str, np.ndarray]]:
+    def get_candidates(self, input_codes: List[int]) -> List[Tuple[str, List[int], List[int]]]:
         """
-        获取候选热词
-
-        只返回索引音素在输入中出现过的热词
-
-        Args:
-            input_phonemes: 输入音素序列 (List[Phoneme])
+        获取候选热词及其在输入中出现的索引位置 (锚点)
         """
-        # 获取输入中所有唯一的音素（作为潜在索引音素）
-        input_codes = set()
-        
-        for p in input_phonemes:
-            val = p.value
-            code = self.encoder.phoneme_to_code.get(val)
-            if code is not None:
-                input_codes.add(code)
+        # 收集输入中音素出现的全部位置 {code: [idx1, idx2, ...]}
+        code_positions = defaultdict(list)
+        for idx, code in enumerate(input_codes):
+            code_positions[code].append(idx)
+            # [性能优化] 同时将相似音素的位置也统计进来，增加召回鲁棒性
+            for sim_code in self.encoder.get_similar_codes(code):
+                code_positions[sim_code].append(idx)
             
-            # [核心增强] 如果是中文，也把相似的音素加入搜索范围，以防索引音素识别错误
-            if p.lang != 'zh':
-                continue
-
-            for s_set in SIMILAR_PHONEMES:
-                if val not in s_set:
-                    continue
-                for sim_val in s_set:
-                    sim_code = self.encoder.phoneme_to_code.get(sim_val)
-                    if sim_code is None:
-                        continue
-                    input_codes.add(sim_code)
-
-        # 收集候选
-        candidates = []
-        seen = set()
-        for code in input_codes:
+        # 收集候选与其锚点位置
+        candidate_data = {} # {hw: (codes, [positions])}
+        for code, positions in code_positions.items():
             for hw, codes in self.index.get(code, []):
-                if hw in seen:
-                    continue
-                candidates.append((hw, codes))
-                seen.add(hw)
+                if hw not in candidate_data:
+                    candidate_data[hw] = (codes, [])
+                candidate_data[hw][1].extend(positions)
 
-        return candidates
+        # 格式化输出 [(hw, codes, [pos1, ...]), ...]
+        return [(hw, data[0], sorted(list(set(data[1])))) for hw, data in candidate_data.items()]
     
-    def encode_input(self, phonemes: List[Phoneme]) -> np.ndarray:
+    def encode_input(self, phonemes: List[Phoneme]) -> List[int]:
         """编码输入序列"""
-        phoneme_strs = [p.value for p in phonemes]
-        return self.encoder.encode_sequence(phoneme_strs)
+        return [self.encoder.encode(p.value) for p in phonemes]
 
 
 # =============================================================================
@@ -200,9 +135,9 @@ class FastRAG:
     高性能 RAG 检索器
     
     特点：
-    1. Numba JIT 加速核心算法
-    2. 首音素倒排索引减少候选
-    3. 长度过滤跳过不可能匹配
+    1. 纯 Python 实现，易于维护与部署
+    2. 基于锚点的局部扫描算法
+    3. 长度过滤与 DP 剪枝
     """
     
     def __init__(self, threshold: float = 0.6):
@@ -228,14 +163,13 @@ class FastRAG:
         """
         if not input_phonemes: return []
 
-        # DEBUG
         logger.debug(f"[DEBUG] FastRAG.search: input_phonemes type={type(input_phonemes)}, len={len(input_phonemes)}")
         if input_phonemes:
             logger.debug(f"[DEBUG] FastRAG.search: input_phonemes[0] type={type(input_phonemes[0])}, value={input_phonemes[0]}")
 
         # 1. 编码输入并获取候选
         input_codes = self.index.encode_input(input_phonemes)
-        candidates = self.index.get_candidates(input_phonemes)
+        candidates = self.index.get_candidates(input_codes)
 
         # 2. 遍历打分与过滤
         results = self._score_candidates(input_codes, candidates)
@@ -244,71 +178,96 @@ class FastRAG:
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:top_k]
 
-    def _score_candidates(self, input_codes: np.ndarray, candidates: List[Tuple[str, np.ndarray]]) -> List[Tuple[str, float]]:
-        """对候选列表进行相似度计算与阈值过滤"""
+    def _score_candidates(self, input_list: List[int], candidates: List[Tuple[str, List[int], List[int]]]) -> List[Tuple[str, float, int]]:
+        """对候选列表进行局部扫描打分"""
         results = []
-        input_len = len(input_codes)
+        input_len = len(input_list)
         
-        for hw, hw_codes in candidates:
-            hw_len = len(hw_codes)
+        for hw, hw_list, anchors in candidates:
+            hw_len = len(hw_list)
             
-            # 长度过滤：热词太长或太短都不可能匹配
-            if hw_len > input_len + 3: continue
+            best_score = -1.0
+            best_end_pos = -1
             
-            # 计算距离
-            if HAS_NUMBA:
-                min_dist = _fuzzy_substring_distance_numba(input_codes, hw_codes)
-            else:
-                min_dist = self._python_distance(input_codes, hw_codes)
+            # [深度优化] 锚点扫描：不再全量扫描，只在索引命中的位置附近开窗
+            # 每个热词可能在多个位置命中索引（例如“的”出现多次）
+            for anchor in anchors:
+                # 窗口范围：锚点是第一个音素匹配的位置
+                # 扫描范围：[anchor, anchor + hw_len + buffer]
+                # 加一个小的 buffer (如 3) 以容纳轻微的插入错误
+                scan_start = max(0, anchor - 2)
+                scan_end = min(input_len, anchor + hw_len + 3)
+                
+                local_input = input_list[scan_start:scan_end]
+                if not local_input: continue
+                
+                # 计算局部距离
+                dist, local_end = self._python_distance_simple(local_input, hw_list)
+                
+                score = 1.0 - (dist / hw_len)
+                if score > best_score:
+                    best_score = score
+                    best_end_pos = scan_start + local_end
             
-            # 计算分数 (1 - 归一化距离)
-            score = 1.0 - (min_dist / hw_len)
-            if score >= self.threshold:
-                results.append((hw, round(score, 3)))
+            if best_score >= self.threshold:
+                results.append((hw, round(best_score, 3), best_end_pos))
         return results
 
-    def compute_score(self, input_phonemes: List[str], hotword_phonemes: List[str]) -> float:
-        """
-        计算单个热词的精确分数 (用于重排序)
-        """
-        input_codes = self.index.encode_input(input_phonemes)
-        hw_codes = self.index.encode_input(hotword_phonemes)
+    def _python_distance_simple(self, main_list: List[int], sub_list: List[int]) -> Tuple[float, int]:
+        """局部扫描专用的简化版编辑距离，不需要 curr[0]=0 的逻辑"""
+        n = len(sub_list)
+        m = len(main_list)
         
-        hw_len = len(hw_codes)
-        if hw_len == 0:
-            return 0.0
+        # 局部窗口已经对齐起始，所以使用标准编辑距离初始化
+        prev = [float(i) for i in range(n + 1)]
+        curr = [0.0] * (n + 1)
+        
+        best_dist = float('inf')
+        best_pos = 0
+        
+        for j in range(1, m + 1):
+            curr[0] = float(j) # 标准编辑距离，左边是插入成本
+            m_val = main_list[j-1]
+            for i in range(1, n + 1):
+                cost = 0.0 if sub_list[i-1] == m_val else 1.0
+                d_del = prev[i] + 1.0
+                d_ins = curr[i-1] + 1.0
+                d_match = prev[i-1] + cost
+                
+                if d_del < d_ins:
+                    if d_del < d_match: curr[i] = d_del
+                    else: curr[i] = d_match
+                else:
+                    if d_ins < d_match: curr[i] = d_ins
+                    else: curr[i] = d_match
             
-        if HAS_NUMBA:
-            min_dist = _fuzzy_substring_distance_numba(input_codes, hw_codes)
-        else:
-            min_dist = self._python_distance(input_codes, hw_codes)
+            # 记录窗口内的最佳结束位置
+            if curr[n] <= best_dist:
+                best_dist = curr[n]
+                best_pos = j
+            prev[:] = curr[:]
             
-        return max(0.0, 1.0 - (min_dist / hw_len))
+        return best_dist, best_pos
 
-    
-    def _python_distance(self, main_codes: np.ndarray, sub_codes: np.ndarray) -> float:
-        """纯 Python 版本（Numba 不可用时）"""
-        n = len(sub_codes)
-        m = len(main_codes)
+    def _python_distance(self, main_list: List[int], sub_list: List[int]) -> float:
+        """标准模糊子串距离计算 (纯 Python)"""
+        n, m = len(sub_list), len(main_list)
+        if n == 0: return 0.0
+        if m == 0: return float(n)
         
-        if n == 0 or m == 0:
-            return float(n)
-        
-        dp = [[0.0] * (m + 1) for _ in range(n + 1)]
-        
-        for i in range(1, n + 1):
-            dp[i][0] = float(i)
-        
-        for i in range(1, n + 1):
-            for j in range(1, m + 1):
-                cost = 0.0 if sub_codes[i-1] == main_codes[j-1] else 1.0
-                dp[i][j] = min(
-                    dp[i-1][j] + 1.0,
-                    dp[i][j-1] + 1.0,
-                    dp[i-1][j-1] + cost
-                )
-        
-        return min(dp[n][j] for j in range(1, m + 1))
+        prev = [float(i) for i in range(n + 1)]
+        curr = [0.0] * (n + 1)
+        best_dist = float(n)
+
+        for j in range(1, m + 1):
+            curr[0] = 0.0 # 允许从任意处开始
+            m_val = main_list[j-1]
+            for i in range(1, n + 1):
+                cost = 0.0 if sub_list[i-1] == m_val else 1.0
+                curr[i] = min(prev[i] + 1.0, curr[i-1] + 1.0, prev[i-1] + cost)
+            if curr[n] < best_dist: best_dist = curr[n]
+            prev[:] = curr[:]
+        return best_dist
 
 
 # =============================================================================
@@ -317,7 +276,7 @@ class FastRAG:
 
 if __name__ == "__main__":
     import random
-    from util.hotword.algo_phoneme import get_phoneme_seq
+    from .algo_phoneme import get_phoneme_seq
     
     logging.basicConfig(level=logging.INFO)
     
