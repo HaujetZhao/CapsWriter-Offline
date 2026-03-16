@@ -6,6 +6,27 @@
 
 **CapsWriter-Offline** 是一个专为 Windows 打造的**完全离线**语音输入工具。
 
+## 关于Linux/macOS/Android上从源代码运行的兼容性修改：
+
+### 下载llama
+'''
+Windows：
+
+二进制下载地址：https://github.com/ggml-org/llama.cpp/releases/download/b7798/llama-b7798-bin-win-vulkan-x64.zip
+
+
+Linux：
+
+二进制下载地址：https://github.com/hybridgroup/llama-cpp-builder/releases/download/b7798/llama-b7798-bin-ubuntu-vulkan-arm64.tar.gz
+
+
+官方已经编译好二进制，下载后解压到这个文件夹即可
+
+util/llama/bin
+
+脚本需要调用编译好的 dll，用于 LLM Decoder 推理
+'''
+
 
 ## 🚀 更新说明：
 
