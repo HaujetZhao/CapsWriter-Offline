@@ -9,7 +9,9 @@
 ## 关于Linux/macOS/Android上从源代码运行的兼容性修改：
 
 ### 下载llama
+
 '''
+
 Windows：
 
 二进制下载地址：https://github.com/ggml-org/llama.cpp/releases/download/b7798/llama-b7798-bin-win-vulkan-x64.zip
@@ -25,6 +27,7 @@ Linux：
 util/llama/bin
 
 脚本需要调用编译好的 dll，用于 LLM Decoder 推理
+
 '''
 
 
