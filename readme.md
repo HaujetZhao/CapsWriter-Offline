@@ -6,9 +6,7 @@
 
 **CapsWriter-Offline** 是一个专为 Windows 打造的**完全离线**语音输入工具。
 
-## 关于Windows/Linux/macOS/Android上从源代码运行的兼容性修改：
-
-### 1、下载llama
+## 关于Windows/Linux/macOS/Android上从源代码运行需要下载llama的说明：
 
  ```
 Linux arm64：
@@ -38,13 +36,6 @@ https://github.com/ggml-org/llama.cpp/releases/tag/b7798
 下载后解压到这个文件夹即可
 
 util/llama/bin
-
- ```
-### 2、下载xlib
-
- ```
-
-sudo apt install python3-xlib
 
  ```
 
