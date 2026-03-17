@@ -39,6 +39,13 @@ util/llama/bin
 
  ```
 
+对于Linux，还需要以下依赖：
+
+ ```
+sudo apt install python3-xlib
+
+ ```
+
 ## 🚀 更新说明：
 
 v2.5-alpha 新增：
