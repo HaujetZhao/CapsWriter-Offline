@@ -42,7 +42,7 @@ util/llama/bin
 对于Linux，还需要以下依赖：
 
  ```
-sudo apt install python3-xlib
+sudo apt install python3-xlib kbd
 
  ```
 
