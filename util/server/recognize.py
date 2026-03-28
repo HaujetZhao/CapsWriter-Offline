@@ -18,8 +18,8 @@ from util.server.processor import TextFormatter
 from . import logger
 from rich import inspect
 
-# 导入拆分出去的模块
-from util.server.text_merge import (
+# 导入拆分后的算法子包
+from util.server.merger import (
     merge_by_text,
     merge_tokens_by_sequence_matcher,
     process_tokens_safely,
