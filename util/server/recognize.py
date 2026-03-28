@@ -13,10 +13,8 @@ import time
 import numpy as np
 
 from util.server.context import Context, console
-from config_server import ServerConfig as Config
 from util.server.schema import Task, Result
-from util.tools.chinese_itn import chinese_to_num
-from util.tools.format_tools import adjust_space
+from util.server.processor import TextFormatter
 from . import logger
 from rich import inspect
 
@@ -34,24 +32,7 @@ from util.server.error_handler import save_error_audio
 
 
 
-def format_text(text: str, punc_model) -> str:
-    """
-    格式化识别文本
-    
-    Args:
-        text: 原始识别文本
-        punc_model: 标点模型（可为 None）
-        
-    Returns:
-        格式化后的文本
-    """
-    if text and Config.format_spell:
-        text = adjust_space(text)
-    if text and punc_model:
-        text = punc_model.add_punctuation(text)
-    if text and Config.format_num:
-        text = chinese_to_num(text)
-    return text
+
 
 
 def _process_simple_merge(result: Result, stream_result_text: str) -> None:
@@ -167,8 +148,9 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
             return result
 
         # 8. 格式优化
-        result.text = format_text(result.text, punc_model)
-        result.text_accu = format_text(result.text_accu, punc_model)
+        formatter = TextFormatter(punc_model)
+        result.text = formatter.format(result.text)
+        result.text_accu = formatter.format(result.text_accu)
         
         # 如果模型不支持时间戳，用简单拼接结果回退
         if not result.tokens and result.text:
