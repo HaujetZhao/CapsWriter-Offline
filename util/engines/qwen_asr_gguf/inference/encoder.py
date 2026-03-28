@@ -1,6 +1,7 @@
 # coding=utf-8
 import os
 import time
+from pathlib import Path
 import numpy as np
 import onnxruntime as ort
 
@@ -118,12 +119,13 @@ def get_feat_extract_output_lengths(input_lengths):
 
 class QwenAudioEncoder:
     """Qwen3 音频编码器 (Split Frontend + Backend)"""
-    def __init__(self, frontend_path: str, backend_path: str, use_dml: bool = True, pad_to: int = 30, verbose: bool = True):
+    def __init__(self, frontend_path: str, backend_path: str, onnx_provider: str = 'CPU', dml_pad_to: int = 30, verbose: bool = True):
         self.verbose = verbose
+        self.onnx_provider = onnx_provider.upper()
         self.active_dml = False
-        self.pad_to = pad_to
+        self.dml_pad_to = dml_pad_to
         # 预计算目标长度：每 1 秒对应 13 帧 hidden_states
-        self.h_target_len = self.pad_to * 13
+        self.h_target_len = self.dml_pad_to * 13
         
         # 初始化 ONNX Session Options
         sess_opts = ort.SessionOptions()
@@ -132,13 +134,23 @@ class QwenAudioEncoder:
         sess_opts.add_session_config_entry("session.inter_op.allow_spinning", "0")
         sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
+        available_providers = ort.get_available_providers()
         providers = ['CPUExecutionProvider']
-        if use_dml and 'DmlExecutionProvider' in ort.get_available_providers():
+        
+        if self.onnx_provider in ('TRT', 'TENSORRT') and 'TensorrtExecutionProvider' in available_providers:
+            providers.insert(0, ('TensorrtExecutionProvider', {
+                'trt_fp16_enable': True,
+                'trt_engine_cache_enable': True,
+                'trt_engine_cache_path': Path(backend_path).parent / 'trt_cache',
+            }))
+        elif self.onnx_provider == 'DML' and 'DmlExecutionProvider' in available_providers:
             providers.insert(0, 'DmlExecutionProvider') 
             self.active_dml = True
+        elif self.onnx_provider == 'CUDA' and 'CUDAExecutionProvider' in available_providers:
+            providers.insert(0, 'CUDAExecutionProvider')
             
         if self.verbose: 
-            print(f"--- [Encoder] 加载 Split ONNX 模型 (DML: {self.active_dml}, Pad: {pad_to}s) ---")
+            print(f"--- [Encoder] 加载 Split ONNX 模型 (Provider: {providers[0]}, Pad: {dml_pad_to}s) ---")
             print(f"    Frontend: {os.path.basename(frontend_path)}")
             print(f"    Backend:  {os.path.basename(backend_path)}")
 
@@ -156,9 +168,9 @@ class QwenAudioEncoder:
             self.input_dtype = np.float32
 
         # 预热处理
-        if self.pad_to > 0 and self.active_dml:
-            if self.verbose: print(f"--- [Encoder] 正在预热 (固定形状: {self.pad_to}s)... ---")
-            dummy_wav = np.zeros(int(16000 * self.pad_to)).astype(np.float32)
+        if self.dml_pad_to > 0 and self.active_dml:
+            if self.verbose: print(f"--- [Encoder] 正在预热 (固定形状: {self.dml_pad_to}s)... ---")
+            dummy_wav = np.zeros(int(16000 * self.dml_pad_to)).astype(np.float32)
             _ = self.encode(dummy_wav)
         else:
             # 非 DML 模式下，预热一个短音频即可，无需 Padding

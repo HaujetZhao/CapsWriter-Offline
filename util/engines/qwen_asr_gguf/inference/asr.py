@@ -29,15 +29,7 @@ class QwenASREngine:
     def __init__(self, config: ASREngineConfig):
         self.config = config
         self.verbose = config.verbose
-        if self.verbose: print(f"--- [QwenASR] 初始化引擎 (DML: {config.use_dml}, Vulkan: {config.vulkan_enable}) ---")
-
-        # 设置图形加速环境
-        if not config.vulkan_enable:
-            os.environ["VK_ICD_FILENAMES"] = "none"       # 禁止 Vulkan
-        if config.vulkan_force_fp32:
-            os.environ["GGML_VK_DISABLE_F16"] = "1"       # 禁止 VulkanFP16 计算（Intel集显fp16有溢出问题）
-
-        self.llama_mod = llama # keep reference
+        if self.verbose: print(f"--- [QwenASR] 初始化引擎 (Provider: {config.onnx_provider}) ---")
         
         # 路径解析
         llm_gguf = os.path.join(config.model_dir, config.llm_fn)
@@ -48,8 +40,8 @@ class QwenASREngine:
         self.encoder = QwenAudioEncoder(
             frontend_path=frontend_path,
             backend_path=backend_path,
-            use_dml=config.use_dml,
-            pad_to=config.pad_to,
+            onnx_provider=config.onnx_provider,
+            dml_pad_to=config.dml_pad_to,
             verbose=self.verbose
         )
 
@@ -60,7 +52,7 @@ class QwenASREngine:
             self.aligner = QwenForcedAligner(config.align_config)
         
         # 3. 加载识别 LLM
-        self.model = llama.LlamaModel(llm_gguf)
+        self.model = llama.LlamaModel(llm_gguf, use_gpu=config.llm_use_gpu)
         self.embedding_table = llama.get_token_embeddings_gguf(llm_gguf)
         self.ctx = llama.LlamaContext(self.model, n_ctx=config.n_ctx, n_batch=4096, embeddings=False)
 
@@ -115,7 +107,7 @@ class QwenASREngine:
         total_len = full_embd.shape[0]
         pos_base = np.arange(0, total_len, dtype=np.int32)
         pos_arr = np.concatenate([pos_base, pos_base, pos_base, np.zeros(total_len, dtype=np.int32)])
-        batch = self.llama_mod.LlamaBatch(max(total_len * 4, 8192), self.model.n_embd, 1)
+        batch = llama.LlamaBatch(max(total_len * 4, 8192), self.model.n_embd, 1)
         batch.set_embd(full_embd, pos=pos_arr)
         
         # 1. Prefill
@@ -134,7 +126,7 @@ class QwenASREngine:
         
         # 每次解码使用新的随机种子
         seed = int(np.random.randint(0, 2**31 - 1))
-        sampler = self.llama_mod.LlamaSampler(temperature=temperature, seed=seed)
+        sampler = llama.LlamaSampler(temperature=temperature, seed=seed)
         last_sampled_token = sampler.sample(self.ctx.ptr)
         for _ in range(512): # Max new tokens per chunk
             if last_sampled_token in [self.model.eos_token, self.ID_IM_END]:
@@ -175,7 +167,7 @@ class QwenASREngine:
                     stable_text_acc += piece
             final_p = text_decoder.decode(b"", final=True)
             if final_p: 
-                print(final_p, end='', flush=True)
+                if streaming: print(final_p, end='', flush=True)
                 stable_text_acc += final_p
         
         # 填充结果（内核输出标准化）
@@ -234,7 +226,7 @@ class QwenASREngine:
         rollback_num: int = 5
     ) -> TranscribeResult:
         """运行完整转录流水线 (从文件加载音频)"""
-        from .utils import load_audio
+        from .audio import load_audio
         audio = load_audio(audio_file, start_second=start_second, duration=duration)
         
         return self.asr(

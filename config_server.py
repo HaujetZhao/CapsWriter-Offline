@@ -20,6 +20,7 @@ class ServerConfig:
     format_spell = True     # 输出时是否调整中英之间的空格
 
     enable_tray = True        # 是否启用托盘图标功能
+    hotwords_path = Path() / 'hot-server.txt' # 全局热词配置文件路径
 
     # 日志配置
     log_level = 'INFO'        # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
@@ -102,11 +103,10 @@ class FunASRNanoGGUFArgs:
     ctc_onnx_path = ModelPaths.fun_asr_nano_gguf_ctc.as_posix()
     decoder_gguf_path = ModelPaths.fun_asr_nano_gguf_llm_decode.as_posix()
     tokens_path = ModelPaths.fun_asr_nano_gguf_token.as_posix()
-    hotwords_path = ModelPaths.fun_asr_nano_gguf_hotwords.as_posix()
 
     # 显卡加速
-    dml_enable = False          # 是否启用 DirectML 加速 ONNX 模型，实测 AMD 显卡上会慢，因此默认关闭，建议N卡开启
-    vulkan_enable = True        # 是否启用 Vulkan 加速 GGUF 模型
+    onnx_provider = 'CPU'       # ONNX 推理后端 (CPU, CUDA, DML, TensorRT)
+    llm_use_gpu = True          # 是否启用 GPU 加速 GGUF 模型
     vulkan_force_fp32 = False   # 是否强制 FP32 计算（如果 GPU 是 Intel 集显且出现精度溢出，可设为 True）
     
     # 模型细节
@@ -115,7 +115,7 @@ class FunASRNanoGGUFArgs:
     n_threads = None            # 线程数，None 表示自动
     similar_threshold = 0.6     # 热词相似度阈值
     max_hotwords = 20           # 每次替换的最大热词数
-    pad_to = 30                 # 开启 DirectML 加速时，短音频统一填充到指定长度，有加速效果
+    dml_pad_to = 30             # 开启 DirectML 加速时，短音频统一填充到指定长度，有加速效果
     verbose = False
 
 class Qwen3ASRGGUFArgs:
@@ -128,15 +128,13 @@ class Qwen3ASRGGUFArgs:
     llm_fn = ModelPaths.qwen3_asr_gguf_llm_decode.name
 
     # 显卡加速
-    use_dml = False             # 是否启用 DirectML 加速 ONNX 模型，实测 AMD 显卡上会慢，因此默认关闭，建议N卡开启
-    vulkan_enable = True        # 是否启用 Vulkan 加速 GGUF 模型
-    vulkan_force_fp32 = False   # 是否强制 FP32 计算（如果 GPU 是 Intel 集显且出现精度溢出，可设为 True）
+    onnx_provider = 'CPU'       # ONNX 推理后端 (CPU, CUDA, DML, TensorRT)
+    llm_use_gpu = True          # 是否启用 GPU 加速 GGUF 模型
     
     # 模型细节
-    n_predict = 512             # LLM 最大生成 token 数
-    n_threads = None            # 线程数，None 表示自动
     n_ctx = 2048                # 上下文窗口大小
     chunk_size = 80.0           # 分段长度（秒）
-    pad_to = 30                 # 开启 DirectML 加速时，短音频统一填充到指定长度，有加速效果
+    memory_num = 1              # 记忆段数
+    dml_pad_to = 30                 # 开启 DirectML 加速时，短音频统一填充到指定长度，有加速效果
     verbose = False
 

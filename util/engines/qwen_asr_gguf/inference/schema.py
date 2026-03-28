@@ -68,43 +68,43 @@ class AlignerConfig:
     encoder_backend_fn: str = "qwen3_aligner_encoder_backend.int4.onnx"
     
     llm_fn: str = "qwen3_aligner_llm.q4_k.gguf" 
-    use_dml: bool = False
+    onnx_provider: str = 'CPU'  # CPU, CUDA, DML, TensorRT
+    llm_use_gpu: bool = True
     n_ctx: int = 2048       # 对于 Aligner Decoder，每秒音频+文字，约占 30 个 token
-    pad_to: Optional[int] = None # Encoder 填充时长
+    dml_pad_to: int = 40 # Encoder 填充时长
 
 @dataclass
 class ASREngineConfig:
     """ASR 识别引擎配置"""
     model_dir: str
-    # 拆分为 Frontend 和 Backend
     encoder_frontend_fn: str = "qwen3_asr_encoder_frontend.int4.onnx"
     encoder_backend_fn: str = "qwen3_asr_encoder_backend.int4.onnx"
-    
     llm_fn: str = "qwen3_asr_llm.q4_k.gguf"
-    use_dml: bool = False
+
+    onnx_provider: str = 'CPU'  # CPU, CUDA, DML, TensorRT
+    llm_use_gpu: bool = True
+    dml_pad_to: int = 40        # 使用 DirectML 加速 onnx 时，Encoder 填充时长
     n_ctx: int = 2048           # 对于 ASR Decoder，每秒音频+文字，约占 20 个 token
     chunk_size: float = 40.0    # 每个片段 40s，对应 800 个 token
     memory_num: int = 1         # 记忆一个片段，转录一个片段，对应 1600 个 token
     verbose: bool = True
     enable_aligner: bool = False
     align_config: Optional[AlignerConfig] = None
-    pad_to: Optional[int] = None # Encoder 填充时长
-    vulkan_enable: bool = True
-    vulkan_force_fp32: bool = False
 
     def __post_init__(self):
         # 如果没有显式设置 Encoder 填充时长，则默认与 LLM 分段识别时长对齐
-        if self.pad_to is None:
+        if self.dml_pad_to is None:
             object.__setattr__(self, 'pad_to', int(self.chunk_size))
             
         if self.align_config is None:
             object.__setattr__(self, 'align_config', AlignerConfig(
                 model_dir=self.model_dir,
-                use_dml=self.use_dml,
-                pad_to=self.pad_to # Aligner 默认也跟随主 pad_to
+                onnx_provider=self.onnx_provider,
+                llm_use_gpu=self.llm_use_gpu,
+                dml_pad_to=self.dml_pad_to # Aligner 默认也跟随主 pad_to
             ))
-        elif self.align_config.pad_to is None:
-             object.__setattr__(self.align_config, 'pad_to', int(self.chunk_size))
+        elif self.align_config.dml_pad_to is None:
+             object.__setattr__(self.align_config, 'dml_pad_to', int(self.chunk_size))
 
 @dataclass
 class TranscribeResult:

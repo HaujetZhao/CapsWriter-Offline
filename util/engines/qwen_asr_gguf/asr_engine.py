@@ -4,7 +4,7 @@ import numpy as np
 from typing import Optional, List
 
 from .inference.asr import QwenASREngine as QwenInternalEngine
-from .inference.schema import ASREngineConfig as QwenConfig, MsgType, StreamingMessage
+from .inference.schema import ASREngineConfig, MsgType, StreamingMessage
 
 class RecognitionResult:
     """兼容 sherpa-onnx 的识别结果结构"""
@@ -27,7 +27,7 @@ class RecognitionStream:
 class QwenASREngine:
     """Qwen-ASR 推理引擎适配器，实现与 FunASREngine 类似的接口"""
 
-    def __init__(self, config: QwenConfig):
+    def __init__(self, config: ASREngineConfig):
         self.config = config
         self.engine = QwenInternalEngine(config)
 
@@ -82,7 +82,7 @@ class QwenASREngine:
             rollback_num=5, 
             is_last_chunk=True, 
             temperature=temperature, 
-            streaming=False
+            streaming=False, 
         )
 
         # 5. 更新结果
@@ -98,37 +98,3 @@ class QwenASREngine:
         """释放资源"""
         self.engine.shutdown()
 
-
-def create_asr_engine(
-    model_dir: str,
-    encoder_frontend_fn: str,
-    encoder_backend_fn: str,
-    llm_fn: str,
-    use_dml: bool = False,
-    n_ctx: int = 2048,
-    chunk_size: float = 40.0,
-    pad_to: int = 30, 
-    vulkan_enable: bool = True,
-    vulkan_force_fp32: bool = False,
-    verbose: bool = True,
-    **kwargs
-) -> QwenASREngine:
-    """创建并初始化 Qwen ASR 引擎的快捷入口"""
-
-    config = QwenConfig(
-        model_dir=model_dir,
-        encoder_frontend_fn=encoder_frontend_fn,
-        encoder_backend_fn=encoder_backend_fn,
-        llm_fn=llm_fn,
-        use_dml=use_dml,
-        n_ctx=n_ctx,
-        chunk_size=chunk_size,
-        pad_to = pad_to, 
-        vulkan_enable=vulkan_enable,
-        vulkan_force_fp32=vulkan_force_fp32,
-        verbose=verbose,
-        enable_aligner=False # 强制关闭对齐以符合需求
-    )
-
-    engine = QwenASREngine(config)
-    return engine

@@ -16,9 +16,7 @@ from . import logger
 # =========================================================================
 # Configuration
 # =========================================================================
-# QUIET_LOGS = True 时，不打印任何日志。但现在我们路由到 logger。
-QUIET_LOGS = False
-_log_callback_ref = None
+LOGS = True      # 是否在 logger 文件中记录 llama.cpp 的日志
 
 # =========================================================================
 # Type Definitions
@@ -108,7 +106,7 @@ class llama_batch(ctypes.Structure):
     ]
 
 # =========================================================================
-# Llama Library Bindings
+# Llama.cpp Library Bindings
 # =========================================================================
 
 # Global library references
@@ -156,8 +154,45 @@ llama_sampler_init_min_p = None
 llama_sampler_init_penalties = None
 llama_sampler_accept = None
 
-def init_llama_lib():
-    """初始化 llama.cpp 库，支持跨平台加载"""
+def logger_callback(level, message, user_data):
+    """
+    llama.cpp 日志回调函数
+    level: 
+        2 = ERROR
+        3 = WARN
+        4 = INFO
+        5 = DEBUG
+    """
+    if not message: return
+    try:
+        msg_str = message.decode('utf-8', errors='replace').strip()
+        if not msg_str or msg_str in ['.', '\n']: return
+        
+        if level == 2:
+            logger.error(f"[llama.cpp] {msg_str}")
+        elif level == 3:
+            logger.warning(f"[llama.cpp] {msg_str}")
+        elif level == 4:
+            logger.info(f"[llama.cpp] {msg_str}")
+        elif level >= 5:
+            logger.debug(f"[llama.cpp] {msg_str}")
+        else:
+            logger.info(f"[llama.cpp] {msg_str}")
+    except Exception as e:
+        print(f"日志回调出错: {e}")
+
+def configure_logging(logs=True):
+    """配置 llama.cpp 日志回调"""
+    global _log_callback_ref
+    LOG_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
+    if logs:
+        _log_callback_ref = LOG_CALLBACK(logger_callback)
+    else:
+        _log_callback_ref = LOG_CALLBACK(lambda l, m, u: None)
+    llama_log_set(_log_callback_ref, None)
+
+def bind_llama_lib():
+    """绑定 llama.cpp 库的 api"""
     global llama, ggml, ggml_base
     global llama_log_set, llama_backend_init, llama_backend_free
     global llama_model_default_params, llama_model_load_from_file, llama_model_free, llama_model_get_vocab
@@ -202,9 +237,7 @@ def init_llama_lib():
     llama_log_set = llama.llama_log_set
     llama_log_set.argtypes = [LOG_CALLBACK, ctypes.c_void_p]
     llama_log_set.restype = None
-    
-    # 默认开启日志路由
-    configure_logging(quiet=QUIET_LOGS)
+    configure_logging(logs=LOGS)
 
     # 加载后端
     ggml_backend_load_all = ggml.ggml_backend_load_all
@@ -374,80 +407,76 @@ def init_llama_lib():
     llama_sampler_accept.argtypes = [ctypes.c_void_p, llama_token]
     llama_sampler_accept.restype = None
 
-
-def load_model(model_path: str):
+def init():
     """
-    加载 GGUF 模型（自动处理初始化和路径编码）
-    
-    Args:
-        model_path: GGUF 模型文件路径
-        
-    Returns:
-        model: llama_model 指针
+    切换目录，初始化 llama.cpp lib
     """
+    original_cwd = Path.cwd()
     lib_dir = Path(__file__).parent / 'bin'
-    model_path = Path(model_path)
-    model_rel = Path(relpath(model_path, lib_dir))
 
     # 跳转到 dll 所在目录，并将其加到 Path
-    original_cwd = Path.cwd()
     os.chdir(lib_dir)
+    os.environ['PATH'] = os.getcwd() + os.pathsep + os.environ['PATH']
     if hasattr(os, 'add_dll_directory'):
         os.add_dll_directory(os.getcwd())
-    os.environ['PATH'] = os.getcwd() + os.pathsep + os.environ['PATH']
-    logger.info(f"Changed directory to: {Path.cwd()}")
+    logger.info(f"初始化 llama.cpp，跳转至：{Path.cwd()}")
 
-    # 初始化 backend，载入模型
-    init_llama_lib()
-    model_params = llama_model_default_params()
-    model = llama_model_load_from_file(
-        model_rel.as_posix().encode('utf-8'),
-        model_params
-    )
-
-    if model:
-        os.chdir(original_cwd)
-        logger.info(f"Restored directory to: {Path.cwd()}")
-        return model
-    else:
-        logger.error(f'当前路径：{Path.cwd()}')
-        logger.error(f'模型绝对路径：{model_path.as_posix()}')
-        logger.error(f'模型可访问性：{model_path.exists()}')
-        logger.error(f"模型加载失败: {model_path}")
-        return None
-
-def create_context(model, n_ctx=2048, n_batch=2048, n_ubatch=512, n_seq_max=1, 
-                   embeddings=False, pooling_type=0, flash_attn=True, 
-                   offload_kqv=True, no_perf=True, n_threads=None):
-    """创建 ASR 专用的上下文"""
-    params = llama_context_default_params()
-    params.n_ctx = n_ctx
-    params.n_batch = n_batch
-    params.n_ubatch = n_ubatch
-    params.n_seq_max = n_seq_max
-    params.embeddings = embeddings
-    params.pooling_type = pooling_type
-    params.flash_attn_type = 1 if flash_attn else 0  # 1 = ON, 0 = OFF (auto typically uses what's available)
-    params.offload_kqv = offload_kqv
-    params.no_perf = no_perf
+    # 绑定 llama api
+    bind_llama_lib()
     
-    if n_threads:
-        params.n_threads = n_threads
-        params.n_threads_batch = n_threads
-    else:
-        params.n_threads = os.cpu_count() // 2
-        params.n_threads_batch = os.cpu_count()
+    # 跳回到原来目录
+    os.chdir(original_cwd)
+    logger.info(f"恢复至目录：{Path.cwd()}")
+    
+    return True
 
-    return llama_init_from_model(model, params)
+init()
+
+
+# =========================================================================
+# Llama.cpp 高级 API
+# =========================================================================
+
 
 class LlamaModel:
     """模型的面向对象封装"""
-    def __init__(self, path, n_gpu_layers=-1):
-        self.ptr = load_model(path)
+    def __init__(self, path, n_gpu_layers=-1, use_gpu=1):
+        self.ptr = self.load_model(path, n_gpu_layers=n_gpu_layers, use_gpu=use_gpu)
             
         self.vocab = llama_model_get_vocab(self.ptr)
         self.n_embd = llama_model_n_embd(self.ptr)
         self.eos_token = llama_vocab_eos(self.vocab)
+
+    def load_model(self, model_path: str, n_gpu_layers: int = -1, use_gpu: bool = 0):
+        """
+        加载 GGUF 模型（自动处理初始化和路径编码）
+        
+        Args:
+            model_path: GGUF 模型文件路径
+            n_gpu_layers: 卸载到 GPU 的层数 (-1 表示全部)
+            use_gpu: 是否启用 GPU (如果为 False，则强制使用 CPU)
+            
+        Returns:
+            model: llama_model 指针
+        """
+        
+        model_path = Path(model_path)
+
+        model_params = llama_model_default_params()
+        model_params.n_gpu_layers = n_gpu_layers
+        if not use_gpu:
+            model_params.devices = (ctypes.c_void_p * 1)(None)
+        
+        model = llama_model_load_from_file(
+            model_path.as_posix().encode('utf-8'),
+            model_params
+        )
+
+        if model:
+            return model
+        else:
+            logger.error(f"模型加载失败: {model_path}")
+            return None
 
     def tokenize(self, text: str, add_special: bool = False, parse_special: bool = True) -> List[int]:
         """(Native) 文本转 Token ID 列表"""
@@ -769,47 +798,6 @@ class ASRStreamDecoder:
         return remaining
 
 
-def python_log_callback(level, message, user_data):
-    """
-    llama.cpp 日志回调函数
-    level: 
-        2 = ERROR
-        3 = WARN
-        4 = INFO
-        5 = DEBUG
-    """
-    if not message: return
-    try:
-        msg_str = message.decode('utf-8', errors='replace').strip()
-        if not msg_str or msg_str in ['.', '\n']: return
-        
-        if level == 2:
-            logger.error(f"[llama.cpp] {msg_str}")
-        elif level == 3:
-            logger.warning(f"[llama.cpp] {msg_str}")
-        elif level == 4:
-            logger.info(f"[llama.cpp] {msg_str}")
-        elif level >= 5:
-            logger.debug(f"[llama.cpp] {msg_str}")
-        else:
-            logger.info(f"[llama.cpp] {msg_str}")
-    except Exception as e:
-        # 防止回调错误导致程序崩溃
-        print(f"日志回调出错: {e}")
-
-def configure_logging(quiet=False):
-    """配置 llama.cpp 日志回调"""
-    global _log_callback_ref
-    if not llama_log_set: return
-    
-    LOG_CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p)
-    if not quiet:
-        _log_callback_ref = LOG_CALLBACK(python_log_callback)
-        llama_log_set(_log_callback_ref, None)
-    else:
-        # 如果需要静默，可以传递一个空函数，或者将 logger 级别调高
-        _log_callback_ref = LOG_CALLBACK(lambda l, m, u: None)
-        llama_log_set(_log_callback_ref, None)
 
 
 
@@ -837,9 +825,6 @@ class LlamaEmbeddingTable:
             
         # 调用官方库进行高性能反量化
         return dequantize(self.raw_data[tokens], self.qtype.value)
-
-
-
 
 def _skip_gguf_value(mm, offs, v_type):
     # UINT8=0, INT8=1, UINT16=2, INT16=3, UINT32=4, INT32=5, FLOAT32=6, BOOL=7, STRING=8, ARRAY=9, UINT64=10, INT64=11, FLOAT64=12

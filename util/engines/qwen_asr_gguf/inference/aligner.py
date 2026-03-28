@@ -234,20 +234,20 @@ class QwenForcedAligner:
         be_path = os.path.join(config.model_dir, config.encoder_backend_fn)
         
         llm_gguf = os.path.join(config.model_dir, config.llm_fn)
-        use_dml = config.use_dml
+        onnx_provider = config.onnx_provider
 
         # 1. 初始化统一编码器 (内部包含 5s 分片预热)
         # 使用 Split 模式
         self.encoder = QwenAudioEncoder(
             frontend_path=fe_path,
             backend_path=be_path, # 传入 backend
-            use_dml=use_dml,
-            warmup_sec=5.0,
+            onnx_provider=onnx_provider,
+            dml_pad_to=config.dml_pad_to,
             verbose=False
         )
 
         # 2. 加载对齐 LLM
-        self.model = llama.LlamaModel(llm_gguf, n_gpu_layers=-1)
+        self.model = llama.LlamaModel(llm_gguf, n_gpu_layers=-1, use_gpu=config.llm_use_gpu)
         self.embedding_table = llama.get_token_embeddings_gguf(llm_gguf)
         self.ctx = llama.LlamaContext(self.model, n_ctx=config.n_ctx, n_batch=2048, embeddings=False)
         

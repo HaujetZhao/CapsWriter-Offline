@@ -54,28 +54,9 @@ def setup_logging(level: int = logging.WARNING, log_file: str = default_log_file
     return root_logger
 
 
-# 统一使用通过 util 获取的 'server' logger
+# 初始化默认日志配置（默认 INFO 级别）
 try:
-    from util import get_logger
-    logger = get_logger('server')
-except ImportError:
+    from .. import logger
+except:
     logger = setup_logging(level=logging.INFO)
-
-
-from .asr_engine import (
-    QwenASREngine,
-    create_asr_engine,
-)
-
-from .inference.schema import (
-    ASREngineConfig,
-)
-
-__all__ = [
-    'logger',
-    'setup_logging',
-    'QwenASREngine',
-    'create_asr_engine',
-    'ASREngineConfig',
-]
 
