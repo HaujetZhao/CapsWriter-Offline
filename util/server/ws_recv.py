@@ -11,7 +11,7 @@ from base64 import b64decode
 
 import websockets
 
-from util.server.cosmic import console, Cosmic
+from util.server.context import console, Context
 from util.server.schema import Task
 from util.constants import AudioFormat
 from util.tools.my_status import Status
@@ -57,7 +57,7 @@ async def message_handler(websocket, message: dict, cache: AudioCache) -> None:
     
     根据消息中的分段参数，将音频数据分段后提交到识别队列。
     """
-    queue_in = Cosmic.queue_in
+    queue_in = Context.queue_in
 
     global status_mic
     source = message['source']
@@ -156,8 +156,8 @@ async def ws_recv(websocket) -> None:
     global status_mic
 
     # 登记 socket 到连接池
-    sockets = Cosmic.sockets
-    sockets_id = Cosmic.sockets_id
+    sockets = Context.sockets
+    sockets_id = Context.sockets_id
     socket_id = str(websocket.id)
     sockets[socket_id] = websocket
     sockets_id.append(socket_id)

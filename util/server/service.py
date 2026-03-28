@@ -4,7 +4,7 @@ import sys
 import os 
 from multiprocessing import Process, Manager
 import queue
-from util.server.cosmic import Cosmic, console
+from util.server.context import Context, console
 from util.server.init_recognizer import init_recognizer
 from util.server.state import get_state
 from util.server.check_model import check_model
@@ -18,12 +18,12 @@ def start_recognizer_process():
     check_model()
 
     state = get_state()
-    Cosmic.sockets_id = Manager().list()
+    Context.sockets_id = Manager().list()
     stdin_fn = sys.stdin.fileno()
     recognize_process = Process(target=init_recognizer,
-                                args=(Cosmic.queue_in,
-                                      Cosmic.queue_out,
-                                      Cosmic.sockets_id, 
+                                args=(Context.queue_in,
+                                      Context.queue_out,
+                                      Context.sockets_id, 
                                       stdin_fn),
                                 daemon=False)
     recognize_process.start()
@@ -34,7 +34,7 @@ def start_recognizer_process():
     import errno
     while not lifecycle.is_shutting_down:
         try:
-            Cosmic.queue_out.get(timeout=0.1)
+            Context.queue_out.get(timeout=0.1)
             break
         except queue.Empty:
             if recognize_process.is_alive():

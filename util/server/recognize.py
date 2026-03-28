@@ -12,7 +12,7 @@ import time
 
 import numpy as np
 
-from util.server.cosmic import console
+from util.server.context import console
 from config_server import ServerConfig as Config
 from util.server.schema import Task, Result
 from util.tools.chinese_itn import chinese_to_num

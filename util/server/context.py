@@ -16,9 +16,9 @@ from rich.console import Console
 console = Console(highlight=False)
 
 
-class Cosmic:
+class Context:
     """
-    服务端全局状态容器
+    服务端全局上下文容器
     
     存储服务端运行时的共享状态：
     - sockets: WebSocket 连接字典，以 socket_id 为键

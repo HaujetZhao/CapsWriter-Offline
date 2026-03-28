@@ -3,7 +3,7 @@ import base64
 import asyncio
 from multiprocessing import Queue
 
-from util.server.cosmic import console, Cosmic
+from util.server.context import console, Context
 from util.server.schema import Result
 from util.tools.asyncio_to_thread import to_thread
 from . import logger
@@ -13,8 +13,8 @@ from rich import inspect
 
 async def ws_send():
 
-    queue_out = Cosmic.queue_out
-    sockets = Cosmic.sockets
+    queue_out = Context.queue_out
+    sockets = Context.sockets
 
     logger.info("WebSocket 发送任务已启动")
 
