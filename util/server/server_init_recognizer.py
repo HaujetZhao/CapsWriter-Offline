@@ -12,6 +12,8 @@ from util.server.server_cosmic import console
 from util.server.server_recognize import recognize
 from util.engines.fun_asr_gguf import create_asr_engine as create_fun_asr_engine
 from util.engines.qwen_asr_gguf import create_asr_engine as create_qwen_asr_engine
+from util.engines.paraformer_onnx import create_asr_engine as create_paraformer_engine
+from util.engines.sensevoice_onnx import create_asr_engine as create_sensevoice_engine
 from util.tools.empty_working_set import empty_current_working_set
 
 from . import logger
@@ -98,15 +100,13 @@ def init_recognizer(queue_in: Queue, queue_out: Queue, sockets_id, stdin_fn):
                 **{key: value for key, value in Qwen3ASRGGUFArgs.__dict__.items() if not key.startswith('_')}
             )
         elif model_type == 'sensevoice':
-            import sherpa_onnx
             logger.debug("使用 SenseVoice 模型")
-            recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+            recognizer = create_sensevoice_engine(
                 **{key: value for key, value in SenseVoiceArgs.__dict__.items() if not key.startswith('_')}
             )
         elif model_type == 'paraformer':
-            import sherpa_onnx
             logger.debug("使用 Paraformer 模型")
-            recognizer = sherpa_onnx.OfflineRecognizer.from_paraformer(
+            recognizer = create_paraformer_engine(
                 **{key: value for key, value in ParaformerArgs.__dict__.items() if not key.startswith('_')}
             )
         else:
