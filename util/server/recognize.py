@@ -12,7 +12,7 @@ import time
 
 import numpy as np
 
-from util.server.context import console
+from util.server.context import Context, console
 from config_server import ServerConfig as Config
 from util.server.schema import Task, Result
 from util.tools.chinese_itn import chinese_to_num
@@ -31,8 +31,7 @@ from util.server.text_merge import (
 from util.server.error_handler import save_error_audio
 
 
-# 任务结果缓存（按 task_id 索引）
-_results = {}
+
 
 
 def format_text(text: str, punc_model) -> str:
@@ -100,13 +99,13 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         识别结果
     """
     try:
-        # 1. 初始化/获取结果容器
-        is_first_segment = task.task_id not in _results
-        if is_first_segment:
-            _results[task.task_id] = Result(task.task_id, task.socket_id, task.source)
-            logger.debug(f"新任务: {task.task_id[:8]}...")
+        # 1. 初始化/获取识别会话
+        is_first_segment = task.task_id not in Context.sessions
+        session = Context.get_session(task.task_id, task.socket_id, task.source)
+        result = session.result
         
-        result = _results[task.task_id]
+        if is_first_segment:
+            logger.debug(f"新任务: {task.task_id[:8]}...")
 
         # 2. 解码音频
         samples = np.frombuffer(task.data, dtype=np.float32)
@@ -182,7 +181,9 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
                 result.timestamps = [i * time_per_char for i in range(len(chars))]
                 logger.warning(f"模型无时间戳，使用粗略估计: {len(chars)} 字符, {result.duration:.2f}s")
         
-        result = _results.pop(task.task_id)
+        if task.is_final:
+            Context.sessions.pop(task.task_id, None)
+        
         result.is_final = True
         
         process_time = result.time_complete - task.time_submit
@@ -203,18 +204,7 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
 
 
 def clear_results_by_socket_id(socket_id: str) -> None:
-    """
-    清理指定 socket_id 关联的所有任务结果缓存
-    
-    当客户端连接断开时调用，防止内存泄漏。
-    """
-    global _results
-    tasks_to_remove = [
-        task_id for task_id, result in _results.items() 
-        if result.socket_id == socket_id
-    ]
-    for task_id in tasks_to_remove:
-        _results.pop(task_id, None)
-    
-    if tasks_to_remove:
-        logger.debug(f"已清理断开连接相关的缓存: socket_id={socket_id}, 任务数={len(tasks_to_remove)}")
+    """清理指定 socket_id 关联的所有任务结果缓存"""
+    count = Context.clear_sessions_by_socket_id(socket_id)
+    if count > 0:
+        logger.debug(f"已清理断开连接相关的缓存: socket_id={socket_id}, 任务数={count}")

@@ -7,7 +7,7 @@
 """
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional, Dict, Any
 
 
 @dataclass
@@ -83,3 +83,14 @@ class Result:
     timestamps: List[float] = field(default_factory=list)
     
     is_final: bool = False
+
+@dataclass
+class RecognitionSession:
+    """
+    识别会话
+    
+    封装单个 task_id 的所有中间识别状态。
+    """
+    task_id: str
+    result: Result
+    # 未来可在此扩展会话级状态，如 N-best 假设、中间特征缓存等
