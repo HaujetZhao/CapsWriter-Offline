@@ -6,7 +6,6 @@ from multiprocessing import Process, Manager
 import queue
 from util.server.context import Context, console
 from util.server.init_recognizer import init_recognizer
-from util.server.state import get_state
 from util.server.check_model import check_model
 from util.common.lifecycle import lifecycle
 from . import logger
@@ -17,7 +16,6 @@ def start_recognizer_process():
     
     check_model()
 
-    state = get_state()
     Context.sockets_id = Manager().list()
     stdin_fn = sys.stdin.fileno()
     recognize_process = Process(target=init_recognizer,
@@ -27,7 +25,7 @@ def start_recognizer_process():
                                       stdin_fn),
                                 daemon=False)
     recognize_process.start()
-    state.recognize_process = recognize_process
+    Context.recognize_process = recognize_process
     logger.info("识别子进程已启动")
 
     # 轮询等待模型加载，同时响应退出请求

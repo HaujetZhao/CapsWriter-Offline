@@ -12,8 +12,9 @@ from rich.console import Console
 from config_server import ServerConfig as Config, __version__
 from . import logger
 from util.common.lifecycle import lifecycle
-from util.server.state import get_state
+from util.server.context import Context
 from util.ui.tray import stop_tray
+
 
 console = Console(highlight=False)
 
@@ -31,7 +32,6 @@ def cleanup_server_resources():
     """
     清理服务端资源
     """
-    state = get_state()
     
     logger.info("=" * 50)
     logger.info("开始清理服务端资源...")
@@ -41,7 +41,7 @@ def cleanup_server_resources():
     # 我们在这个回调里主要关注那些不会自动维护的资源
 
     # 2. 终止识别子进程
-    _recognize_process = state.recognize_process
+    _recognize_process = Context.recognize_process
     if _recognize_process and _recognize_process.is_alive():
         logger.info("正在终止识别子进程...")
         # 尝试优雅终止

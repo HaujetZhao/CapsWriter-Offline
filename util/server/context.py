@@ -6,7 +6,7 @@
 使用类变量实现全局状态，方便跨模块访问。
 """
 
-from multiprocessing import Queue
+from multiprocessing import Queue, Process
 from typing import Dict, List, Optional
 
 import websockets
@@ -25,6 +25,7 @@ class Context:
     - sockets_id: 跨进程的 socket ID 列表（由 Manager 创建）
     - queue_in: 任务输入队列（主进程 -> 识别进程）
     - queue_out: 结果输出队列（识别进程 -> 主进程）
+    - recognize_process: 识别子进程句柄
     
     Note:
         使用类变量而非实例变量，确保全局唯一。
@@ -39,3 +40,6 @@ class Context:
     # 消息队列
     queue_in: Queue = Queue()
     queue_out: Queue = Queue()
+
+    # 识别子进程
+    recognize_process: Optional[Process] = None
