@@ -10,11 +10,12 @@
 import re
 import time
 
-import numpy as np
+
 
 from util.server.context import Context, console
 from util.server.schema import Task, Result
 from util.server.processor import TextFormatter
+from util.server.audio import process_audio_task
 from . import logger
 from rich import inspect
 
@@ -88,12 +89,9 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         if is_first_segment:
             logger.debug(f"新任务: {task.task_id[:8]}...")
 
-        # 2. 解码音频
-        samples = np.frombuffer(task.data, dtype=np.float32)
+        # 2. 预处理音频并更新时长
+        samples = process_audio_task(task, result)
         duration = len(samples) / task.samplerate
-        result.duration += duration - task.overlap
-        if task.is_final:
-            result.duration += task.overlap
 
         logger.debug(
             f"识别片段: task={task.task_id[:8]}, duration={duration:.2f}s, "
