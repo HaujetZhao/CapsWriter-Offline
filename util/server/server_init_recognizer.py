@@ -10,8 +10,8 @@ from config_server import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNano
 from util.server.server_check_model import check_model
 from util.server.server_cosmic import console
 from util.server.server_recognize import recognize
-from util.fun_asr_gguf import create_asr_engine as create_fun_asr_engine
-from util.qwen_asr_gguf import create_asr_engine as create_qwen_asr_engine
+from util.engines.fun_asr_gguf import create_asr_engine as create_fun_asr_engine
+from util.engines.qwen_asr_gguf import create_asr_engine as create_qwen_asr_engine
 from util.tools.empty_working_set import empty_current_working_set
 
 from . import logger
