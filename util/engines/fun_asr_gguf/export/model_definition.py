@@ -329,12 +329,16 @@ class EncoderExportWrapper(EncoderExportWrapperPaddable):
         return super().forward(audio, ilens)
 
 class CTCHeadExportWrapper(nn.Module):
-    def __init__(self, hybrid_model):
+    def __init__(self, hybrid_model, topk=30):
         super().__init__()
         self.ctc_decoder, self.ctc_proj = hybrid_model.ctc_decoder, hybrid_model.ctc_proj
+        self.topk = topk
     def forward(self, enc_output):
         h, _ = self.ctc_decoder(enc_output, None)
-        return torch.argmax(self.ctc_proj.ctc_lo(h), dim=-1).to(torch.int32)
+        logits = self.ctc_proj.ctc_lo(h)
+        log_probs = torch.log_softmax(logits, dim=-1)
+        topk_log_probs, topk_indices = torch.topk(log_probs, self.topk, dim=-1)
+        return topk_log_probs, topk_indices.to(torch.int32)
 
 class CleanEncoderExportWrapper(nn.Module):
     """

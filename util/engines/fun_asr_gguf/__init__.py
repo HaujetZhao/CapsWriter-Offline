@@ -55,7 +55,6 @@ except:
 
 from .inference.asr_engine import (
     FunASREngine,
-    create_asr_engine,
 )
 from .inference.schema import (
     RecognitionResult,
@@ -74,7 +73,6 @@ __all__ = [
 
     # 引擎
     'FunASREngine',
-    'create_asr_engine',
 
     # 结果类型
     'RecognitionResult',

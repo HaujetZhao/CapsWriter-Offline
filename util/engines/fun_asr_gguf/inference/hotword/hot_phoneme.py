@@ -66,15 +66,16 @@ class PhonemeCorrector:
         self.fast_rag = FastRAG(threshold=min(self.threshold, self.similar_threshold) - 0.1)
         self._lock = threading.Lock()
 
-    def update_hotwords(self, hotword_text: str) -> int:
+    def update_hotwords(self, hotwords: List[str]) -> int:
         """更新纠错热词库 (线程安全)"""
         start_time = time.time()
         
-        # 预析取有效行
-        lines = [line.strip() for line in hotword_text.splitlines() if line.strip() and not line.strip().startswith('#')]
-        
         new_hotwords = {}
-        for hw in lines:
+        for hw in hotwords:
+            hw = hw.strip()
+            if not hw:
+                continue
+                
             phons = get_phoneme_info(hw)
             if phons:
                 new_hotwords[hw] = phons

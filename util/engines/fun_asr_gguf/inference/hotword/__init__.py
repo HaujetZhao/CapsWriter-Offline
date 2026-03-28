@@ -15,7 +15,6 @@ from .. import logger
 from .hot_phoneme import PhonemeCorrector, CorrectionResult
 from .hot_rule import RuleCorrector
 from .hot_rectification import RectificationRAG
-from .manager import HotwordManager, get_hotword_manager
 
 
 __all__ = [
@@ -23,7 +22,5 @@ __all__ = [
     'CorrectionResult',
     'RuleCorrector',
     'RectificationRAG',
-    'HotwordManager',
-    'get_hotword_manager',
     'logger',
 ]

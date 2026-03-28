@@ -16,7 +16,7 @@ def generate_srt_file(
     根据字级时间戳生成 SRT 文件
     
     Args:
-        segments: 列表，每项包含 {'char', 'start'}
+        segments: 列表，每项为 [char, timestamp]
         output_path: 导出路径
         max_chars_per_line: 每行最大字符数
     """
@@ -32,11 +32,10 @@ def generate_srt_file(
     long_pause_threshold = 1.0 # 如果停顿超过 1.0s，则无视字数强制切分
     
     current_chars = []
-    start_time = segments[0]['start']
-    
+    start_time = segments[0][1]
     for i, seg in enumerate(segments):
-        char = seg['char']
-        time_s = seg['start']
+        char = seg[0]
+        time_s = seg[1]
         
         current_chars.append(char)
         
@@ -53,7 +52,7 @@ def generate_srt_file(
         # 停顿检测
         has_pause = False
         if not is_last:
-            pause_duration = segments[i+1]['start'] - time_s
+            pause_duration = segments[i+1][1] - time_s
             # 只有在积累了一定字数后，才响应普通停顿；或者是超长停顿强制响应
             if (len(current_chars) >= min_chars_to_break and pause_duration > pause_threshold) \
                or (pause_duration > long_pause_threshold):
@@ -64,7 +63,7 @@ def generate_srt_file(
             if is_last:
                 end_time = time_s + 0.5
             else:
-                next_start = segments[i+1]['start']
+                next_start = segments[i+1][1]
                 end_time = min(time_s + 0.5, (time_s + next_start) / 2)
 
             content = "".join(current_chars).strip()
@@ -82,7 +81,7 @@ def generate_srt_file(
             # 重置
             if not is_last:
                 current_chars = []
-                start_time = segments[i+1]['start']
+                start_time = segments[i+1][1]
 
     # 写入文件
     with open(output_path, 'w', encoding='utf-8') as f:

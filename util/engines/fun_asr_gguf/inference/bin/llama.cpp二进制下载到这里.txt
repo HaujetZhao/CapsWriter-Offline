@@ -1,5 +1,0 @@
-二进制下载地址：https://github.com/ggml-org/llama.cpp/releases/download/b7798/llama-b7798-bin-win-vulkan-x64.zip
-
-官方已经编译好二进制，下载后解压到这个文件夹即可
-
-脚本需要调用编译好的 dll，用于 LLM Decoder 推理

@@ -89,6 +89,11 @@ class QwenASREngine:
         stream.result.text = res.text
         # Qwen 纯 ASR 模式下暂不支持 token 级时间戳，由 server_recognize 自动补齐
 
+    def update_hotwords(self, hotwords: List[str]):
+        """更新热词（Qwen 暂不支持，仅为 API 兼容）"""
+        # logger.debug(f"QwenASREngine 不支持动态更新热词: {hotwords[:5]}...")
+        pass
+
     def cleanup(self):
         """释放资源"""
         self.engine.shutdown()

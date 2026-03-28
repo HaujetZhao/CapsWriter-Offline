@@ -2,6 +2,7 @@ import onnxruntime
 import time
 import os
 import numpy as np
+from pathlib import Path 
 from . import logger
 
 class FunASRMelExtractor:
@@ -76,10 +77,10 @@ class FunASRMelExtractor:
 
 class AudioEncoder:
     """FunASR 音频编码器 (基于 ONNX Runtime)"""
-    def __init__(self, model_path: str, dml_enable: bool = True, pad_to: int = 30):
+    def __init__(self, model_path: str, onnx_provider: str = 'CPU', dml_pad_to: int = 30):
         self.model_path = model_path
-        self.dml_enable = dml_enable
-        self.pad_to = pad_to
+        self.onnx_provider = onnx_provider.upper()
+        self.dml_pad_to = dml_pad_to
         
         self.sess = None
         self.preprocessor = FunASRMelExtractor()
@@ -92,9 +93,19 @@ class AudioEncoder:
         session_opts.add_session_config_entry("session.inter_op.allow_spinning", "0")
         session_opts.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         
+        available_providers = onnxruntime.get_available_providers()
         providers = ['CPUExecutionProvider']
-        if self.dml_enable and 'DmlExecutionProvider' in onnxruntime.get_available_providers():
-            providers.insert(0, 'DmlExecutionProvider') 
+        
+        if self.onnx_provider in ('TRT', 'TENSORRT') and 'TensorrtExecutionProvider' in available_providers:
+            providers.insert(0, ('TensorrtExecutionProvider', {
+                'trt_fp16_enable': True,
+                'trt_engine_cache_enable': True,
+                'trt_engine_cache_path': Path(self.model_path).parent / 'trt_cache',
+            }))
+        elif self.onnx_provider == 'DML' and 'DmlExecutionProvider' in available_providers:
+            providers.insert(0, 'DmlExecutionProvider')
+        elif self.onnx_provider == 'CUDA' and 'CUDAExecutionProvider' in available_providers:
+            providers.insert(0, 'CUDAExecutionProvider')
         
         logger.info(f"[Encoder] 加载模型: {os.path.basename(self.model_path)} (Providers: {providers})")
         
@@ -113,14 +124,14 @@ class AudioEncoder:
 
     def warmup(self):
         """执行热身，确保 DML 算子已编译"""
-        if self.pad_to <= 0:
+        if self.dml_pad_to <= 0:
             return
             
-        target_t_lfr = int((self.pad_to * 100 + 5) // 6) + 1
+        target_t_lfr = int((self.dml_pad_to * 100 + 5) // 6) + 1
         dummy_lfr = np.zeros((1, target_t_lfr, 560), dtype=self.input_dtype)
         dummy_mask = np.ones((1, target_t_lfr), dtype=self.input_dtype)
         
-        logger.info(f"[Encoder] 正在预热 (固定形状: {self.pad_to}s)...")
+        logger.info(f"[Encoder] 正在预热 (固定形状: {self.dml_pad_to}s)...")
         self.sess.run(None, {'lfr_feat': dummy_lfr, 'mask': dummy_mask})
 
     def encode(self, audio: np.ndarray) -> tuple:
@@ -130,9 +141,10 @@ class AudioEncoder:
         actual_t_lfr = lfr_feat.shape[0]
         
         # 2. 确定 Padding 长度
-        # CPU 模式下无需长 Padding
-        padding_secs = self.pad_to
-        if self.sess.get_providers()[0] == 'CPUExecutionProvider':
+        # CPU, CUDA 和 TensorRT 模式下无需长 Padding
+        padding_secs = self.dml_pad_to
+        current_provider = self.sess.get_providers()[0]
+        if current_provider in ('CPUExecutionProvider', 'CUDAExecutionProvider', 'TensorrtExecutionProvider'):
             padding_secs = min(padding_secs, 1.0)
             
         target_t_lfr = int((padding_secs * 100 + 5) // 6) + 1

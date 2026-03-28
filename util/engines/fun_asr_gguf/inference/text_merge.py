@@ -24,7 +24,7 @@ def merge_transcription_results(
         offset = segment_offsets[0]
         full_segments = []
         for seg in results[0].get('segments') or []:
-            full_segments.append({'char': seg['char'], 'start': seg['start'] + offset})
+            full_segments.append([seg[0], seg[1] + offset])
         return results[0]['text'], full_segments
 
     full_segments = []
@@ -33,11 +33,9 @@ def merge_transcription_results(
     for i, res in enumerate(results):
         offset = segment_offsets[i]
         curr_segments = res.get('segments') or []
-        for seg in curr_segments:
-            seg['_global_start'] = seg['start'] + offset
 
         if i == 0:
-            full_segments.extend([{'char': s['char'], 'start': s['_global_start']} for s in curr_segments])
+            full_segments.extend([[s[0], s[1] + offset] for s in curr_segments])
             continue
 
         if not curr_segments:
@@ -45,14 +43,14 @@ def merge_transcription_results(
 
         # --- 寻找对齐点 ---
         # 提取 buffer 末尾和新片段开头
-        # 我们关注 global_start 在 [offset - 2, offset + overlap_s + 2] 之间的部分
-        buffer_overlap_segs = [s for s in full_segments if s['start'] >= offset - 1.0]
-        buffer_overlap_text = "".join([s['char'] for s in buffer_overlap_segs])
+        # 我们关注全局时间戳在 [offset - 1.0, ...] 之间的部分
+        buffer_overlap_segs = [s for s in full_segments if s[1] >= offset - 1.0]
+        buffer_overlap_text = "".join([s[0] for s in buffer_overlap_segs])
         
-        # 提取新片段的前 60 个字符作为匹配源
+        # 提取新片段的前部分作为匹配源
         curr_overlap_limit = overlap_s + 1.0
-        curr_overlap_segs = [s for s in curr_segments if s['start'] <= curr_overlap_limit]
-        curr_overlap_text = "".join([s['char'] for s in curr_overlap_segs])
+        curr_overlap_segs = [s for s in curr_segments if s[1] <= curr_overlap_limit]
+        curr_overlap_text = "".join([s[0] for s in curr_overlap_segs])
         
         # 使用 SequenceMatcher 寻找最佳对齐
         sm = difflib.SequenceMatcher(None, buffer_overlap_text, curr_overlap_text)
@@ -70,7 +68,7 @@ def merge_transcription_results(
             try:
                 global_idx = -1
                 for idx in range(len(full_segments)-1, -1, -1):
-                    if full_segments[idx]['start'] == target_seg['start'] and full_segments[idx]['char'] == target_seg['char']:
+                    if full_segments[idx][1] == target_seg[1] and full_segments[idx][0] == target_seg[0]:
                         global_idx = idx
                         break
                 
@@ -91,22 +89,22 @@ def merge_transcription_results(
             
             if match_idx_in_curr != -1:
                 to_add = curr_segments[match_idx_in_curr:]
-                full_segments.extend([{'char': s['char'], 'start': s['_global_start']} for s in to_add])
+                full_segments.extend([[s[0], s[1] + offset] for s in to_add])
             else:
                 # 几乎不可能
-                full_segments.extend([{'char': s['char'], 'start': s['_global_start']} for s in curr_segments])
+                full_segments.extend([[s[0], s[1] + offset] for s in curr_segments])
         else:
             # 兜底：基于时间戳硬拼接
-            last_time = full_segments[-1]['start'] if full_segments else offset
-            to_add = [s for s in curr_segments if s['_global_start'] > last_time + 0.1]
-            full_segments.extend([{'char': s['char'], 'start': s['_global_start']} for s in to_add])
+            last_time = full_segments[-1][1] if full_segments else offset
+            to_add = [s for s in curr_segments if s[1] + offset > last_time + 0.1]
+            full_segments.extend([[s[0], s[1] + offset] for s in to_add])
 
     # 后处理：清理标点重复和残留
     clean_segments = []
     for s in full_segments:
-        if clean_segments and s['char'] in puncs and clean_segments[-1]['char'] == s['char']:
+        if clean_segments and s[0] in puncs and clean_segments[-1][0] == s[0]:
             continue
         clean_segments.append(s)
 
-    full_text = "".join([s['char'] for s in clean_segments])
+    full_text = "".join([s[0] for s in clean_segments])
     return full_text, clean_segments

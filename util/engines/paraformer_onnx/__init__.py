@@ -1,8 +1,21 @@
 import sherpa_onnx
 from util import get_logger
-from typing import Optional
+from typing import Optional, List
+from dataclasses import dataclass
 
 logger = get_logger('server')
+
+@dataclass
+class ASREngineConfig:
+    """Paraformer 引擎配置参数"""
+    paraformer: str
+    tokens: str
+    num_threads: int = 4
+    sample_rate: int = 16000
+    feature_dim: int = 80
+    decoding_method: str = 'greedy_search'
+    provider: str = 'cpu'
+    debug: bool = False
 
 class ParaformerEngine:
     """
@@ -10,39 +23,42 @@ class ParaformerEngine:
     封装 sherpa_onnx.OfflineRecognizer，支持 API 自定义
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, config: ASREngineConfig):
         """
         初始化 Paraformer 引擎
         
         Args:
-            **kwargs: 传递给 sherpa_onnx.OfflineRecognizer.from_paraformer 的参数
+            config: ASREngineConfig 配置对象
         """
-        logger.debug(f"正在初始化 ParaformerEngine，参数: {kwargs}")
-        self.recognizer = sherpa_onnx.OfflineRecognizer.from_paraformer(**kwargs)
+        self.config = config
+        logger.debug(f"正在初始化 ParaformerEngine，配置: {self.config}")
+        
+        # 提取参数用于 sherpa-onnx
+        params = {
+            'paraformer': self.config.paraformer,
+            'tokens': self.config.tokens,
+            'num_threads': self.config.num_threads,
+            'sample_rate': self.config.sample_rate,
+            'feature_dim': self.config.feature_dim,
+            'decoding_method': self.config.decoding_method,
+            'provider': self.config.provider,
+            'debug': self.config.debug,
+        }
+        self.recognizer = sherpa_onnx.OfflineRecognizer.from_paraformer(**params)
 
     def create_stream(self, hotwords: Optional[str] = None):
-        """
-        创建识别流
-        
-        Args:
-            hotwords: 热词（目前原生 sherpa-onnx 在 stream 级别支持有限）
-        """
+        """创建识别流"""
         return self.recognizer.create_stream(hotwords=hotwords)
 
     def decode_stream(self, stream, context: Optional[str] = None):
-        """
-        解码识别流
-        
-        Args:
-            stream: 识别流对象
-            context: 上下文（若支持）
-        """
-        # 注意：原生 sherpa-onnx OfflineRecognizer.decode_stream 不支持 context 参数
-        # 这里预留接口，如果未来需要自定义处理逻辑可以在此实现
+        """解码识别流"""
         if context:
-            logger.debug(f"ParaformerEngine 收到 context: {context}，当前原生引擎暂不支持该参数，已忽略")
-        
+            logger.debug(f"ParaformerEngine 收到 context: {context}，当前暂不支持，已忽略")
         return self.recognizer.decode_stream(stream)
+
+    def update_hotwords(self, hotwords: List[str]):
+        """更新热词（Paraformer 暂不支持通过此接口动态更新，仅为 API 兼容）"""
+        pass
 
     def __getattr__(self, name):
         """转发其它属性调用至原始 recognizer"""
@@ -51,6 +67,8 @@ class ParaformerEngine:
 
 def create_asr_engine(**kwargs):
     """
-    创建 Paraformer-ONNX 识别引擎实例
+    [兼容性接口] 创建 Paraformer-ONNX 识别引擎实例
+    建议直接使用 ParaformerEngine(ASREngineConfig(**kwargs))
     """
-    return ParaformerEngine(**kwargs)
+    config = ASREngineConfig(**kwargs)
+    return ParaformerEngine(config)
