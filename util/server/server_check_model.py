@@ -41,8 +41,9 @@ def check_model() -> None:
     elif model_type == 'sensevoice':
         required_files = {
             'SenseVoice 模型文件': [
-                ModelPaths.sensevoice_model,
-                ModelPaths.sensevoice_tokens,
+                ModelPaths.sensevoice_encoder,
+                ModelPaths.sensevoice_decoder,
+                ModelPaths.sensevoice_tokenizer,
             ]
         }
     elif model_type == 'paraformer':

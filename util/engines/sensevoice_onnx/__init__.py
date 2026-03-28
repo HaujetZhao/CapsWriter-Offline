@@ -1,72 +1,58 @@
-import sherpa_onnx
-from util import get_logger
-from typing import Optional, List
-from dataclasses import dataclass
+import sys
+import os
+import logging
 
-logger = get_logger('server')
-
-@dataclass
-class ASREngineConfig:
-    """SenseVoice 引擎配置参数"""
-    model: str
-    tokens: str
-    use_itn: bool = True
-    language: str = 'zh'
-    num_threads: int = 4
-    provider: str = 'cpu'
-    debug: bool = False
-
-class SenseVoiceEngine:
+def setup_logging(level: int = logging.WARNING, log_file: str = os.path.join("logs", "latest.log")):
     """
-    SenseVoice 识别引擎包装类
-    封装 sherpa_onnx.OfflineRecognizer，支持 API 自定义
+    配置全局日志
+
+    Args:
+        level: 日志级别 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        log_file: 日志文件名
+
+    Returns:
+        配置好的 logger 实例
     """
+    # 获取根 logger
+    root_logger = logging.getLogger('fun_asr_gguf')
+    root_logger.setLevel(logging.DEBUG)  # 接收所有级别的日志
+    root_logger.handlers.clear()  # 清除已有处理器
 
-    def __init__(self, config: ASREngineConfig):
-        """
-        初始化 SenseVoice 引擎
-        
-        Args:
-            config: ASREngineConfig 配置对象
-        """
-        self.config = config
-        logger.debug(f"正在初始化 SenseVoiceEngine，配置: {self.config}")
-        
-        # 提取参数用于 sherpa-onnx
-        params = {
-            'model': self.config.model,
-            'tokens': self.config.tokens,
-            'use_itn': self.config.use_itn,
-            'language': self.config.language,
-            'num_threads': self.config.num_threads,
-            'provider': self.config.provider,
-            'debug': self.config.debug,
-        }
-        self.recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(**params)
+    # 文件处理器
+    if log_file:
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+            
+        file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+        file_handler.setLevel(logging.DEBUG) # 文件通常记录更详细的信息
+        file_formatter = logging.Formatter(
+            fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        file_handler.setFormatter(file_formatter)
+        root_logger.addHandler(file_handler)
 
-    def create_stream(self, hotwords: Optional[str] = None):
-        """创建识别流"""
-        return self.recognizer.create_stream(hotwords=hotwords)
+    return root_logger
 
-    def decode_stream(self, stream, context: Optional[str] = None):
-        """解码识别流"""
-        if context:
-            logger.debug(f"SenseVoiceEngine 收到 context: {context}，当前暂不支持，已忽略")
-        return self.recognizer.decode_stream(stream)
+try:
+    from util import get_logger
+    from util.server import console 
+    logger = get_logger('server')
+except:
+    from rich.console import Console
+    console = Console(highlight=False)
+    logger = setup_logging(level=logging.INFO)
 
-    def update_hotwords(self, hotwords: List[str]):
-        """更新热词（SenseVoice 暂不支持动态更新，仅为 API 兼容）"""
-        pass
+from .asr_engine import (
+    SenseVoiceEngine,
+)
 
-    def __getattr__(self, name):
-        """转发其它属性调用至原始 recognizer"""
-        return getattr(self.recognizer, name)
+from .inference.schema import (
+    ASREngineConfig,
+)
 
-
-def create_asr_engine(**kwargs):
-    """
-    [兼容性接口] 创建 SenseVoice-ONNX 识别引擎实例
-    建议直接使用 SenseVoiceEngine(ASREngineConfig(**kwargs))
-    """
-    config = ASREngineConfig(**kwargs)
-    return SenseVoiceEngine(config)
+__all__ = [
+    'logger',
+    'SenseVoiceEngine',
+    'ASREngineConfig',
+]

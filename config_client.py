@@ -17,19 +17,19 @@ class ClientConfig:
     # 快捷键配置列表
     shortcuts = [
         {
-            'key': 'caps_lock',     # 监听大写锁定键
+            'key': 'f1',     # 监听大写锁定键
             'type': 'keyboard',     # 是键盘快捷键
             'suppress': True,      # 不阻塞按键（但录音结束会补发）
             'hold_mode': True,      # 长按模式
             'enabled': True         # 启用此快捷键
         },
-        {
-            'key': 'x2',
-            'type': 'mouse',
-            'suppress': True,
-            'hold_mode': True,
-            'enabled': True
-        },
+        # {
+        #     'key': 'x2',
+        #     'type': 'mouse',
+        #     'suppress': True,
+        #     'hold_mode': True,
+        #     'enabled': True
+        # },
     ]
 
     threshold    = 0.3          # 快捷键触发阈值（秒）

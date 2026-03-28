@@ -54,14 +54,6 @@
 
 # ==================== 英文热词 ====================
 # 杂项
-IP
-IO
-PC
-KB
-MB
-GB
-TB
-PB
 PDF
 DPI
 
@@ -112,7 +104,6 @@ Mini-USB
 Type-C
 USB
 HDMI
-SD
 Readme
 3M
 
@@ -152,7 +143,6 @@ Korean
 # A
 Adobe
 After Effects
-AI
 Airbnb
 Amazon
 AMD
@@ -167,9 +157,7 @@ BIOS
 Blender
 
 # C
-CAD
 CameraRAW
-CD
 CD-ROM
 CEO
 CFO
@@ -194,9 +182,7 @@ Directory OPUS
 
 # E
 Edge
-EPA
 Epic
-EU
 Evernote
 Excel
 EXIF
@@ -223,12 +209,10 @@ GUI
 GPU
 
 # H
-HD
 
 # I
 IBM
 Illustrator
-IMF
 InDesign
 Instagram
 Intel
@@ -307,21 +291,18 @@ Telegram
 Tencent
 TikTok
 Trello
-TV
 Twitter
 TypeScript
 
 # U
 Uber
 UEFI
-UI
 UNESCO
 UNICEF
 
 # V
 VIP
 VPN
-VR
 VRChat
 
 # W
@@ -331,14 +312,12 @@ WHO
 WiFi
 Windows
 WinRAR
-Wix
 Word
 WordPress
 WTO
 
 # X
 Xbox
-XD
 
 # Y
 YouTube

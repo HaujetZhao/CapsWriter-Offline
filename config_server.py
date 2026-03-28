@@ -14,7 +14,7 @@ class ServerConfig:
     port = '6016'
 
     # 语音模型选择：'fun_asr_nano', 'sensevoice', 'paraformer', 'qwen_asr'
-    model_type = 'qwen_asr'
+    model_type = 'sensevoice'
 
     format_num = True       # 输出时是否将中文数字转为阿拉伯数字
     format_spell = True     # 输出时是否调整中英之间的空格
@@ -50,9 +50,11 @@ class ModelPaths:
     punc_model_dir = model_dir / 'Punct-CT-Transformer' / 'sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12' / 'model.onnx'
 
     # SenseVoice 模型路径，自带标点
-    sensevoice_dir = model_dir / 'SenseVoice-Small' / 'sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17'
-    sensevoice_model = sensevoice_dir / 'model.onnx'
-    sensevoice_tokens = sensevoice_dir / 'tokens.txt'
+    sensevoice_dir = model_dir / 'SenseVoice-Small' / 'Sensevoice-Small-ONNX'
+    sensevoice_encoder = sensevoice_dir / 'SenseVoice-Encoder.int8.onnx'
+    sensevoice_decoder = sensevoice_dir / 'SenseVoice-CTC.int8.onnx'
+    sensevoice_tokenizer = sensevoice_dir / 'tokenizer.bpe.model'
+
 
     # Fun-ASR-Nano 模型路径，自带标点
     fun_asr_nano_gguf_dir = model_dir / 'Fun-ASR-Nano' / 'Fun-ASR-Nano-GGUF'
@@ -86,13 +88,13 @@ class ParaformerArgs:
 class SenseVoiceArgs:
     """SenseVoice 模型参数配置"""
 
-    model = ModelPaths.sensevoice_model.as_posix()
-    tokens = ModelPaths.sensevoice_tokens.as_posix()
-    use_itn = True
-    language = 'zh'
-    num_threads = 4
-    provider = 'cpu'    
-    debug = False
+    encoder_path = ModelPaths.sensevoice_encoder.as_posix()
+    decoder_path = ModelPaths.sensevoice_decoder.as_posix()
+    tokenizer_path = ModelPaths.sensevoice_tokenizer.as_posix()
+    itn = True
+    onnx_provider = 'CPU'    
+    top_k = 8
+    dml_pad_to = 30
 
 
 class FunASRNanoGGUFArgs:
