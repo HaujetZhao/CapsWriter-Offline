@@ -3,8 +3,8 @@ import base64
 import asyncio
 from multiprocessing import Queue
 
-from util.server.server_cosmic import console, Cosmic
-from util.server.server_classes import Result
+from util.server.cosmic import console, Cosmic
+from util.server.schema import Result
 from util.tools.asyncio_to_thread import to_thread
 from . import logger
 from rich import inspect

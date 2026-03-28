@@ -9,7 +9,7 @@ import pickle
 from pathlib import Path
 from datetime import datetime
 
-from util.server.server_cosmic import console
+from util.server.cosmic import console
 from . import logger
 
 

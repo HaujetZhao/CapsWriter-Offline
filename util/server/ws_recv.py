@@ -11,8 +11,8 @@ from base64 import b64decode
 
 import websockets
 
-from util.server.server_cosmic import console, Cosmic
-from util.server.server_classes import Task
+from util.server.cosmic import console, Cosmic
+from util.server.schema import Task
 from util.constants import AudioFormat
 from util.tools.my_status import Status
 from . import logger
@@ -196,7 +196,7 @@ async def ws_recv(websocket) -> None:
             sockets_id.remove(socket_id)
         
         # 清理识别结果缓存，防止内存泄漏
-        from util.server.server_recognize import clear_results_by_socket_id
+        from util.server.recognize import clear_results_by_socket_id
         clear_results_by_socket_id(socket_id)
         
         logger.debug(f"客户端资源已清理: {socket_id}")

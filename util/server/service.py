@@ -4,10 +4,10 @@ import sys
 import os 
 from multiprocessing import Process, Manager
 import queue
-from util.server.server_cosmic import Cosmic, console
-from util.server.server_init_recognizer import init_recognizer
+from util.server.cosmic import Cosmic, console
+from util.server.init_recognizer import init_recognizer
 from util.server.state import get_state
-from util.server.server_check_model import check_model
+from util.server.check_model import check_model
 from util.common.lifecycle import lifecycle
 from . import logger
 

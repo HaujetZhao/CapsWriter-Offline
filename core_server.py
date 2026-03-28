@@ -3,8 +3,8 @@ from platform import system
 import asyncio
 import websockets
 from config_server import ServerConfig as Config, __version__
-from util.server.server_ws_recv import ws_recv
-from util.server.server_ws_send import ws_send
+from util.server.ws_recv import ws_recv
+from util.server.ws_send import ws_send
 from util.tools.empty_working_set import empty_current_working_set
 from util.logger import setup_logger
 from util.common.lifecycle import lifecycle

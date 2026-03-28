@@ -7,9 +7,9 @@ import atexit
 from platform import system
 from config_server import ServerConfig as Config
 from config_server import ParaformerArgs, ModelPaths, SenseVoiceArgs, FunASRNanoGGUFArgs, Qwen3ASRGGUFArgs
-from util.server.server_check_model import check_model
-from util.server.server_cosmic import console
-from util.server.server_recognize import recognize
+from util.server.check_model import check_model
+from util.server.cosmic import console
+from util.server.recognize import recognize
 from util.engines.fun_asr_gguf import FunASREngine, ASREngineConfig as FunASRConfig
 from util.engines.qwen_asr_gguf.asr_engine import QwenASREngine, ASREngineConfig as QwenASRConfig
 from util.engines.paraformer_onnx import ParaformerEngine, ASREngineConfig as ParaformerConfig
