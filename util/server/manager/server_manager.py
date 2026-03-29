@@ -34,8 +34,9 @@ class SocketManager:
         """
         loop = asyncio.get_running_loop()
         
-        # 1. 向生命周期管理器同步当前事件循环
-        lifecycle._loop = loop
+        # 1. 向生命周期管理器同步当前事件循环 (规范初始化)
+        lifecycle.initialize(loop=loop, logger=logger)
+        
         if lifecycle.is_shutting_down:
             logger.info("SocketManager: 检测到系统正在停机，放弃启动")
             return
@@ -58,9 +59,9 @@ class SocketManager:
             self._send_task = asyncio.create_task(ws_send())
             
             # 5. 创建生命周期监控任务 (阻塞等待直到收到退出信号)
-            # 如果系统已经标记关闭，确保事件已设置
+            # 如果系统已经标记关闭，确保触发退出
             if lifecycle.is_shutting_down:
-                lifecycle._shutdown_event.set()
+                lifecycle.request_shutdown("Startup conflict")
                 
             self._shutdown_task = asyncio.create_task(lifecycle.wait_for_shutdown())
 

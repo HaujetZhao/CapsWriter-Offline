@@ -134,21 +134,18 @@ class LifecycleManager:
         self._is_shutting_down = True
         self.logger.info(f"收到退出请求 (Reason: {reason})，开始关闭流程...")
 
-        # 1. 设置 Asyncio 事件，通知主循环退出
-        if self._loop and not self._loop.is_closed() and self._shutdown_event:
+        # 设置 Asyncio 事件，通知主循环退出
+        if self._shutdown_event:
             try:
-                self._loop.call_soon_threadsafe(self._shutdown_event.set)
+                if self._loop and not self._loop.is_closed():
+                    self._loop.call_soon_threadsafe(self._shutdown_event.set)
             except RuntimeError:
-                # 循环可能已经关闭
                 pass
-
-        # 2. 如果没有运行在 asyncio loop 中，或者需要立即清理（比如非 async 程序），
-        # 可以在这里做一些同步处理。但为了安全，我们通常依赖主循环响应 event 后调用 cleanup。
 
     async def wait_for_shutdown(self):
         """等待退出信号 (Coroutine)"""
         if not self._shutdown_event:
-            self.logger.warning("Shutdown event not initialized, creating...")
+            # 补丁：如果在异步环境下运行，静默补全 Event
             if not self._loop:
                 self._loop = asyncio.get_running_loop()
             self._shutdown_event = asyncio.Event()
