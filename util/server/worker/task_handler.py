@@ -6,7 +6,7 @@
 """
 
 from multiprocessing import Queue
-from util.server.pipeline import recognize
+from util.server.pipeline import TaskPipeline
 from . import logger
 
 
@@ -29,47 +29,44 @@ class TaskHandler:
         self.queue_out = queue_out
         self.sockets_id = sockets_id
         
-        # 引擎实例 (由主 Worker 注入)
+        # 引擎与管线组件
         self.recognizer = None
         self.punc_model = None
         self.aligner = None
+        self.pipeline = None
 
     def set_engine(self, recognizer, punc_model=None, aligner=None):
-        """注入识别引擎实例"""
+        """注入识别引擎实例并初始化管线"""
         self.recognizer = recognizer
         self.punc_model = punc_model
         self.aligner = aligner
+        # 初始化持久化管线对象
+        self.pipeline = TaskPipeline(recognizer, punc_model, aligner)
 
     def loop(self):
         """
         核心任务循环
-        
-        阻塞监听队列，执行识别并返回结果。
         """
         logger.info("TaskHandler 开始工作循环")
         
         while True:
             try:
-                # 1. 阻塞获取任务 (1秒超时以便响应退出信号)
                 task = self.queue_in.get(timeout=1)
             except:
-                # 可能是超时，继续循环
                 continue
 
-            # 2. 检查退出信号 (None)
             if task is None:
                 logger.info("TaskHandler 收到退出信号 (None)")
                 break
 
-            # 3. 检查任务关联的连接是否依然存活
             if task.socket_id not in self.sockets_id:
                 logger.debug(f"任务连接已断开，跳过处理: {task.task_id[:8]}")
                 continue
 
             # 4. 执行识别流程
             try:
-                # 调用 pipeline.py 中的主逻辑
-                result = recognize(self.recognizer, self.punc_model, task, self.aligner)
+                # 使用标准化的管线对象处理任务
+                result = self.pipeline.process(task)
                 
                 # 5. 返回识别结果给主进程
                 self.queue_out.put(result)
