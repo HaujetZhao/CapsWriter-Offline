@@ -16,6 +16,7 @@ from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 from config_client import ClientConfig as Config
 from util.client.state import console
 from util.client.websocket_manager import WebSocketManager
+from util.protocol import RecognitionMessage
 from util.hotword import get_hotword_manager
 from util.client.output.text_output import TextOutput
 from util.tools.window_detector import get_active_window_info
@@ -138,8 +139,8 @@ class ResultProcessor:
                     logger.info("检测到退出事件，停止处理循环")
                     break
 
-                # 创建一个任务来接收消息
-                recv_task = asyncio.create_task(self.state.websocket.recv())
+                # 创建一个任务来接收消息 (通过协议管理器)
+                recv_task = asyncio.create_task(self._ws_manager.receive())
                 logger.debug("已创建接收消息任务")
 
                 # 创建一个任务来等待退出事件
@@ -208,22 +209,18 @@ class ResultProcessor:
         finally:
             self._cleanup()
 
-    async def _handle_message(self, message: str) -> None:
+    async def _handle_message(self, message: RecognitionMessage) -> None:
         """处理接收到的消息"""
-        import json
-        
         # 再次检查退出标志
         if lifecycle.is_shutting_down:
             return
 
-        message = json.loads(message)
-
         # 使用 text 字段（简单拼接结果，用于语音输入）
-        text = message['text']
+        text = message.text
         original_text = text  # 保存原始识别结果
-        delay = message['time_complete'] - message['time_submit']
+        delay = message.time_complete - message.time_submit
 
-        if message['is_final']:
+        if message.is_final:
             logger.info(f"收到最终识别结果: {text}, 时延: {delay:.2f}s")
         else:
             logger.debug(
@@ -232,7 +229,7 @@ class ResultProcessor:
             )
 
         # 如果非最终结果，继续等待
-        if not message['is_final']:
+        if not message.is_final:
             return
 
         # 繁体转换
@@ -322,17 +319,17 @@ class ResultProcessor:
             from util.client.diary.diary_writer import DiaryWriter
 
             # 重命名音频文件
-            file_path = self.state.pop_audio_file(message['task_id'])
+            file_path = self.state.pop_audio_file(message.task_id)
             if file_path:
                 from util.client.audio.file_manager import AudioFileManager
                 file_manager = AudioFileManager()
                 file_manager.file_path = file_path
-                file_audio = file_manager.rename(text, message['time_start'])
+                file_audio = file_manager.rename(text, message.time_start)
                 logger.debug(f"保存录音文件: {file_audio}")
 
             # 写入日记
             diary_writer = DiaryWriter()
-            diary_writer.write(text, message['time_start'], file_audio)
+            diary_writer.write(text, message.time_start, file_audio)
             logger.debug("写入 MD 文件")
 
         # LLM 结果显示和保存
@@ -343,7 +340,7 @@ class ResultProcessor:
                 llm_result.input_text,
                 llm_result.result,
                 llm_result.role_name,
-                message['time_start'],
+                message.time_start,
                 file_audio
             )
             logger.debug("写入 LLM MD 文件")

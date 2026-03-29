@@ -6,6 +6,7 @@ from typing import Dict, Any
 
 from config_client import ClientConfig as Config
 from util.tools import srt_from_txt
+from util.protocol import RecognitionMessage
 from . import logger
 
 class ResultHandler:
@@ -58,18 +59,18 @@ class ResultHandler:
         return "\n".join(final_lines)
 
     @classmethod
-    def save_results(cls, file: Path, message: Dict[str, Any]) -> str:
+    def save_results(cls, file: Path, message: RecognitionMessage) -> str:
         """
         保存转录结果到文件
         
         Returns:
             split_text: 切分后的文本（用于显示）
         """
-        text_display = message['text']
-        text_accu = message.get('text_accu', message['text'])
+        text_display = message.text
+        text_accu = message.text_accu if message.text_accu else message.text
         text_split = cls.smart_split(text_accu)
-        timestamps = message['timestamps']
-        tokens = message['tokens']
+        timestamps = message.timestamps
+        tokens = message.tokens
         
         # 文件名
         json_filename = file.with_suffix('.json')

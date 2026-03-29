@@ -15,6 +15,7 @@ import websockets
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
 from config_client import ClientConfig as Config
+from util.protocol import AudioMessage, RecognitionMessage
 from . import logger
 
 if TYPE_CHECKING:
@@ -92,12 +93,12 @@ class WebSocketManager:
         logger.error(f"无法连接到服务端 {url}，已重试 {self.max_retries} 次")
         return False
     
-    async def send(self, message: dict) -> bool:
+    async def send(self, message: AudioMessage) -> bool:
         """
         发送消息到服务端
         
         Args:
-            message: 要发送的消息字典，会被序列化为 JSON
+            message: 要发送的 AudioMessage 对象
             
         Returns:
             发送是否成功
@@ -107,7 +108,7 @@ class WebSocketManager:
             return False
         
         try:
-            await self.state.websocket.send(json.dumps(message))
+            await self.state.websocket.send(message.to_json())
             return True
             
         except ConnectionClosedError:
@@ -124,20 +125,21 @@ class WebSocketManager:
             logger.error(f"发送消息时发生错误: {e}", exc_info=True)
             return False
     
-    async def receive(self) -> Optional[dict]:
+    async def receive(self) -> Optional[RecognitionMessage]:
         """
         接收服务端消息
         
         Returns:
-            解析后的消息字典，如果失败返回 None
+            解析后的 RecognitionMessage 对象，如果失败返回 None
         """
         if not self.is_connected:
             logger.warning("无法接收消息：WebSocket 未连接")
             return None
         
         try:
-            message = await self.state.websocket.recv()
-            return json.loads(message)
+            raw_message = await self.state.websocket.recv()
+            data = json.loads(raw_message)
+            return RecognitionMessage.from_dict(data)
             
         except ConnectionClosedError:
             logger.error("接收失败：连接已断开")

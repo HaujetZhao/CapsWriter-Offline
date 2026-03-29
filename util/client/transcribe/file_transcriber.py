@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Optional
 from config_client import ClientConfig as Config
 from util.client.state import console
 from util.client.websocket_manager import WebSocketManager
+from util.protocol import AudioMessage, RecognitionMessage
 from .media_tool import MediaTool
 from .result_handler import ResultHandler
 from . import logger
@@ -107,32 +108,30 @@ class FileTranscriber:
                     prog_str = f'    发送进度：{progress:.2f}s'
                 console.print(prog_str, end='\r')
 
-                message = {
-                    'task_id': self.task_id,
-                    'seg_duration': Config.file_seg_duration,
-                    'seg_overlap': Config.file_seg_overlap,
-                    'is_final': False,
-                    'time_start': time.time(),
-                    'time_frame': time.time(),
-                    'source': 'file',
-                    'data': base64.b64encode(data).decode('utf-8'),
-                    'context': Config.context,
-                }
-                await websocket.send(json.dumps(message))
+                message = AudioMessage(
+                    task_id=self.task_id,
+                    source='file',
+                    data=base64.b64encode(data).decode('utf-8'),
+                    is_final=False,
+                    time_start=time.time(),
+                    seg_duration=Config.file_seg_duration,
+                    seg_overlap=Config.file_seg_overlap,
+                    context=Config.context
+                )
+                await self._ws_manager.send(message)
 
             # 发送结束标志
-            final_message = {
-                'task_id': self.task_id,
-                'seg_duration': Config.file_seg_duration,
-                'seg_overlap': Config.file_seg_overlap,
-                'is_final': True,
-                'time_start': time.time(),
-                'time_frame': time.time(),
-                'source': 'file',
-                'data': '',
-                'context': Config.context,
-            }
-            await websocket.send(json.dumps(final_message))
+            final_message = AudioMessage(
+                task_id=self.task_id,
+                source='file',
+                data='',
+                is_final=True,
+                time_start=time.time(),
+                seg_duration=Config.file_seg_duration,
+                seg_overlap=Config.file_seg_overlap,
+                context=Config.context
+            )
+            await self._ws_manager.send(final_message)
             await process.wait()
             
             if self._audio_duration == 0:
@@ -159,10 +158,14 @@ class FileTranscriber:
         websocket = self.state.websocket
         
         try:
-            async for message in websocket:
-                message = json.loads(message)
-                console.print(f'    转录进度: {message["duration"]:.2f}s', end='\r')
-                if message['is_final']:
+            while True:
+                msg = await self._ws_manager.receive()
+                if not msg:
+                    break
+                
+                console.print(f'    转录进度: {msg.duration:.2f}s', end='\r')
+                if msg.is_final:
+                    message = msg # 保持变量名兼容后续调用
                     break
         except websockets.exceptions.ConnectionClosed:
             console.print('\n[bold red]错误：在等待识别结果时，与服务端的连接已断开。[/bold red]')
@@ -175,7 +178,7 @@ class FileTranscriber:
         # 调用结果处理器进行保存和格式化
         text_display = ResultHandler.save_results(self.file, message)
         
-        process_duration = message['time_complete'] - message['time_start']
+        process_duration = message.time_complete - message.time_start
         console.print(f'\033[K    处理耗时：{process_duration:.2f}s')
         console.print(f'    识别结果：\n[green]{text_display}')
         

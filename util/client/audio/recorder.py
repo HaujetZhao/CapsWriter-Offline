@@ -20,6 +20,8 @@ import websockets
 from config_client import ClientConfig as Config
 from util.client.state import console
 from util.client.audio.file_manager import AudioFileManager
+from util.client.websocket_manager import WebSocketManager
+from util.protocol import AudioMessage
 from . import logger
 
 if TYPE_CHECKING:
@@ -46,45 +48,27 @@ class AudioRecorder:
             state: 客户端状态实例
         """
         self.state = state
+        self._ws_manager = WebSocketManager(state)
         self.task_id: Optional[str] = None
         self._file_manager: Optional[AudioFileManager] = None
         self._start_time: float = 0.0
         self._duration: float = 0.0
         self._cache: list = []
     
-    async def _send_message(self, message: dict) -> None:
+    async def _send_message(self, message: AudioMessage) -> None:
         """发送消息到服务端"""
-        websocket = self.state.websocket
-        
-        if websocket is None:
-            if message['is_final']:
-                self.state.pop_audio_file(message['task_id'])
+        if not self._ws_manager.is_connected:
+            if message.is_final:
+                self.state.pop_audio_file(message.task_id)
                 console.print('    服务端未连接，无法发送\n')
                 logger.warning("服务端未连接，无法发送音频数据")
             return
         
-        try:
-            if hasattr(websocket, 'closed') and websocket.closed:
-                if message['is_final']:
-                    self.state.pop_audio_file(message['task_id'])
-                    console.print('    服务端连接已关闭\n')
-                    logger.error("服务端连接已关闭")
-                return
-            
-            await websocket.send(json.dumps(message))
-            
-        except websockets.ConnectionClosedError:
-            if message['is_final']:
-                self.state.pop_audio_file(message['task_id'])
-                console.print('[red]连接中断了')
-                logger.error("WebSocket 连接中断")
-        except websockets.ConnectionClosedOK:
-            if message['is_final']:
-                self.state.pop_audio_file(message['task_id'])
-                console.print('[yellow]连接已正常关闭')
-                logger.info("WebSocket 连接已正常关闭")
-        except Exception as e:
-            logger.error(f"发送音频数据时发生错误: {e}", exc_info=True)
+        # 使用 WebSocketManager 发送协议消息
+        success = await self._ws_manager.send(message)
+        if not success and message.is_final:
+            self.state.pop_audio_file(message.task_id)
+            # 具体错误日志由 WebSocketManager 记录
     
     async def record_and_send(self) -> None:
         """
@@ -143,19 +127,18 @@ class AudioRecorder:
                         self._file_manager.write(data)
                     
                     # 发送音频数据用于识别
-                    message = {
-                        'task_id': self.task_id,
-                        'seg_duration': Config.mic_seg_duration,
-                        'seg_overlap': Config.mic_seg_overlap,
-                        'is_final': False,
-                        'time_start': self._start_time,
-                        'time_frame': task['time'],
-                        'source': 'mic',
-                        'data': base64.b64encode(
+                    message = AudioMessage(
+                        task_id=self.task_id,
+                        source='mic',
+                        data=base64.b64encode(
                             np.mean(data[::3], axis=1).tobytes()
                         ).decode('utf-8'),
-                        'context': Config.context,
-                    }
+                        is_final=False,
+                        time_start=self._start_time,
+                        seg_duration=Config.mic_seg_duration,
+                        seg_overlap=Config.mic_seg_overlap,
+                        context=Config.context
+                    )
                     asyncio.create_task(self._send_message(message))
                     
                 elif task['type'] == 'finish':
@@ -168,19 +151,18 @@ class AudioRecorder:
                         if Config.save_audio and self._file_manager:
                             self._file_manager.write(data)
 
-                        message = {
-                            'task_id': self.task_id,
-                            'seg_duration': Config.mic_seg_duration,
-                            'seg_overlap': Config.mic_seg_overlap,
-                            'is_final': False,
-                            'time_start': self._start_time,
-                            'time_frame': task['time'],
-                            'source': 'mic',
-                            'data': base64.b64encode(
+                        message = AudioMessage(
+                            task_id=self.task_id,
+                            source='mic',
+                            data=base64.b64encode(
                                 np.mean(data[::3], axis=1).tobytes()
                             ).decode('utf-8'),
-                            'context': Config.context,
-                        }
+                            is_final=False,
+                            time_start=self._start_time,
+                            seg_duration=Config.mic_seg_duration,
+                            seg_overlap=Config.mic_seg_overlap,
+                            context=Config.context
+                        )
                         asyncio.create_task(self._send_message(message))
 
                     # 完成写入本地文件
@@ -193,17 +175,16 @@ class AudioRecorder:
                     logger.info(f"录音任务完成，任务ID: {self.task_id}, 时长: {self._duration:.2f}s")
                     
                     # 告诉服务端音频片段结束了
-                    message = {
-                        'task_id': self.task_id,
-                        'seg_duration': 15,
-                        'seg_overlap': 2,
-                        'is_final': True,
-                        'time_start': self._start_time,
-                        'time_frame': task['time'],
-                        'source': 'mic',
-                        'data': '',
-                        'context': Config.context,
-                    }
+                    message = AudioMessage(
+                        task_id=self.task_id,
+                        source='mic',
+                        data='',
+                        is_final=True,
+                        time_start=self._start_time,
+                        seg_duration=Config.mic_seg_duration,
+                        seg_overlap=Config.mic_seg_overlap,
+                        context=Config.context
+                    )
                     asyncio.create_task(self._send_message(message))
                     break
                     
