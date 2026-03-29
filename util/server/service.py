@@ -5,7 +5,7 @@ import os
 from multiprocessing import Process, Manager
 import queue
 from util.server.context import Context, console
-from util.server.init_recognizer import init_recognizer
+from util.server.worker import start_worker
 from util.server.check_model import check_model
 from util.common.lifecycle import lifecycle
 from . import logger
@@ -18,7 +18,7 @@ def start_recognizer_process():
 
     Context.sockets_id = Manager().list()
     stdin_fn = sys.stdin.fileno()
-    recognize_process = Process(target=init_recognizer,
+    recognize_process = Process(target=start_worker,
                                 args=(Context.queue_in,
                                       Context.queue_out,
                                       Context.sockets_id, 
