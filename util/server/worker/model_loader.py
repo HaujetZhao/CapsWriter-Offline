@@ -77,9 +77,11 @@ class ModelLoader:
         self.punc_model = EngineFactory.create_punc_engine()
 
     def _load_align_model(self):
-        """加载时间戳对齐补丁 (AlignEngine)"""
-        logger.info("引擎不具备时间戳能力，正在挂载 AlignEngine 补丁...")
-        self.aligner = EngineFactory.create_align_engine()
+        """加载时间戳对齐补丁代理 (ManagedAlignerProxy)"""
+        from ..engines.manager import ManagedAlignerProxy
+        logger.info(f"引擎不具备时间戳能力，已挂载 Aligner 托管代理 (闲置卸载时间: {Config.aligner_idle_timeout}s)")
+        # 挂载代理而非实体模型，实现按需加载与自动释放
+        self.aligner = ManagedAlignerProxy(timeout_sec=Config.aligner_idle_timeout)
 
     def cleanup(self):
         """释放模型资源"""

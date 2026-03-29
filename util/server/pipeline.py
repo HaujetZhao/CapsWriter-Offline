@@ -141,12 +141,6 @@ class TaskPipeline:
             raise
 
 
-def recognize(recognizer, punc_model, task: Task, aligner=None) -> Result:
-    """ 兼容性 Shim 入口 """
-    pipeline = TaskPipeline(recognizer, punc_model, aligner)
-    return pipeline.process(task)
-
-
 def clear_results_by_socket_id(socket_id: str) -> None:
     """清理指定 socket_id 关联的所有任务结果缓存"""
     count = Context.clear_sessions_by_socket_id(socket_id)

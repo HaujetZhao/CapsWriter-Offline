@@ -53,6 +53,10 @@ class TaskHandler:
             try:
                 task = self.queue_in.get(timeout=1)
             except:
+                # 空闲时间：检查托管代理是否需要卸载以释放显存
+                if self.pipeline and self.pipeline.aligner:
+                    if hasattr(self.pipeline.aligner, 'check_idle'):
+                        self.pipeline.aligner.check_idle()
                 continue
 
             if task is None:
