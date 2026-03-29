@@ -126,7 +126,7 @@ class ResultProcessor:
     async def process_loop(self) -> None:
         """主处理循环"""
         if not await self._ws_manager.connect():
-            logger.warning("WebSocket 连接检查失败")
+            logger.debug("WebSocket 连接检查失败")
             return
 
         console.print('[green]连接成功\n')
@@ -178,6 +178,10 @@ class ResultProcessor:
                 if recv_task in done:
                     try:
                         message = recv_task.result()
+                        if message is None:
+                            logger.info("接收任务返回 None，停止处理循环")
+                            break
+                            
                         # 再次检查退出标志
                         if lifecycle.is_shutting_down:
                             logger.info("处理消息前检测到退出请求")
@@ -209,8 +213,11 @@ class ResultProcessor:
         finally:
             self._cleanup()
 
-    async def _handle_message(self, message: RecognitionMessage) -> None:
+    async def _handle_message(self, message: Optional[RecognitionMessage]) -> None:
         """处理接收到的消息"""
+        if message is None:
+            return
+
         # 再次检查退出标志
         if lifecycle.is_shutting_down:
             return

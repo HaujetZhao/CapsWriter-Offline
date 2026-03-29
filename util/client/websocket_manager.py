@@ -84,13 +84,13 @@ class WebSocketManager:
                 return True
                 
             except ConnectionRefusedError:
-                logger.warning(f"连接被拒绝 (尝试 {attempt}/{self.max_retries})")
+                logger.debug(f"连接被拒绝 (尝试 {attempt}/{self.max_retries})")
             except TimeoutError:
-                logger.warning(f"连接超时 (尝试 {attempt}/{self.max_retries})")
+                logger.debug(f"连接超时 (尝试 {attempt}/{self.max_retries})")
             except Exception as e:
-                logger.error(f"连接失败: {e} (尝试 {attempt}/{self.max_retries})")
+                logger.debug(f"连接失败: {e} (尝试 {attempt}/{self.max_retries})")
         
-        logger.error(f"无法连接到服务端 {url}，已重试 {self.max_retries} 次")
+        logger.debug(f"连接服务端 {url} 失败，已重试 {self.max_retries} 次 (请检查服务端是否已启动)")
         return False
     
     async def send(self, message: AudioMessage) -> bool:
