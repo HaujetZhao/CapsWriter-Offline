@@ -53,7 +53,7 @@ except:
 
 # ==================== 导入主要组件 ====================
 
-from .inference.asr_engine import (
+from .asr_engine import (
     FunASREngine,
 )
 from .inference.schema import (
