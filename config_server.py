@@ -14,7 +14,7 @@ class ServerConfig:
     port = '6022'
 
     # 语音模型选择：'qwen_asr', 'fun_asr_nano', 'sensevoice', 'paraformer'
-    model_type = 'sensevoice'
+    model_type = 'paraformer'
 
     format_num = True       # 输出时是否将中文数字转为阿拉伯数字
     format_spell = True     # 输出时是否调整中英之间的空格
