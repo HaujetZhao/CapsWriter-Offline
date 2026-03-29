@@ -13,10 +13,10 @@ import websockets
 
 from util.server.context import console, Context
 from util.server.schema import Task
+from util.protocol import AudioMessage
 from util.constants import AudioFormat
 from util.tools.my_status import Status
 from . import logger
-
 
 
 # 麦克风接收状态指示器
@@ -51,7 +51,7 @@ class AudioCache:
         self.byte_count = 0
 
 
-async def message_handler(websocket, message: dict, cache: AudioCache) -> None:
+async def message_handler(websocket, msg: AudioMessage, cache: AudioCache) -> None:
     """
     处理客户端发送的音频消息
     
@@ -60,90 +60,82 @@ async def message_handler(websocket, message: dict, cache: AudioCache) -> None:
     queue_in = Context.queue_in
 
     global status_mic
-    source = message['source']
-    is_final = message['is_final']
     is_start = not bool(cache.chunks)
-
-    # 获取 id
-    task_id = message['task_id']
     socket_id = str(websocket.id)
-    context = message.get('context', '')
 
-    # 从消息中获取分段参数（由客户端决定）
-    seg_duration = message['seg_duration']
-    seg_overlap = message['seg_overlap']
-    seg_threshold = seg_duration + seg_overlap * 2
+    # 从消息中获取分段参数
+    seg_threshold = msg.seg_duration + msg.seg_overlap * 2
 
     try:
         # base64 解码音频数据（float32, 16kHz, mono）
-        data = b64decode(message['data'])
+        data = b64decode(msg.data)
         cache.chunks += data
         cache.byte_count += len(data)
 
-        if not is_final:
+        if not msg.is_final:
             # 打印状态消息
-            if source == 'mic':
+            if msg.source == 'mic':
                 status_mic.start()
-            if source == 'file' and is_start:
+            if msg.source == 'file' and is_start:
                 console.print('正在接收音频文件...')
-                logger.info(f"开始接收音频文件，任务ID: {task_id}")
+                logger.info(f"开始接收音频文件，任务ID: {msg.task_id}")
 
             # 若缓冲已达到分段阈值，将片段作为任务提交
-            segment_bytes = AudioFormat.seconds_to_bytes(seg_duration + seg_overlap)
-            stride_bytes = AudioFormat.seconds_to_bytes(seg_duration)
+            segment_bytes = AudioFormat.seconds_to_bytes(msg.seg_duration + msg.seg_overlap)
+            stride_bytes = AudioFormat.seconds_to_bytes(msg.seg_duration)
             
             while cache.duration >= seg_threshold:
                 segment_data = cache.chunks[:segment_bytes]
                 cache.chunks = cache.chunks[stride_bytes:]
                 
                 task = Task(
-                    source=source,
+                    source=msg.source,
                     data=segment_data,
                     offset=cache.offset,
-                    task_id=task_id,
+                    task_id=msg.task_id,
                     socket_id=socket_id,
-                    overlap=seg_overlap,
+                    overlap=msg.seg_overlap,
                     is_final=False,
-                    time_start=message['time_start'],
+                    time_start=msg.time_start,
                     time_submit=time.time(),
-                    context=context
+                    context=msg.context
                 )
-                cache.offset += seg_duration
+                cache.offset += msg.seg_duration
                 queue_in.put(task)
                 logger.debug(
-                    f"提交音频片段，任务ID: {task_id}, "
+                    f"提交音频片段，任务ID: {msg.task_id}, "
                     f"偏移: {cache.offset}s, 缓冲区: {len(cache.chunks)} bytes"
                 )
 
         else:  # is_final
             # 打印状态消息
-            if source == 'mic':
+            if msg.source == 'mic':
                 status_mic.stop()
-            elif source == 'file':
+            elif msg.source == 'file':
                 print(f'音频文件接收完毕，时长 {cache.total_duration:.2f}s')
-                logger.info(f"音频文件接收完毕，任务ID: {task_id}, 时长: {cache.total_duration:.2f}s")
+                logger.info(f"音频文件接收完毕，任务ID: {msg.task_id}, 时长: {cache.total_duration:.2f}s")
 
             # 提交最终片段
             task = Task(
-                source=source,
+                source=msg.source,
                 data=cache.chunks,
                 offset=cache.offset,
-                task_id=task_id,
+                task_id=msg.task_id,
                 socket_id=socket_id,
-                overlap=seg_overlap,
+                overlap=msg.seg_overlap,
                 is_final=True,
-                time_start=message['time_start'],
+                time_start=msg.time_start,
                 time_submit=time.time(),
-                context=context
+                context=msg.context
             )
             queue_in.put(task)
-            logger.debug(f"提交最终片段，任务ID: {task_id}, 数据大小: {len(cache.chunks)} bytes")
+            logger.debug(f"提交最终片段，任务ID: {msg.task_id}, 数据大小: {len(cache.chunks)} bytes")
 
             # 重置缓冲区
             cache.reset()
 
     except Exception as e:
-        logger.error(f"音频数据处理错误，任务ID: {task_id}: {e}", exc_info=True)
+        logger.error(f"音频数据处理错误，任务ID: {msg.task_id}: {e}", exc_info=True)
         raise
 
 
@@ -169,11 +161,16 @@ async def ws_recv(websocket) -> None:
 
     # 接收并处理消息
     try:
-        async for message in websocket:
-            # 解析 JSON 消息
-            message = json.loads(message)
-            # 处理音频数据
-            await message_handler(websocket, message, cache)
+        async for raw_message in websocket:
+            # 使用协议类解析消息
+            try:
+                data = json.loads(raw_message)
+                msg = AudioMessage.from_dict(data)
+                # 处理音频数据
+                await message_handler(websocket, msg, cache)
+            except Exception as e:
+                logger.error(f"消息解析失败: {str(e)}")
+                continue
 
         console.print("ConnectionClosed...")
         logger.info(f"客户端正常关闭连接: {socket_id}")

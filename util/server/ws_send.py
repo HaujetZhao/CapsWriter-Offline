@@ -5,6 +5,7 @@ from multiprocessing import Queue
 
 from util.server.context import console, Context
 from util.server.schema import Result
+from util.protocol import RecognitionMessage
 from util.tools.asyncio_to_thread import to_thread
 from . import logger
 from rich import inspect
@@ -28,19 +29,19 @@ async def ws_send():
                 logger.info("收到退出通知，停止发送任务")
                 return
 
-            # 构建消息
-            message = {
-                'task_id': result.task_id,
-                'duration': result.duration,
-                'time_start': result.time_start,
-                'time_submit': result.time_submit,
-                'time_complete': result.time_complete,
-                'text': result.text,               # 主要输出（简单拼接）
-                'text_accu': result.text_accu,     # 精确输出（时间戳拼接）
-                'tokens': result.tokens,
-                'timestamps': result.timestamps,
-                'is_final': result.is_final,
-            }
+            # 1. 将内部 Result 转换为标准的协议消息对象
+            msg = RecognitionMessage(
+                task_id=result.task_id,
+                is_final=result.is_final,
+                duration=result.duration,
+                time_start=result.time_start,
+                time_submit=result.time_submit,
+                time_complete=result.time_complete,
+                text=result.text,
+                text_accu=result.text_accu,
+                tokens=result.tokens,
+                timestamps=result.timestamps
+            )
 
             # 获得 socket
             websocket = next(
@@ -53,7 +54,7 @@ async def ws_send():
                 continue
 
             # 发送消息
-            await websocket.send(json.dumps(message))
+            await websocket.send(msg.to_json())
             logger.debug(f"发送识别结果，任务ID: {result.task_id}, 文本长度: {len(result.text)}")
 
             if result.source == 'mic':

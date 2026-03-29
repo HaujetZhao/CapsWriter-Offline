@@ -32,6 +32,7 @@ class AudioMessage:
     time_start: float
     seg_duration: float = 15.0
     seg_overlap: float = 2.0
+    context: str = ''
     
     def to_json(self) -> str:
         """序列化为 JSON 字符串"""
@@ -48,11 +49,12 @@ class AudioMessage:
             time_start=data['time_start'],
             seg_duration=data.get('seg_duration', 15.0),
             seg_overlap=data.get('seg_overlap', 2.0),
+            context=data.get('context', ''),
         )
 
 
 @dataclass
-class RecognitionResult:
+class RecognitionMessage:
     """
     服务端 -> 客户端：识别结果消息
     
@@ -93,7 +95,7 @@ class RecognitionResult:
         return asdict(self)
     
     @classmethod
-    def from_dict(cls, data: dict) -> 'RecognitionResult':
+    def from_dict(cls, data: dict) -> 'RecognitionMessage':
         """从字典创建实例"""
         return cls(
             task_id=data['task_id'],
