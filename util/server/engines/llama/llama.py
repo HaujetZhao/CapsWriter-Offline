@@ -167,17 +167,7 @@ def logger_callback(level, message, user_data):
     try:
         msg_str = message.decode('utf-8', errors='replace').strip()
         if not msg_str or msg_str in ['.', '\n']: return
-        
-        if level == 2:
-            logger.error(f"[llama.cpp] {msg_str}")
-        elif level == 3:
-            logger.warning(f"[llama.cpp] {msg_str}")
-        elif level == 4:
-            logger.info(f"[llama.cpp] {msg_str}")
-        elif level >= 5:
-            logger.debug(f"[llama.cpp] {msg_str}")
-        else:
-            logger.info(f"[llama.cpp] {msg_str}")
+        logger.info(f"[llama.cpp] {msg_str}")
     except Exception as e:
         print(f"日志回调出错: {e}")
 
