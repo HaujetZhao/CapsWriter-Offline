@@ -7,7 +7,7 @@ from . import logger
 from config_client import ClientConfig as Config
 from util.client.cleanup import request_exit_from_tray
 from util.client.ui import TipsDisplay
-from util.hotword import get_hotword_manager
+from util.client.hotword import get_hotword_manager
 from util.client.llm.llm_handler import init_llm_system
 from util.client.audio import AudioStreamManager
 from util.client.shortcut.shortcut_config import Shortcut

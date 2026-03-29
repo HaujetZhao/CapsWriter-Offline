@@ -21,7 +21,7 @@ from util.client.llm.llm_processor import LLMProcessor
 from util.client.llm.llm_get_selection import get_selected_text, record_selection_usage
 from util.client.llm.llm_process_text import LLMResult
 from . import logger
-from util.hotword import get_hotword_manager
+from util.client.hotword import get_hotword_manager
 
 
 # ======================================================================

@@ -34,7 +34,7 @@ class MessageBuilder:
 
     def _get_rectify_rag(self):
         """从 HotwordManager 获取 RectificationRAG"""
-        from util.hotword import get_hotword_manager
+        from util.client.hotword import get_hotword_manager
         manager = get_hotword_manager()
         return manager.get_rectify_rag()
 
