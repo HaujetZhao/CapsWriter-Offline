@@ -29,23 +29,25 @@ class Logger:
             logging.Logger: 配置好的日志记录器
         """
         # 设置日志级别
-        log_level = getattr(logging, level.upper(), logging.INFO)
+        file_log_level = getattr(logging, level.upper(), logging.INFO)
+        console_log_level = logging.WARNING  # 控制台强制只打印 WARNING 及以上
 
         # 如果已经初始化过，更新级别并返回
         if name in cls._loggers:
             logger = cls._loggers[name]
-            logger.setLevel(log_level)
-            # 更新所有 handler 的级别
+            logger.setLevel(min(file_log_level, console_log_level))
             for handler in logger.handlers:
-                handler.setLevel(log_level)
+                if isinstance(handler, RotatingFileHandler):
+                    handler.setLevel(file_log_level)
+                elif isinstance(handler, logging.StreamHandler):
+                    handler.setLevel(console_log_level)
             return logger
 
         # 创建日志记录器
-        # 创建日志记录器 (如果 name 为空字符串，则获取 root logger)
         logger = logging.getLogger(name if name else None)
-        logger.setLevel(log_level)
+        logger.setLevel(min(file_log_level, console_log_level))
 
-        # 确保不会传播到 root logger (仅对非 root logger 有效)
+        # 确保不会传播到 root logger
         if name:
             logger.propagate = False
 
@@ -57,32 +59,32 @@ class Logger:
         # 创建日志目录
         Path(log_dir).mkdir(parents=True, exist_ok=True)
 
-        # 日志文件名（包含日期）
-        if log_filename:
-             file_name_prefix = log_filename
-        elif not name:
-             file_name_prefix = 'root'
-        else:
-             file_name_prefix = name
-        
+        # 日志文件名处理
+        file_name_prefix = log_filename or name or 'root'
         log_file = os.path.join(log_dir, f'{file_name_prefix}_{datetime.now().strftime("%Y%m%d")}.log')
 
         # 创建格式化器
         formatter = logging.Formatter(
-            fmt='%(asctime)s.%(msecs)03d - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+            fmt='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
             datefmt='%H:%M:%S'
         )
 
-        # 文件处理器（带轮转）
+        # 1. 文件处理器（根据传入 level 记录）
         file_handler = RotatingFileHandler(
             log_file,
             maxBytes=max_bytes,
             backupCount=backup_count,
             encoding='utf-8'
         )
-        file_handler.setLevel(log_level)
+        file_handler.setLevel(file_log_level)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
+
+        # 2. 控制台处理器（固定 WARNING 及以上）
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(console_log_level)
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
 
         # 缓存日志记录器
         cls._loggers[name] = logger
