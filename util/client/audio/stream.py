@@ -18,7 +18,7 @@ import sounddevice as sd
 
 from util.client.state import console, get_state
 from . import logger
-from util.common.lifecycle import lifecycle
+from util.tools.lifecycle import lifecycle
 
 if TYPE_CHECKING:
     from util.client.state import ClientState

@@ -21,7 +21,7 @@ from util.hotword import get_hotword_manager
 from util.client.output.text_output import TextOutput
 from util.tools.window_detector import get_active_window_info
 from . import logger
-from util.common.lifecycle import lifecycle
+from util.tools.lifecycle import lifecycle
 from util.client.state import get_state
 
 if TYPE_CHECKING:

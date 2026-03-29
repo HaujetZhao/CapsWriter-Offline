@@ -13,7 +13,7 @@ from multiprocessing import Process, Manager
 from util.server.context import Context, console
 from util.server.worker import start_worker
 from util.server.check_model import check_model
-from util.common.lifecycle import lifecycle
+from util.tools.lifecycle import lifecycle
 from . import logger
 
 

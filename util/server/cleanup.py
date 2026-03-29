@@ -11,7 +11,7 @@ from rich.console import Console
 
 from config_server import ServerConfig as Config, __version__
 from . import logger
-from util.common.lifecycle import lifecycle
+from util.tools.lifecycle import lifecycle
 from util.server.context import Context
 from util.ui.tray import stop_tray
 

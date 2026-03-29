@@ -12,8 +12,7 @@ from util.server.app import CapsWriterServer
 
 # 切换工作目录至脚本所在文件夹
 BASE_DIR = os.path.dirname(__file__)
-if BASE_DIR:
-    os.chdir(BASE_DIR)
+os.chdir(BASE_DIR)
 
 
 def main():

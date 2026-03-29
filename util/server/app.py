@@ -12,7 +12,7 @@ import asyncio
 from util.logger import setup_logger
 import logging
 from config_server import ServerConfig as Config, __version__
-from util.common.lifecycle import lifecycle
+from util.tools.lifecycle import lifecycle
 from util.server.cleanup import (
     setup_tray, print_banner, 
     cleanup_server_resources, console

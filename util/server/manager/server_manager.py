@@ -11,7 +11,7 @@ import websockets
 from config_server import ServerConfig as Config
 from util.server.ws_recv import ws_recv
 from util.server.ws_send import ws_send
-from util.common.lifecycle import lifecycle
+from util.tools.lifecycle import lifecycle
 from . import logger
 
 
@@ -41,7 +41,7 @@ class SocketManager:
             return
 
         # 2. 优化守护线程执行器 (防止阻塞事件循环)
-        from util.concurrency.daemon_executor import SimpleDaemonExecutor
+        from util.tools.daemon_executor import SimpleDaemonExecutor
         loop.set_default_executor(SimpleDaemonExecutor())
 
         # 3. 启动 WebSocket 服务器

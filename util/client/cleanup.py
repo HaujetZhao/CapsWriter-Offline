@@ -6,7 +6,7 @@
 
 import asyncio
 from . import logger
-from util.common.lifecycle import lifecycle
+from util.tools.lifecycle import lifecycle
 from util.client.state import get_state, console
 
 
