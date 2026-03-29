@@ -10,16 +10,16 @@ LLM 处理器 - 协调器
 from typing import Dict, Tuple, Optional, Any
 from pathlib import Path
 
-from util.llm.llm_role_loader import RoleLoader
-from util.llm.llm_context import ContextManager
-from util.llm.llm_watcher import LLMFileWatcher
-from util.llm.llm_role_config import RoleConfig
-from util.llm.llm_client_pool import ClientPool
-from util.llm.llm_message_builder import MessageBuilder
-from util.llm.llm_role_detector import RoleDetector
-from util.llm.llm_processor import LLMProcessor
-from util.llm.llm_get_selection import get_selected_text, record_selection_usage
-from util.llm.llm_process_text import LLMResult
+from util.client.llm.llm_role_loader import RoleLoader
+from util.client.llm.llm_context import ContextManager
+from util.client.llm.llm_watcher import LLMFileWatcher
+from util.client.llm.llm_role_config import RoleConfig
+from util.client.llm.llm_client_pool import ClientPool
+from util.client.llm.llm_message_builder import MessageBuilder
+from util.client.llm.llm_role_detector import RoleDetector
+from util.client.llm.llm_processor import LLMProcessor
+from util.client.llm.llm_get_selection import get_selected_text, record_selection_usage
+from util.client.llm.llm_process_text import LLMResult
 from . import logger
 from util.hotword import get_hotword_manager
 
@@ -167,8 +167,8 @@ class LLMHandler:
             matched_hotwords: 潜在热词列表
         """
         import time
-        from util.llm.llm_output_typing import handle_typing_mode, output_text
-        from util.llm.llm_output_toast import handle_toast_mode
+        from util.client.llm.llm_output_typing import handle_typing_mode, output_text
+        from util.client.llm.llm_output_toast import handle_toast_mode
         from util.client.output.text_output import TextOutput
 
         start_time = time.time()

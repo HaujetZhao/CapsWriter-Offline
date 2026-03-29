@@ -8,14 +8,14 @@ import logging
 
 from util.client.output.text_output import TextOutput
 from util.tools.asyncio_to_thread import to_thread
-from util.llm.llm_stop_monitor import reset, should_stop, create_stop_callback
+from util.client.llm.llm_stop_monitor import reset, should_stop, create_stop_callback
 
 logger = logging.getLogger(__name__)
 
 
 async def handle_toast_mode(text: str, role_config=None, matched_hotwords=None, content=None) -> tuple:
     """Toast 浮动窗口模式"""
-    from util.llm.llm_handler import get_handler
+    from util.client.llm.llm_handler import get_handler
     from util.ui.toast import ToastMessageManager, ToastMessage
 
     handler = get_handler()
@@ -78,18 +78,18 @@ async def handle_toast_mode(text: str, role_config=None, matched_hotwords=None, 
     except Exception as e:
         if msg_id: toast_manager.close_toast(msg_id)
         
-        from util.llm.llm_error_handler import handle_llm_error, should_fallback_to_original
+        from util.client.llm.llm_error_handler import handle_llm_error, should_fallback_to_original
         role_name = role_config.name or RoleConfig.DEFAULT_ROLE_NAME
 
         if should_fallback_to_original(e):
             result_text, _ = handle_llm_error(e, content, role_name)
             result_text = TextOutput.strip_punc(result_text)
             
-            from util.llm.llm_output_typing import output_text
+            from util.client.llm.llm_output_typing import output_text
             from config_client import ClientConfig as Config
             await output_text(result_text, Config.paste)
             return (result_text, 0, 0.0)
         else:
-            from util.llm.llm_error_handler import show_error_notification
+            from util.client.llm.llm_error_handler import show_error_notification
             show_error_notification(e, role_name)
             return ("", 0, 0.0)

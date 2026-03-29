@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Callable, Dict, List, Any, Optional
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from util.llm.llm_constants import WatcherConstants
-from util.llm.llm_role_formatter import RoleFormatter
+from util.client.llm.llm_constants import WatcherConstants
+from util.client.llm.llm_role_formatter import RoleFormatter
 from . import logger
 
 

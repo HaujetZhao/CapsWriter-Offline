@@ -303,7 +303,7 @@ class ResultProcessor:
         # LLM 处理和输出
         llm_result = None
         if Config.llm_enabled:
-            from util.llm.llm_process_text import llm_process_text
+            from util.client.llm.llm_process_text import llm_process_text
             llm_result = await llm_process_text(
                 text,
                 paste=paste,
@@ -335,7 +335,7 @@ class ResultProcessor:
         # LLM 结果显示和保存
         if Config.llm_enabled and llm_result and llm_result.processed:
             console.print(self._format_llm_result(llm_result))
-            from util.llm.llm_write_md import write_llm_md
+            from util.client.llm.llm_write_md import write_llm_md
             write_llm_md(
                 llm_result.input_text,
                 llm_result.result,

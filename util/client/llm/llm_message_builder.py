@@ -17,8 +17,8 @@ from __future__ import annotations
 import json
 from typing import List, Dict, Optional, Tuple, Any
 
-from util.llm.llm_role_config import RoleConfig
-from util.llm.llm_constants import estimate_tokens
+from util.client.llm.llm_role_config import RoleConfig
+from util.client.llm.llm_constants import estimate_tokens
 from . import logger
 
 

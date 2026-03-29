@@ -4,7 +4,7 @@ LLM 错误处理和用户提示
 统一处理 LLM 异常，提供用户友好的错误提示
 """
 from typing import Optional, Tuple
-from util.llm.llm_exceptions import (
+from util.client.llm.llm_exceptions import (
     OpenAIErrorWrapper,
     AuthenticationErrorWrapper,
     RateLimitErrorWrapper,

@@ -10,10 +10,10 @@ LLM 处理引擎
 """
 import time
 from typing import Callable, Optional, Dict, Any, List, Tuple
-from util.llm.llm_role_config import RoleConfig
-from util.llm.llm_interfaces import IContextManager
-from util.llm.llm_client_pool import ClientPool
-from util.llm.llm_exceptions import (
+from util.client.llm.llm_role_config import RoleConfig
+from util.client.llm.llm_interfaces import IContextManager
+from util.client.llm.llm_client_pool import ClientPool
+from util.client.llm.llm_exceptions import (
     APIException,
     wrap_openai_error, OpenAIErrorWrapper,
     TimeoutErrorWrapper
@@ -181,7 +181,7 @@ class LLMProcessor:
 
         # Token 估算兜底（针对 Ollama 等不返回 usage 的提供商）
         if total_tokens == 0 and full_response:
-            from util.llm.llm_constants import estimate_tokens
+            from util.client.llm.llm_constants import estimate_tokens
             total_tokens = estimate_tokens(full_response)
             result = (full_response, total_tokens, generation_time)
 

@@ -12,14 +12,14 @@ from config_client import ClientConfig as Config
 from util.tools.asyncio_to_thread import to_thread
 from util.client.output.text_output import TextOutput
 from util.client.clipboard import paste_text
-from util.llm.llm_stop_monitor import reset, should_stop
+from util.client.llm.llm_stop_monitor import reset, should_stop
 from . import logger
 
 
 async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=None, role_config=None, content=None) -> tuple:
     """打字输出模式"""
-    from util.llm.llm_handler import get_handler
-    from util.llm.llm_error_handler import handle_llm_error
+    from util.client.llm.llm_handler import get_handler
+    from util.client.llm.llm_error_handler import handle_llm_error
 
     handler = get_handler()
     # 如果没传，则现场检测一次（兼容性）

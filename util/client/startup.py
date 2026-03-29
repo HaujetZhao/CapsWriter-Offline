@@ -8,7 +8,7 @@ from config_client import ClientConfig as Config
 from util.client.cleanup import request_exit_from_tray
 from util.client.ui import TipsDisplay
 from util.hotword import get_hotword_manager
-from util.llm.llm_handler import init_llm_system
+from util.client.llm.llm_handler import init_llm_system
 from util.client.audio import AudioStreamManager
 from util.client.shortcut.shortcut_config import Shortcut
 from util.client.shortcut.shortcut_manager import ShortcutManager
@@ -32,7 +32,7 @@ def _setup_tray(state, base_dir):
             logger.info("用户请求重启音频")
 
     def clear_memory():
-        from util.llm.llm_handler import clear_llm_history
+        from util.client.llm.llm_handler import clear_llm_history
         clear_llm_history()
         from util.client.ui import toast
         toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
@@ -61,7 +61,7 @@ def _setup_tray(state, base_dir):
     def copy_last_result():
         text = state.last_output_text
         if text:
-            from util.llm.llm_clipboard import copy_to_clipboard
+            from util.client.llm.llm_clipboard import copy_to_clipboard
             copy_to_clipboard(text)
 
     import os

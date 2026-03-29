@@ -8,7 +8,7 @@ LLM 客户端池
 from openai import OpenAI
 from typing import Dict, Any, Union
 from ollama import Client as OllamaClient
-from util.llm.llm_constants import APIConfig
+from util.client.llm.llm_constants import APIConfig
 
 
 class ClientPool:
