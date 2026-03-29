@@ -3,42 +3,48 @@ import numpy as np
 from typing import Optional, List
 from .inference.engine import SenseVoiceInference
 from .inference.schema import ASREngineConfig as SenseVoiceConfig
+from ..base import BaseEngine, RecognitionStream, EngineCapabilities, RecognitionResult
 
-class RecognitionResult:
-    """兼容 sherpa-onnx 的识别结果结构"""
-    def __init__(self):
-        self.text = ""
-        self.tokens = []
-        self.timestamps = []
 
-class RecognitionStream:
-    """兼容 sherpa-onnx 的识别流结构"""
+class SenseVoiceStream(RecognitionStream):
+    """SenseVoice 识别流结构"""
     def __init__(self, sample_rate=16000):
-        self.sample_rate = sample_rate
+        super().__init__(sample_rate)
         self.audio_data = None
-        self.result = RecognitionResult()
 
     def accept_waveform(self, sample_rate, audio):
         self.sample_rate = sample_rate
         self.audio_data = audio.astype(np.float32)
 
-class SenseVoiceEngine:
+
+class SenseVoiceEngine(BaseEngine):
     """SenseVoice 推理引擎适配器"""
 
     def __init__(self, config: SenseVoiceConfig):
-        self.config = config
+        super().__init__(config)
         self.engine = SenseVoiceInference(config)
 
-    def create_stream(self, hotwords: Optional[str] = None):
+    @property
+    def capabilities(self) -> List[EngineCapabilities]:
+        """声明 SenseVoice 具备的能力集"""
+        return [
+            EngineCapabilities.ASR, 
+            EngineCapabilities.PUNC, 
+            EngineCapabilities.HOTWORDS,
+            EngineCapabilities.TIMESTAMPS
+        ]
+
+    def create_stream(self, hotwords: Optional[str] = None) -> SenseVoiceStream:
         """创建识别流"""
-        return RecognitionStream()
+        return SenseVoiceStream()
 
     def decode_stream(
         self, 
-        stream: RecognitionStream, 
+        stream: SenseVoiceStream, 
         context: Optional[str] = None,
         language: Optional[str] = None,
-        itn: bool = True
+        itn: bool = True,
+        **kwargs
     ):
         """
         解码识别流
