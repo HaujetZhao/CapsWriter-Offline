@@ -235,7 +235,7 @@ class ResultProcessor:
         # 繁体转换
         if Config.traditional_convert:
             try:
-                from util.zhconv import convert as zhconv_convert
+                from util.tools.zhconv import convert as zhconv_convert
                 text = zhconv_convert(text, Config.traditional_locale)
                 logger.debug(f"繁体转换后: {text[:50]}{'...' if len(text) > 50 else ''}")
             except Exception as e:

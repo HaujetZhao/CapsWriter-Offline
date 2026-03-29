@@ -6,7 +6,7 @@
 原库 zhconv 使用了废弃的 pkg_resources，此版本已修复。
 
 使用方法：
-    from util.zhconv import convert
+    from util.tools.zhconv import convert
     print(convert('我干什么不干你事。', 'zh-tw'))
     # 输出: 我幹什麼不幹你事。
 """
