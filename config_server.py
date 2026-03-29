@@ -14,7 +14,7 @@ class ServerConfig:
     port = '6022'
 
     # 语音模型选择：'qwen_asr', 'fun_asr_nano', 'sensevoice', 'paraformer'
-    model_type = 'paraformer'
+    model_type = 'qwen_asr'
 
     format_num = True       # 输出时是否将中文数字转为阿拉伯数字
     format_spell = True     # 输出时是否调整中英之间的空格
@@ -161,6 +161,6 @@ class ForceAlignerGGUFArgs:
     llm_use_gpu = True          # 是否启用 GPU 加速 GGUF 模型
     
     # 对齐细节
-    n_ctx = 2048                # 上下文窗口大小
+    n_ctx = 3072                # 上下文窗口大小
     dml_pad_to = 30             # 开启 DirectML 加速时，短音频统一填充到指定长度，有加速效果
 

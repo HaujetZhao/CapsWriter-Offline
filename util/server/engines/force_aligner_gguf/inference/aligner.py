@@ -249,7 +249,7 @@ class QwenForcedAligner:
         # 2. 加载对齐 LLM
         self.model = llama.LlamaModel(llm_gguf, n_gpu_layers=-1, use_gpu=config.llm_use_gpu)
         self.embedding_table = llama.get_token_embeddings_gguf(llm_gguf)
-        self.ctx = llama.LlamaContext(self.model, n_ctx=config.n_ctx, n_batch=2048, embeddings=False)
+        self.ctx = llama.LlamaContext(self.model, n_ctx=config.n_ctx, n_batch=config.n_ctx, embeddings=False)
         
         self.processor = AlignerProcessor()
         self.ID_AUDIO_START = self.model.token_to_id("<|audio_start|>")
