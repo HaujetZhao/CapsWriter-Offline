@@ -46,22 +46,22 @@ class ModelLoader:
         try:
             # 3. 实例化 ASR 引擎
             if model_type == 'fun_asr_nano':
-                from util.engines.fun_asr_gguf import FunASREngine, ASREngineConfig as FunASRConfig
+                from util.server.engines.fun_asr_gguf import FunASREngine, ASREngineConfig as FunASRConfig
                 config = FunASRConfig(**{k: v for k, v in FunASRNanoGGUFArgs.__dict__.items() if not k.startswith('_')})
                 self.recognizer = FunASREngine(config)
             
             elif model_type == 'qwen_asr':
-                from util.engines.qwen_asr_gguf.asr_engine import QwenASREngine, ASREngineConfig as QwenASRConfig
+                from util.server.engines.qwen_asr_gguf.asr_engine import QwenASREngine, ASREngineConfig as QwenASRConfig
                 config = QwenASRConfig(**{k: v for k, v in Qwen3ASRGGUFArgs.__dict__.items() if not k.startswith('_')})
                 self.recognizer = QwenASREngine(config)
             
             elif model_type == 'sensevoice':
-                from util.engines.sensevoice_onnx import SenseVoiceEngine, ASREngineConfig as SenseVoiceConfig
+                from util.server.engines.sensevoice_onnx import SenseVoiceEngine, ASREngineConfig as SenseVoiceConfig
                 config = SenseVoiceConfig(**{k: v for k, v in SenseVoiceArgs.__dict__.items() if not k.startswith('_')})
                 self.recognizer = SenseVoiceEngine(config)
             
             elif model_type == 'paraformer':
-                from util.engines.paraformer_onnx import ParaformerEngine, ASREngineConfig as ParaformerConfig
+                from util.server.engines.paraformer_onnx import ParaformerEngine, ASREngineConfig as ParaformerConfig
                 config = ParaformerConfig(**{k: v for k, v in ParaformerArgs.__dict__.items() if not k.startswith('_')})
                 self.recognizer = ParaformerEngine(config)
             
