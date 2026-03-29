@@ -109,9 +109,9 @@ class CapsWriterClient:
         )
         logger.info("托盘图标已启用")
 
-    def _setup_env(self):
+    def _setup_common(self):
         """
-        初始化客户端各个组件及环境
+        初始化客户端基础环境 (双模共有)
         """
         # 1. 基础状态启动
         self.state.initialize()
@@ -119,14 +119,7 @@ class CapsWriterClient:
         # 2. 日志
         self._setup_logging()
 
-        # 3. 托盘
-        self._setup_tray()
-
-        # 4. UI 提示
-        from util.client.ui import TipsDisplay
-        TipsDisplay.show_mic_tips()
-
-        # 5. 热词管理
+        # 3. 热词管理
         logger.info("正在加载热词...")
         from util.client.hotword import get_hotword_manager
         hotword_files = {
@@ -143,20 +136,31 @@ class CapsWriterClient:
         hotword_manager.load_all()
         hotword_manager.start_file_watcher()
 
-        # 6. LLM 系统
+        # 4. LLM 系统
         from util.client.llm.llm_handler import init_llm_system
         logger.info("正在初始化 LLM 系统...")
         init_llm_system()
         logger.info("LLM 系统初始化完成")
 
-        # 7. 音频流管理
+    def _setup_mic_resources(self):
+        """
+        初始化麦克风模式特有资源 (音频硬件、快捷键、UI 托盘)
+        """
+        # 1. 托盘
+        self._setup_tray()
+
+        # 2. UI 提示
+        from util.client.ui import TipsDisplay
+        TipsDisplay.show_mic_tips()
+
+        # 3. 音频流管理
         from util.client.audio import AudioStreamManager
         logger.info("正在打开音频流...")
         stream_manager = AudioStreamManager(self.state)
         self.state.stream_manager = stream_manager
         stream_manager.open()
 
-        # 8. 快捷键管理器
+        # 4. 快捷键管理器
         from util.client.shortcut.shortcut_config import Shortcut
         from util.client.shortcut.shortcut_manager import ShortcutManager
         shortcuts = [Shortcut(**sc) for sc in Config.shortcuts]
@@ -167,7 +171,7 @@ class CapsWriterClient:
         shortcut_manager.start()
         self.state.shortcut_handler = shortcut_manager
 
-        # 9. UDP 控制（可选）
+        # 5. UDP 控制 (可选)
         if Config.udp_control:
             from util.client.udp.udp_control import UDPController
             logger.info(f"正在启用 UDP 控制，端口: {Config.udp_control_port}")
@@ -175,12 +179,20 @@ class CapsWriterClient:
             self.state.udp_controller = udp_controller
             udp_controller.start()
 
-        # 10. Windows 内存整理
+        # 6. Windows 周期性内存清理 (仅针对长期运行的 Mic 模式)
         if system() == 'Windows':
             from util.tools.empty_working_set import empty_current_working_set
             empty_current_working_set()
 
-        logger.info("客户端初始化完成，等待语音输入...")
+    def _check_macos_permissions(self):
+        """检查 MacOS 权限设置 (类方法移入)"""
+        if system() == 'Darwin' and not sys.argv[1:]:
+            if os.getuid() != 0:
+                print('在 MacOS 上需要以管理员启动客户端才能监听键盘活动，请 sudo 启动')
+                input('按回车退出')
+                sys.exit(1)
+            else:
+                os.umask(0o000)
 
     async def _run_mic_mode(self):
         """
@@ -188,6 +200,9 @@ class CapsWriterClient:
         
         负责编排识别处理器和退出信号的监控。
         """
+        # 确保硬件资源已就绪
+        self._setup_mic_resources()
+        
         from util.client.output import ResultProcessor
         
         logger.info("=" * 50)
@@ -247,6 +262,96 @@ class CapsWriterClient:
             logger.error(f"麦克风模式运行异常: {e}", exc_info=True)
             raise
 
-    def start(self):
-        """留给下一阶段实现模式自动分发"""
-        pass
+    async def _run_file_mode(self, files: list[Path]):
+        """
+        文件转录模式主循环 (Coroutine)
+        
+        Args:
+            files: 待处理的文件列表
+        """
+        from util.client.transcribe import FileTranscriber, SrtAdjuster
+        from util.client.ui import TipsDisplay
+        
+        logger.info("=" * 50)
+        logger.info("CapsWriter Offline Client 正在启动（文件转录模式）")
+        logger.info(f"版本: {self.version}")
+        logger.info(f"日志级别: {self.log_level}")
+        logger.info(f"待处理文件: {[str(f) for f in files]}")
+        
+        TipsDisplay.show_file_tips()
+        
+        srt_adjuster = SrtAdjuster()
+        
+        try:
+            for file in files:
+                if lifecycle.is_shutting_down:
+                    break
+
+                logger.info(f"正在处理文件: {file}")
+                
+                # 情况 1：文本类文件，执行 SRT 时间轴调整
+                if file.suffix.lower() in ['.txt', '.json', '.srt', '.vtt']:
+                    srt_adjuster.adjust(file)
+                # 情况 2：媒体文件，执行 ASR 识别转录
+                else:
+                    transcriber = FileTranscriber(self.state, file)
+                    if await transcriber.check():
+                        await transcriber.send()
+                        await transcriber.receive()
+                
+                logger.info(f"文件处理完成: {file}")
+            
+            # 关闭残结
+            if self.state.websocket:
+                await self.state.websocket.close()
+                self.state.websocket = None
+            
+            logger.info("所有文件已处理完成")
+            
+            # 只有在非停机请求下才阻塞等待回车
+            if not lifecycle.is_shutting_down:
+                input('\n按回车退出\n')
+
+        except Exception as e:
+            logger.error(f"文件模式运行异常: {e}", exc_info=True)
+            raise
+
+    async def start(self):
+        """
+        启动客户端 (唯一入口)
+        
+        自动根据命令行参数识别模式。
+        """
+        # 0. MacOS 权限检查
+        self._check_macos_permissions()
+        
+        # 1. 注册全局清理函数
+        lifecycle.register_on_shutdown(cleanup_client_resources)
+        
+        # 2. 初始化生命周期
+        lifecycle.initialize(logger=logger, exit_on_signal=True)
+        
+        # 3. 基础环境初始化 (双模共有)
+        self._setup_common()
+        
+        # 4. 根据参数进入不同模式
+        files = [Path(f) for f in sys.argv[1:] if os.path.exists(f)]
+        
+        try:
+            if files:
+                # 文件转录模式
+                await self._run_file_mode(files)
+            else:
+                # 麦克风实时模式
+                await self._run_mic_mode()
+            
+            # 正常完成清理
+            lifecycle.cleanup()
+            
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            logger.info("用户请求停止...")
+            lifecycle.cleanup()
+        except Exception as e:
+            logger.error(f"客户端运行出错: {e}", exc_info=True)
+            lifecycle.cleanup()
+            raise
