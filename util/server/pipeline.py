@@ -27,7 +27,7 @@ from util.server.merger import (
     tokens_to_text,
     remove_trailing_punctuation,
 )
-from util.server.error_handler import save_error_audio
+
 
 
 
@@ -115,27 +115,22 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
         _process_simple_merge(result, stream.result.text)
 
         # 5. 时间戳拼接（使用 SequenceMatcher 策略）
-        try:
-            # 安全处理当前片段的 tokens
-            new_tokens = process_tokens_safely(stream.result.tokens)
-            new_timestamps = list(stream.result.timestamps)
-            
-            # 使用 SequenceMatcher 进行精确拼接
-            result.tokens, result.timestamps = merge_tokens_by_sequence_matcher(
-                prev_tokens=result.tokens,
-                prev_timestamps=result.timestamps,
-                new_tokens=new_tokens,
-                new_timestamps=new_timestamps,
-                offset=task.offset,
-                overlap=task.overlap,
-                is_first_segment=is_first_segment
-            )
-            
-            logger.debug(f"时间戳拼接完成: 总 {len(result.tokens)} tokens")
+        new_tokens = process_tokens_safely(stream.result.tokens)
+        new_timestamps = list(stream.result.timestamps)
+        
+        # 使用 SequenceMatcher 进行精确拼接
+        result.tokens, result.timestamps = merge_tokens_by_sequence_matcher(
+            prev_tokens=result.tokens,
+            prev_timestamps=result.timestamps,
+            new_tokens=new_tokens,
+            new_timestamps=new_timestamps,
+            offset=task.offset,
+            overlap=task.overlap,
+            is_first_segment=is_first_segment
+        )
+        
+        logger.debug(f"时间戳拼接完成: 总 {len(result.tokens)} tokens")
 
-        except (UnicodeDecodeError, UnicodeError) as e:
-            save_error_audio(samples, task.task_id, task.samplerate)
-            console.print(f'\n[red]编码错误: {e}')
 
         # 6. 生成 text_accu
         result.text_accu = tokens_to_text(result.tokens)
