@@ -41,9 +41,9 @@ class RecognitionStream(ABC):
         pass
 
 
-class BaseEngine(ABC):
+class BaseASREngine(ABC):
     """
-    推理引擎基类
+    语音识别引擎基类
     
     所有的 ASR 引擎（SenseVoice, Paraformer, Qwen 等）都必须继承此类并实现其接口。
     """
@@ -79,4 +79,59 @@ class BaseEngine(ABC):
     @abstractmethod
     def cleanup(self):
         """释放模型资源"""
+        pass
+
+
+class BasePuncEngine(ABC):
+    """
+    标点引擎基类
+    """
+
+    def __init__(self, config: Any):
+        self.config = config
+
+    @abstractmethod
+    def punctuate(self, text: str) -> str:
+        """
+        为文本注入或修正标点
+        
+        Args:
+            text: 原始文本
+            
+        Returns:
+            str: 处理后的文本
+        """
+        pass
+
+    @abstractmethod
+    def cleanup(self):
+        """释放资源"""
+        pass
+
+
+class BaseAlignEngine(ABC):
+    """
+    强制对齐引擎基类
+    """
+
+    def __init__(self, config: Any):
+        self.config = config
+
+    @abstractmethod
+    def align(self, audio: np.ndarray, text: str, **kwargs) -> Any:
+        """
+        对音频和文本进行强制对齐
+        
+        Args:
+            audio: 音频数据 (numpy array)
+            text: 待对齐文本
+            
+        Returns:
+            Any: 对齐后的结果（通常包含字/词级时间戳）
+        """
+        pass
+
+    @abstractmethod
+    def cleanup(self):
+        """释放资源"""
         pass

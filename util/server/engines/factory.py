@@ -1,9 +1,11 @@
 # coding: utf-8
 from typing import Any, Dict, Type, Optional
-from .base import BaseEngine
+from .base import BaseASREngine, BasePuncEngine, BaseAlignEngine
 from config_server import (
+    ServerConfig as Config,
     ParaformerArgs, SenseVoiceArgs, 
-    FunASRNanoGGUFArgs, Qwen3ASRGGUFArgs
+    FunASRNanoGGUFArgs, Qwen3ASRGGUFArgs,
+    ModelPaths, ForceAlignerGGUFArgs
 )
 
 
@@ -11,8 +13,11 @@ class EngineFactory:
     """
     引擎工厂类
     
-    统一管理所有 ASR 引擎的实例化逻辑。使用延迟加载模式避免启动过慢。
+    统一管理所有识别引擎、标点引擎和对齐引擎的实例化逻辑。
+    使用延迟加载模式避免启动过慢。
     """
+
+    # --- ASR 引擎加载器 ---
 
     @staticmethod
     def _load_sensevoice():
@@ -34,8 +39,7 @@ class EngineFactory:
         from .qwen_asr_gguf.asr_engine import QwenASREngine, ASREngineConfig as QwenASRConfig
         return QwenASREngine, QwenASRConfig, Qwen3ASRGGUFArgs
 
-    # 引擎名称与加载方法的映射
-    _LOADERS = {
+    _ASR_LOADERS = {
         'sensevoice': _load_sensevoice,
         'paraformer': _load_paraformer,
         'fun_asr_nano': _load_fun_asr_nano,
@@ -43,24 +47,36 @@ class EngineFactory:
     }
 
     @staticmethod
-    def create_engine(model_type: str) -> BaseEngine:
-        """
-        根据模型类型创建对应的引擎实例
-        """
+    def create_asr_engine(model_type: str) -> BaseASREngine:
+        """创建 ASR 核心引擎"""
         model_type = model_type.lower()
-        if model_type not in EngineFactory._LOADERS:
-            raise ValueError(f"EngineFactory: 不支持的模型类型 '{model_type}'")
+        if model_type not in EngineFactory._ASR_LOADERS:
+            raise ValueError(f"EngineFactory: 不支持的 ASR 类型 '{model_type}'")
 
-        # 1. 执行延迟加载函数
-        loader = EngineFactory._LOADERS[model_type]
+        loader = EngineFactory._ASR_LOADERS[model_type]
         EngineClass, ConfigClass, ArgsObj = loader()
         
-        # 2. 从 Args 对象动态构建引擎 Config
-        config_data = {
-            k: v for k, v in ArgsObj.__dict__.items() 
-            if not k.startswith('_')
-        }
+        config_data = {k: v for k, v in ArgsObj.__dict__.items() if not k.startswith('_')}
         config = ConfigClass(**config_data)
         
-        # 3. 实例化并返回
         return EngineClass(config)
+
+    # --- 辅助引擎加载器 ---
+
+    @staticmethod
+    def create_punc_engine() -> BasePuncEngine:
+        """创建标点引擎 (目前使用 CT-Transformer)"""
+        from .ct_transformer.punc_engine import CTTransformerPuncEngine
+        model_path = ModelPaths.punc_model_dir.as_posix()
+        return CTTransformerPuncEngine(model_path)
+
+    @staticmethod
+    def create_align_engine() -> BaseAlignEngine:
+        """创建对齐引擎 (目前使用 Qwen Force Aligner)"""
+        from .force_aligner_gguf.align_engine import QwenForceAligner, AlignerConfig
+        align_cfg_data = {
+            k: v for k, v in ForceAlignerGGUFArgs.__dict__.items() 
+            if not k.startswith('_')
+        }
+        config = AlignerConfig(**align_cfg_data)
+        return QwenForceAligner(config)

@@ -3,7 +3,7 @@ import numpy as np
 from typing import Optional, List
 from .inference.engine import SenseVoiceInference
 from .inference.schema import ASREngineConfig as SenseVoiceConfig
-from ..base import BaseEngine, RecognitionStream, EngineCapabilities, RecognitionResult
+from ..base import BaseASREngine, RecognitionStream, EngineCapabilities, RecognitionResult
 
 
 class SenseVoiceStream(RecognitionStream):
@@ -17,7 +17,7 @@ class SenseVoiceStream(RecognitionStream):
         self.audio_data = audio.astype(np.float32)
 
 
-class SenseVoiceEngine(BaseEngine):
+class SenseVoiceEngine(BaseASREngine):
     """SenseVoice 推理引擎适配器"""
 
     def __init__(self, config: SenseVoiceConfig):

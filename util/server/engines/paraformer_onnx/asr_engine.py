@@ -3,14 +3,14 @@ import sherpa_onnx
 import numpy as np
 from typing import Optional, List, Any
 from dataclasses import dataclass
-from ..base import BaseEngine, RecognitionStream, EngineCapabilities, RecognitionResult
+from ..base import BaseASREngine, RecognitionStream, EngineCapabilities, RecognitionResult
 from util import get_logger
 
 logger = get_logger('server')
 
 
 @dataclass
-class ASREngineConfig:
+class ParaformerConfig:
     """Paraformer 引擎配置参数"""
     paraformer: str
     tokens: str
@@ -36,7 +36,7 @@ class ParaformerStream(RecognitionStream):
         self.internal_stream.accept_waveform(sample_rate, audio.astype(np.float32))
 
 
-class ParaformerEngine(BaseEngine):
+class ParaformerEngine(BaseASREngine):
     """
     Paraformer 识别引擎适配器
     
@@ -44,7 +44,7 @@ class ParaformerEngine(BaseEngine):
     不支持：PUNC, HOTWORDS (内置)
     """
 
-    def __init__(self, config: ASREngineConfig):
+    def __init__(self, config: ParaformerConfig):
         super().__init__(config)
         logger.debug(f"正在初始化 ParaformerEngine，配置: {self.config}")
         

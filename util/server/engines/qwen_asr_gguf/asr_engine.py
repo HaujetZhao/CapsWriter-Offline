@@ -4,7 +4,7 @@ import numpy as np
 from typing import Optional, List
 from .inference.asr import QwenASREngine as QwenInternalEngine
 from .inference.schema import ASREngineConfig, MsgType, StreamingMessage
-from ..base import BaseEngine, RecognitionStream, EngineCapabilities, RecognitionResult
+from ..base import BaseASREngine, RecognitionStream, EngineCapabilities, RecognitionResult
 
 
 class QwenASRStream(RecognitionStream):
@@ -18,7 +18,7 @@ class QwenASRStream(RecognitionStream):
         self.audio_data = audio.astype(np.float32)
 
 
-class QwenASREngine(BaseEngine):
+class QwenASREngine(BaseASREngine):
     """Qwen-ASR 推理引擎适配器，实现与 FunASREngine 类似的接口"""
 
     def __init__(self, config: ASREngineConfig):

@@ -7,7 +7,7 @@ from .inference.schema import ASREngineConfig, TranscriptionResult, RecognitionR
 from .inference.models import Models
 from .inference.pipeline import InferencePipeline
 from .inference.transcriber import AudioTranscriber
-from ..base import BaseEngine, RecognitionStream, EngineCapabilities, RecognitionResult
+from ..base import BaseASREngine, RecognitionStream, EngineCapabilities, RecognitionResult
 
 
 class FunASRStream(RecognitionStream):
@@ -24,7 +24,7 @@ class FunASRStream(RecognitionStream):
         self.internal_stream.accept_waveform(sample_rate, audio)
 
 
-class FunASREngine(BaseEngine):
+class FunASREngine(BaseASREngine):
     """
     FunASR 推理引擎适配器
     

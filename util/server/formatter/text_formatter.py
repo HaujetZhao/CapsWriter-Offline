@@ -2,12 +2,13 @@
 """
 文本格式化处理器
 
-负责对识别出的原始文本进行后期处理，如标点补全、ITN转换、空格调整等。
+负责对识别出的原始文本进行后期处理，如标点补全、ITN转换等。
 """
 
 from util.tools.chinese_itn import chinese_to_num
 from util.tools.format_tools import adjust_space
 from config_server import ServerConfig as Config
+from . import logger
 
 
 class TextFormatter:
@@ -31,7 +32,7 @@ class TextFormatter:
         
         流程：
         1. 调整中英文/数字间的空格 (adjust_space)
-        2. 自动补全标点符号 (punc_model.add_punctuation)
+        2. 自动补全标点符号 (punc_model.punctuate)
         3. 处理 ITN (中文数字转阿拉伯数字)
         
         Args:
@@ -50,9 +51,9 @@ class TextFormatter:
         # 2. 增加标点
         if self.punc_model:
             try:
-                text = self.punc_model.add_punctuation(text)
+                # 调用标准化 PuncEngine 接口
+                text = self.punc_model.punctuate(text)
             except Exception as e:
-                from . import logger
                 logger.warning(f"标点补全失败: {e}")
 
         # 3. 中文数字转阿拉伯数字
@@ -60,7 +61,6 @@ class TextFormatter:
             try:
                 text = chinese_to_num(text)
             except Exception as e:
-                from . import logger
                 logger.warning(f"ITN 转换失败: {e}")
 
         return text

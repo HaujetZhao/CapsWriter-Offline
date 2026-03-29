@@ -7,12 +7,12 @@
 
 import time
 from util.server.context import console
-from util.server.check_model import check_model
 from config_server import (
     ServerConfig as Config, 
-    ParaformerArgs, ModelPaths, SenseVoiceArgs, 
-    FunASRNanoGGUFArgs, Qwen3ASRGGUFArgs, ForceAlignerGGUFArgs
+    ModelPaths
 )
+from ..engines.factory import EngineFactory
+from ..engines.base import EngineCapabilities
 from . import logger
 
 
@@ -20,7 +20,8 @@ class ModelLoader:
     """
     模型加载器
     
-    根据系统配置加载对应的 ASR 核心引擎及辅助模型。
+    负责 ASR 引擎和辅助模型（标点、对齐器）的生命周期管理。
+    自动根据引擎能力挂载补丁插件。
     """
     def __init__(self):
         self.recognizer = None
@@ -31,70 +32,54 @@ class ModelLoader:
         """
         加载模型资源
         
-        支持的模型：fun_asr_nano, qwen_asr, sensevoice, paraformer
+        逻辑流程：
+        1. 加载 ASR 核心引擎（通过工厂模式）
+        2. 扫描引擎能力 (Capabilities)
+        3. 自适应挂载缺失能力的插件 (Punc, Aligner)
         """
-        # 1. 基础校验 (确保模型文件存在)
-        # check_model()
-        
-        # 2. 延迟导入大型库，避免主进程启动过慢
+        # 1. 延迟导入通用库
         with console.status("载入模块中...", spinner="bouncingBall", spinner_style="yellow"):
             import sherpa_onnx
         
         t1 = time.time()
         model_type = Config.model_type.lower()
-        logger.info(f"Loader 开始加载语音模型: {model_type}")
+        logger.info(f"Loader 开始初始化语音系统 (引擎: {model_type})")
 
         try:
-            # 3. 实例化 ASR 引擎
-            if model_type == 'fun_asr_nano':
-                from util.server.engines.fun_asr_gguf import FunASREngine, ASREngineConfig as FunASRConfig
-                config = FunASRConfig(**{k: v for k, v in FunASRNanoGGUFArgs.__dict__.items() if not k.startswith('_')})
-                self.recognizer = FunASREngine(config)
-            
-            elif model_type == 'qwen_asr':
-                from util.server.engines.qwen_asr_gguf.asr_engine import QwenASREngine, ASREngineConfig as QwenASRConfig
-                config = QwenASRConfig(**{k: v for k, v in Qwen3ASRGGUFArgs.__dict__.items() if not k.startswith('_')})
-                self.recognizer = QwenASREngine(config)
+            # 2. 通过工厂实例化 ASR 核心引擎
+            self.recognizer = EngineFactory.create_asr_engine(model_type)
+            caps = self.recognizer.capabilities
+            logger.info(f"引擎加载成功，能力清单: {[c.name for c in caps]}")
 
-                # 额外载入 Force Aligner
-                from util.server.engines.force_aligner_gguf.align_engine import QwenForceAligner, AlignerConfig
-                align_cfg = AlignerConfig(**{k: v for k, v in ForceAlignerGGUFArgs.__dict__.items() if not k.startswith('_')})
-                self.aligner = QwenForceAligner(align_cfg)
-                logger.info("已载入配套的 Force Aligner 插件")
-            
-            elif model_type == 'sensevoice':
-                from util.server.engines.sensevoice_onnx import SenseVoiceEngine, ASREngineConfig as SenseVoiceConfig
-                config = SenseVoiceConfig(**{k: v for k, v in SenseVoiceArgs.__dict__.items() if not k.startswith('_')})
-                self.recognizer = SenseVoiceEngine(config)
-            
-            elif model_type == 'paraformer':
-                from util.server.engines.paraformer_onnx import ParaformerEngine, ASREngineConfig as ParaformerConfig
-                config = ParaformerConfig(**{k: v for k, v in ParaformerArgs.__dict__.items() if not k.startswith('_')})
-                self.recognizer = ParaformerEngine(config)
-            
-            else:
-                raise ValueError(f"不支持的模型类型: {model_type}")
+            # 3. 智能补丁：如果引擎不自带标点能力，则挂载标点模型
+            if EngineCapabilities.PUNC not in caps:
+                self._load_punc_model()
 
-            # 4. 载入标点预测模型 (目前仅 Paraformer 需要)
-            if model_type == 'paraformer':
-                punc_cfg = sherpa_onnx.OfflinePunctuationConfig(
-                    model=sherpa_onnx.OfflinePunctuationModelConfig(
-                        ct_transformer=ModelPaths.punc_model_dir.as_posix()
-                    ),
-                )
-                self.punc_model = sherpa_onnx.OfflinePunctuation(punc_cfg)
+            # 4. 智能补丁：如果引擎不自带时间戳能力，则挂载对齐器插件
+            if EngineCapabilities.TIMESTAMPS not in caps:
+                self._load_align_model()
 
-            # 5. 加载热词 (如果存在)
-            if Config.hotwords_path.exists():
+            # 5. 加载热词 (如果引擎支持 HOTWORDS 能力)
+            if EngineCapabilities.HOTWORDS in caps and Config.hotwords_path.exists():
                 hotwords = [l.strip() for l in Config.hotwords_path.read_text('utf-8').splitlines() 
                            if l.strip() and not l.strip().startswith('#')]
                 self.recognizer.update_hotwords(hotwords)
 
-            logger.info(f"模型加载完成，耗时: {time.time() - t1:.2f}s")
+            logger.info(f"全系统初始化完成，耗时: {time.time() - t1:.2f}s")
             
         except Exception as e:
             logger.error(f"Loader 加载失败: {str(e)}", exc_info=True)
             raise e
+
+    def _load_punc_model(self):
+        """加载标点补足模型插件"""
+        logger.info("引擎不具备标点能力，正在挂载 PuncEngine 补丁...")
+        self.punc_model = EngineFactory.create_punc_engine()
+
+    def _load_align_model(self):
+        """加载时间戳对齐补丁 (AlignEngine)"""
+        logger.info("引擎不具备时间戳能力，正在挂载 AlignEngine 补丁...")
+        self.aligner = EngineFactory.create_align_engine()
 
     def cleanup(self):
         """释放模型资源"""

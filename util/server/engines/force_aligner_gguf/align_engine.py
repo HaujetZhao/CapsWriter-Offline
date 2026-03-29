@@ -4,8 +4,10 @@ from typing import List, Optional
 
 from .inference.aligner import QwenForcedAligner as InternalAligner
 from .inference.schema import AlignerConfig, ForcedAlignResult
+from ..base import BaseAlignEngine
 
-class QwenForceAligner:
+
+class QwenForceAligner(BaseAlignEngine):
     """
     Qwen-Force-Aligner 适配器
     
@@ -14,13 +16,7 @@ class QwenForceAligner:
     """
 
     def __init__(self, config: AlignerConfig):
-        """
-        初始化对齐引擎
-        
-        Args:
-            config: AlignerConfig 实例，包含模型路径和权重配置
-        """
-        self.config = config
+        super().__init__(config)
         self.engine = InternalAligner(config)
 
     def align(
@@ -28,19 +24,11 @@ class QwenForceAligner:
         audio: np.ndarray, 
         text: str, 
         language: str = "Chinese",
-        offset_sec: float = 0.0
+        offset_sec: float = 0.0,
+        **kwargs
     ) -> ForcedAlignResult:
         """
         执行强制对齐
-        
-        Args:
-            audio: 原始音频数据 (float32, 16kHz)
-            text: ASR 识别出的文本内容
-            language: 文本语种
-            offset_sec: 时间偏移量（用于叠加当前分片的起始时间）
-            
-        Returns:
-            ForcedAlignResult 包含 items (分词级时间戳) 和性能统计
         """
         if not text:
             return None
@@ -58,3 +46,4 @@ class QwenForceAligner:
             del self.engine.ctx
         if hasattr(self.engine, 'model'):
             del self.engine.model
+        self.engine = None
