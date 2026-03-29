@@ -32,11 +32,13 @@ class TaskHandler:
         # 引擎实例 (由主 Worker 注入)
         self.recognizer = None
         self.punc_model = None
+        self.aligner = None
 
-    def set_engine(self, recognizer, punc_model=None):
+    def set_engine(self, recognizer, punc_model=None, aligner=None):
         """注入识别引擎实例"""
         self.recognizer = recognizer
         self.punc_model = punc_model
+        self.aligner = aligner
 
     def loop(self):
         """
@@ -67,7 +69,7 @@ class TaskHandler:
             # 4. 执行识别流程
             try:
                 # 调用 pipeline.py 中的主逻辑
-                result = recognize(self.recognizer, self.punc_model, task)
+                result = recognize(self.recognizer, self.punc_model, task, self.aligner)
                 
                 # 5. 返回识别结果给主进程
                 self.queue_out.put(result)

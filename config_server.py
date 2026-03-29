@@ -14,7 +14,7 @@ class ServerConfig:
     port = '6022'
 
     # 语音模型选择：'fun_asr_nano', 'sensevoice', 'paraformer', 'qwen_asr'
-    model_type = 'sensevoice'
+    model_type = 'qwen_asr'
 
     format_num = True       # 输出时是否将中文数字转为阿拉伯数字
     format_spell = True     # 输出时是否调整中英之间的空格
@@ -69,6 +69,12 @@ class ModelPaths:
     qwen3_asr_gguf_encoder_frontend = qwen3_asr_gguf_dir / 'qwen3_asr_encoder_frontend.fp16.onnx'
     qwen3_asr_gguf_encoder_backend = qwen3_asr_gguf_dir / 'qwen3_asr_encoder_backend.fp16.onnx'
     qwen3_asr_gguf_llm_decode = qwen3_asr_gguf_dir / 'qwen3_asr_llm.q4_k.gguf'
+
+    # Force-Aligner 模型路径
+    force_aligner_gguf_dir = model_dir / 'Force-Aligner' / 'Force-Aligner-GGUF'
+    force_aligner_gguf_encoder_frontend = force_aligner_gguf_dir / 'qwen3_aligner_encoder_frontend.int4.onnx'
+    force_aligner_gguf_encoder_backend = force_aligner_gguf_dir / 'qwen3_aligner_encoder_backend.int4.onnx'
+    force_aligner_gguf_llm_decode = force_aligner_gguf_dir / 'qwen3_aligner_llm.q4_k.gguf'
 
 
 
@@ -139,4 +145,22 @@ class Qwen3ASRGGUFArgs:
     memory_num = 1              # 记忆段数
     dml_pad_to = 30                 # 开启 DirectML 加速时，短音频统一填充到指定长度，有加速效果
     verbose = False
+
+
+class ForceAlignerGGUFArgs:
+    """Force-Aligner-GGUF 模型参数配置"""
+
+    # 模型路径
+    model_dir = ModelPaths.force_aligner_gguf_dir.as_posix()
+    encoder_frontend_fn = ModelPaths.force_aligner_gguf_encoder_frontend.name
+    encoder_backend_fn = ModelPaths.force_aligner_gguf_encoder_backend.name
+    llm_fn = ModelPaths.force_aligner_gguf_llm_decode.name
+
+    # 显卡加速
+    onnx_provider = 'CPU'       # ONNX 推理后端 (CPU, CUDA, DML, TensorRT)
+    llm_use_gpu = True          # 是否启用 GPU 加速 GGUF 模型
+    
+    # 对齐细节
+    n_ctx = 2048                # 上下文窗口大小
+    dml_pad_to = 30             # 开启 DirectML 加速时，短音频统一填充到指定长度，有加速效果
 

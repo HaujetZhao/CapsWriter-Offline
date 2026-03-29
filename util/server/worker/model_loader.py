@@ -11,7 +11,7 @@ from util.server.check_model import check_model
 from config_server import (
     ServerConfig as Config, 
     ParaformerArgs, ModelPaths, SenseVoiceArgs, 
-    FunASRNanoGGUFArgs, Qwen3ASRGGUFArgs
+    FunASRNanoGGUFArgs, Qwen3ASRGGUFArgs, ForceAlignerGGUFArgs
 )
 from . import logger
 
@@ -25,6 +25,7 @@ class ModelLoader:
     def __init__(self):
         self.recognizer = None
         self.punc_model = None
+        self.aligner = None
 
     def load(self):
         """
@@ -54,6 +55,12 @@ class ModelLoader:
                 from util.server.engines.qwen_asr_gguf.asr_engine import QwenASREngine, ASREngineConfig as QwenASRConfig
                 config = QwenASRConfig(**{k: v for k, v in Qwen3ASRGGUFArgs.__dict__.items() if not k.startswith('_')})
                 self.recognizer = QwenASREngine(config)
+
+                # 额外载入 Force Aligner
+                from util.server.engines.force_aligner_gguf.align_engine import QwenForceAligner, AlignerConfig
+                align_cfg = AlignerConfig(**{k: v for k, v in ForceAlignerGGUFArgs.__dict__.items() if not k.startswith('_')})
+                self.aligner = QwenForceAligner(align_cfg)
+                logger.info("已载入配套的 Force Aligner 插件")
             
             elif model_type == 'sensevoice':
                 from util.server.engines.sensevoice_onnx import SenseVoiceEngine, ASREngineConfig as SenseVoiceConfig
@@ -93,5 +100,8 @@ class ModelLoader:
         """释放模型资源"""
         if self.recognizer and hasattr(self.recognizer, 'cleanup'):
             self.recognizer.cleanup()
+        if self.aligner and hasattr(self.aligner, 'cleanup'):
+            self.aligner.cleanup()
         self.recognizer = None
         self.punc_model = None
+        self.aligner = None

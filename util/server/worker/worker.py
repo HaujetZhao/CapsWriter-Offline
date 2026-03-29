@@ -84,7 +84,8 @@ class RecognizerWorker:
             # 3. 将加载好的引擎委派给处理器
             self.handler.set_engine(
                 recognizer=self.loader.recognizer, 
-                punc_model=self.loader.punc_model
+                punc_model=self.loader.punc_model,
+                aligner=self.loader.aligner
             )
             
             # 4. 通知主进程模型已加载成功

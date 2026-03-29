@@ -62,7 +62,7 @@ def _process_simple_merge(result: Result, stream_result_text: str) -> None:
         logger.warning(f"简单文本拼接失败: {e}")
 
 
-def recognize(recognizer, punc_model, task: Task) -> Result:
+def recognize(recognizer, punc_model, task: Task, aligner=None) -> Result:
     """
     识别单个音频片段并更新结果
     
@@ -113,6 +113,22 @@ def recognize(recognizer, punc_model, task: Task) -> Result:
 
         # 4. 简单文本拼接
         _process_simple_merge(result, stream.result.text)
+
+        # 4.5 强制对齐补全时间戳 (针对像 Qwen 这样默认不带时间戳的模型)
+        if aligner and stream.result.text:
+            try:
+                # 执行对齐 (samples 是当前片段的音频)
+                align_res = aligner.align(
+                    audio=samples, 
+                    text=stream.result.text, 
+                    offset_sec=0.0 # 这里传 0，因为后续 merge_tokens 会处理 task.offset
+                )
+                if align_res and align_res.items:
+                    stream.result.tokens = [it.text for it in align_res.items]
+                    stream.result.timestamps = [it.start_time for it in align_res.items]
+                    logger.debug(f"Force Aligner 补全成功: {len(stream.result.tokens)} tokens")
+            except Exception as e:
+                logger.warning(f"Force Aligner 对齐失败: {e}")
 
         # 5. 时间戳拼接（使用 SequenceMatcher 策略）
         new_tokens = process_tokens_safely(stream.result.tokens)
