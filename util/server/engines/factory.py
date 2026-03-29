@@ -66,17 +66,27 @@ class EngineFactory:
     @staticmethod
     def create_punc_engine() -> BasePuncEngine:
         """创建标点引擎 (目前使用 CT-Transformer)"""
-        from .ct_transformer.punc_engine import CTTransformerPuncEngine
-        model_path = ModelPaths.punc_model_dir.as_posix()
-        return CTTransformerPuncEngine(model_path)
+        try:
+            from .ct_transformer.punc_engine import CTTransformerPuncEngine
+            model_path = ModelPaths.punc_model_dir.as_posix()
+            return CTTransformerPuncEngine(model_path)
+        except Exception as e:
+            from . import logger
+            logger.warning(f"⚠️ [警告] 标点模型加载失败 (原因: {e})，系统将以【无标点模式】继续运行...")
+            return BasePuncEngine(None)
 
     @staticmethod
     def create_align_engine() -> BaseAlignEngine:
         """创建对齐引擎 (目前使用 Qwen Force Aligner)"""
-        from .force_aligner_gguf.align_engine import QwenForceAligner, AlignerConfig
-        align_cfg_data = {
-            k: v for k, v in ForceAlignerGGUFArgs.__dict__.items() 
-            if not k.startswith('_')
-        }
-        config = AlignerConfig(**align_cfg_data)
-        return QwenForceAligner(config)
+        try:
+            from .force_aligner_gguf.align_engine import QwenForceAligner, AlignerConfig
+            align_cfg_data = {
+                k: v for k, v in ForceAlignerGGUFArgs.__dict__.items() 
+                if not k.startswith('_')
+            }
+            config = AlignerConfig(**align_cfg_data)
+            return QwenForceAligner(config)
+        except Exception as e:
+            from . import logger
+            logger.warning(f"⚠️ [警告] 对齐模型加载失败 (原因: {e})，系统将以【无精确时间戳模式】继续运行...")
+            return BaseAlignEngine(None)

@@ -90,22 +90,12 @@ class BasePuncEngine(ABC):
     def __init__(self, config: Any):
         self.config = config
 
-    @abstractmethod
     def punctuate(self, text: str) -> str:
-        """
-        为文本注入或修正标点
-        
-        Args:
-            text: 原始文本
-            
-        Returns:
-            str: 处理后的文本
-        """
-        pass
+        """ 为文本注入或修正标点。默认行为：原样返回。 """
+        return text
 
-    @abstractmethod
     def cleanup(self):
-        """释放资源"""
+        """ 释放资源 """
         pass
 
 
@@ -117,21 +107,10 @@ class BaseAlignEngine(ABC):
     def __init__(self, config: Any):
         self.config = config
 
-    @abstractmethod
     def align(self, audio: np.ndarray, text: str, **kwargs) -> Any:
-        """
-        对音频和文本进行强制对齐
-        
-        Args:
-            audio: 音频数据 (numpy array)
-            text: 待对齐文本
-            
-        Returns:
-            Any: 对齐后的结果（通常包含字/词级时间戳）
-        """
-        pass
+        """ 对音频和文本进行强制对齐。默认行为：返回 None。 """
+        return None
 
-    @abstractmethod
     def cleanup(self):
-        """释放资源"""
+        """ 释放资源 """
         pass
