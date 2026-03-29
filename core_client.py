@@ -70,17 +70,12 @@ async def main_mic() -> None:
     # 保存当前任务的引用
     _main_task = asyncio.current_task()
 
-    from util.client.state import console
+    # 初始化所有组件 (OOP 重构第一步)
+    from util.client.app import CapsWriterClient
     from util.client.output import ResultProcessor
-    from util.client.startup import setup_client_components
-
-    logger.info("=" * 50)
-    logger.info("CapsWriter Offline Client 正在启动（麦克风模式）")
-    logger.info(f"版本: {__version__}")
-    logger.info(f"日志级别: {Config.log_level}")
-
-    # 初始化所有组件
-    _state = setup_client_components(BASE_DIR)
+    client = CapsWriterClient(BASE_DIR)
+    client._setup_env()
+    _state = client.state
 
     # 接收结果
     try:
@@ -141,17 +136,17 @@ async def main_file(files: List[Path]) -> None:
     # 初始化生命周期
     lifecycle.initialize(logger=logger, exit_on_signal=True)
 
-    from util.client.state import get_state, console
+    from util.client.app import CapsWriterClient
     from util.client.transcribe import FileTranscriber, SrtAdjuster
     from util.client.ui import TipsDisplay
     
+    client = CapsWriterClient(BASE_DIR)
+    client._setup_env()
+    state = client.state
+    
     logger.info("=" * 50)
     logger.info("CapsWriter Offline Client 正在启动（文件转录模式）")
-    logger.info(f"版本: {__version__}")
-    logger.info(f"日志级别: {Config.log_level}")
     logger.info(f"待处理文件: {[str(f) for f in files]}")
-    
-    state = get_state()
     TipsDisplay.show_file_tips()
     
     srt_adjuster = SrtAdjuster()
