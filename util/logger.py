@@ -3,8 +3,9 @@
 import os
 import logging
 from pathlib import Path
-from logging.handlers import RotatingFileHandler
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
+from rich.logging import RichHandler
 
 
 class Logger:
@@ -80,10 +81,13 @@ class Logger:
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
-        # 2. 控制台处理器（固定 WARNING 及以上）
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(console_log_level)
-        stream_handler.setFormatter(formatter)
+        # 2. 控制台处理器（固定 WARNING 及以上，使用 rich 渲染）
+        stream_handler = RichHandler(
+            level=console_log_level,
+            rich_tracebacks=True,
+            markup=True,
+            show_path=False
+        )
         logger.addHandler(stream_handler)
 
         # 缓存日志记录器
