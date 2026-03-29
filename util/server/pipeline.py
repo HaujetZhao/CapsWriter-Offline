@@ -14,7 +14,7 @@ import time
 
 from util.server.context import Context, console
 from util.server.schema import Task, Result
-from util.server.processor import TextFormatter
+from util.server.formatter import TextFormatter
 from util.server.audio import process_audio_task
 from . import logger
 from rich import inspect

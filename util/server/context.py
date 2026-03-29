@@ -57,6 +57,8 @@ class Context:
             result = Result(task_id=task_id, socket_id=socket_id, source=source)
             cls.sessions[task_id] = RecognitionSession(task_id=task_id, result=result)
         return cls.sessions[task_id]
+    
+    @classmethod
     def clear_sessions_by_socket_id(cls, socket_id: str) -> int:
         """清理指定 socket_id 关联的所有任务结果缓存"""
         tasks_to_remove = [

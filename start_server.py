@@ -14,5 +14,5 @@ import sys
 
 if __name__ == '__main__':
     freeze_support()
-    core_server.init()
+    core_server.main()
     sys.exit(0)
