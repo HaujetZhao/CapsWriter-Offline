@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 import sounddevice as sd
 
+from config_client import ClientConfig
 from util.client.state import console, get_state
 from . import logger
 from util.common.lifecycle import lifecycle
@@ -96,6 +97,40 @@ class AudioStreamManager:
         else:
             logger.debug("音频流已正常结束")
     
+    def _find_device(self) -> tuple[Optional[int], str, int]:
+        """
+        查找音频输入设备
+
+        Returns:
+            (device_id, device_name, channels)
+            device_id 为 None 表示使用默认设备，整数表示指定设备索引
+        """
+        configured = ClientConfig.audio_device
+
+        if configured:
+            devices = sd.query_devices()
+            for idx, dev in enumerate(devices):
+                if dev['max_input_channels'] > 0 and configured.lower() in dev['name'].lower():
+                    channels = min(2, dev['max_input_channels'])
+                    return idx, dev['name'], channels
+
+            available = [
+                f"  [{i}] {d['name']} (输入声道: {d['max_input_channels']})"
+                for i, d in enumerate(devices) if d['max_input_channels'] > 0
+            ]
+            console.print(
+                f"[bright_red]未找到匹配 '{configured}' 的音频设备，回退到默认设备[/bright_red]"
+            )
+            console.print("可用的输入设备：")
+            for line in available:
+                console.print(line)
+            console.print()
+            logger.warning(f"未找到匹配 '{configured}' 的音频设备，回退到默认设备")
+
+        device = sd.query_devices(kind='input')
+        channels = min(2, device['max_input_channels'])
+        return None, device.get('name', '未知设备'), channels
+
     def open(self) -> Optional[sd.InputStream]:
         """
         打开音频流
@@ -104,15 +139,15 @@ class AudioStreamManager:
             创建的音频输入流，如果失败返回 None
         """
         # 检测音频设备
+        device_id: Optional[int] = None
         try:
-            device = sd.query_devices(kind='input')
-            self._channels = min(2, device['max_input_channels'])
-            device_name = device.get('name', '未知设备')
+            device_id, device_name, self._channels = self._find_device()
+            label = '指定' if device_id is not None else '默认'
             console.print(
-                f'使用默认音频设备：[italic]{device_name}，声道数：{self._channels}',
+                f'使用{label}音频设备：[italic]{device_name}，声道数：{self._channels}',
                 end='\n\n'
             )
-            logger.info(f"找到音频设备: {device_name}, 声道数: {self._channels}")
+            logger.info(f"使用{label}音频设备: {device_name} (id={device_id}), 声道数: {self._channels}")
         except UnicodeDecodeError:
             console.print(
                 "由于编码问题，暂时无法获得麦克风设备名字",
@@ -131,7 +166,7 @@ class AudioStreamManager:
             stream = sd.InputStream(
                 samplerate=self.SAMPLE_RATE,
                 blocksize=int(self.BLOCK_DURATION * self.SAMPLE_RATE),
-                device=None,
+                device=device_id,
                 dtype="float32",
                 channels=self._channels,
                 callback=self._audio_callback,
