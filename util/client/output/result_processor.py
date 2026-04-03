@@ -23,6 +23,7 @@ from util.tools.window_detector import get_active_window_info
 from . import logger
 from util.tools.lifecycle import lifecycle
 from util.client.state import get_state
+from util.client.llm.llm_process_text import llm_process_text
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
@@ -310,7 +311,6 @@ class ResultProcessor:
         # LLM 处理和输出
         llm_result = None
         if Config.llm_enabled:
-            from util.client.llm.llm_process_text import llm_process_text
             llm_result = await llm_process_text(
                 text,
                 paste=paste,

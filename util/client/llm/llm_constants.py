@@ -54,7 +54,8 @@ class APIConfig:
 
     # 默认 API URL
     DEFAULT_API_URLS = {
-        'ollama': 'http://localhost:11434',
+        'ollama': 'http://127.0.0.1:11434',
+        'lmstudio': 'http://127.0.0.1:1234/v1',
         'openai': 'https://api.openai.com/v1',
         'deepseek': 'https://api.deepseek.com/v1',
         'moonshot': 'https://api.moonshot.cn/v1',
@@ -66,6 +67,7 @@ class APIConfig:
     # 默认 API Keys
     DEFAULT_API_KEYS = {
         'ollama': 'ollama',
+        'lmstudio': 'lmstudio',
         'openai': '',
         'deepseek': '',
         'moonshot': '',
@@ -78,6 +80,7 @@ class APIConfig:
     # 超过10秒可以认为网络有问题
     DEFAULT_TIMEOUTS = {
         'ollama': 20.0,       # 本地模型
+        'lmstudio': 20.0,     # LM Studio 本地模型
         'openai': 10.0,       # OpenAI API
         'deepseek': 10.0,     # DeepSeek API
         'moonshot': 10.0,     # Moonshot API
