@@ -19,7 +19,7 @@ from . import logger
 from config_client import ClientConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
 from util.client.cleanup import cleanup_client_resources, request_exit_from_tray
-from .manager import ResourceManager, HardwareManager
+from .manager import ResourceManager, HardwareManager, TrayManager
 
 
 class CapsWriterClient:
@@ -43,76 +43,11 @@ class CapsWriterClient:
         # 3. 初始化各管理器 (职责下放)
         self.resource_manager = ResourceManager(self.state)
         self.hardware_manager = HardwareManager(self.state)
+        self.tray_manager = TrayManager(self.state, self.base_dir)
 
     def _setup_logging(self):
         """重新配置主日志级别"""
         setup_logger('client', level=self.log_level)
-
-    def _setup_tray(self):
-        """
-        初始化系统托盘图标
-        """
-        if not Config.enable_tray:
-            return
-
-        try:
-            from util.client.ui import enable_min_to_tray, toast
-        except ImportError as e:
-            logger.warning(f"托盘模块导入失败，跳过托盘功能: {e}")
-            return
-
-        def restart_audio():
-            if self.state.stream_manager:
-                self.state.stream_manager.reopen()
-                logger.info("用户请求重启音频")
-
-        def clear_memory():
-            from util.client.llm.llm_handler import clear_llm_history
-            clear_llm_history()
-            toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
-
-        def add_hotword():
-            try:
-                from util.client.ui import on_add_hotword
-                on_add_hotword()
-            except ImportError as e:
-                logger.warning(f"无法导入热词菜单处理器: {e}")
-
-        def add_rectify():
-            try:
-                from util.client.ui import on_add_rectify_record
-                on_add_rectify_record()
-            except ImportError as e:
-                logger.warning(f"无法导入纠错菜单处理器: {e}")
-
-        def add_context():
-            try:
-                from util.client.ui import on_edit_context
-                on_edit_context()
-            except ImportError as e:
-                logger.warning(f"无法导入上下文菜单处理器: {e}")
-
-        def copy_last_result():
-            text = self.state.last_output_text
-            if text:
-                from util.client.llm.llm_clipboard import copy_to_clipboard
-                copy_to_clipboard(text)
-
-        icon_path = os.path.join(self.base_dir, 'assets', 'icon.ico')
-        enable_min_to_tray(
-            'CapsWriter Client',
-            icon_path,
-            exit_callback=request_exit_from_tray,
-            more_options=[
-                ('📋 复制结果', copy_last_result),
-                ('📝 上下文', add_context),
-                ('✨ 添加热词', add_hotword),
-                ('🛠️ 添加纠错', add_rectify),
-                ('🧹 清除记忆', clear_memory),
-                ('🔄 重启音频', restart_audio),
-            ]
-        )
-        logger.info("托盘图标已启用")
 
     def _setup_common(self):
         """
@@ -132,7 +67,7 @@ class CapsWriterClient:
         初始化麦克风模式特有资源 (音频硬件、快捷键、UI 托盘)
         """
         # 1. 托盘
-        self._setup_tray()
+        self.tray_manager.setup_tray()
 
         # 2. UI 提示
         from util.client.ui import TipsDisplay
