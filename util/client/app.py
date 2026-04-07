@@ -19,6 +19,7 @@ from . import logger
 from config_client import ClientConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
 from util.client.cleanup import cleanup_client_resources, request_exit_from_tray
+from .manager import ResourceManager
 
 
 class CapsWriterClient:
@@ -38,6 +39,9 @@ class CapsWriterClient:
         self.version = __version__
         self.log_level = Config.log_level
         self._main_task = None
+
+        # 3. 初始化各管理器 (职责下放)
+        self.resource_manager = ResourceManager(self.state)
 
     def _setup_logging(self):
         """重新配置主日志级别"""
@@ -119,28 +123,8 @@ class CapsWriterClient:
         # 2. 日志
         self._setup_logging()
 
-        # 3. 热词管理
-        logger.info("正在加载热词...")
-        from util.client.hotword import get_hotword_manager
-        hotword_files = {
-            'hot': Path('hot.txt'),
-            'rule': Path('hot-rule.txt'),
-            'rectify': Path('hot-rectify.txt'),
-        }
-        hotword_manager = get_hotword_manager(
-            hotword_files=hotword_files,
-            threshold=Config.hot_thresh,
-            similar_threshold=Config.hot_similar,
-            rectify_threshold=Config.hot_rectify
-        )
-        hotword_manager.load_all()
-        hotword_manager.start_file_watcher()
-
-        # 4. LLM 系统
-        from util.client.llm.llm_handler import init_llm_system
-        logger.info("正在初始化 LLM 系统...")
-        init_llm_system()
-        logger.info("LLM 系统初始化完成")
+        # 3. 委派公共资源管理 (热词、LLM)
+        self.resource_manager.initialize()
 
     def _setup_mic_resources(self):
         """
