@@ -19,7 +19,7 @@ from . import logger
 from config_client import ClientConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
 from util.client.cleanup import cleanup_client_resources, request_exit_from_tray
-from .manager import ResourceManager
+from .manager import ResourceManager, HardwareManager
 
 
 class CapsWriterClient:
@@ -42,6 +42,7 @@ class CapsWriterClient:
 
         # 3. 初始化各管理器 (职责下放)
         self.resource_manager = ResourceManager(self.state)
+        self.hardware_manager = HardwareManager(self.state)
 
     def _setup_logging(self):
         """重新配置主日志级别"""
@@ -137,36 +138,8 @@ class CapsWriterClient:
         from util.client.ui import TipsDisplay
         TipsDisplay.show_mic_tips()
 
-        # 3. 音频流管理
-        from util.client.audio import AudioStreamManager
-        logger.info("正在打开音频流...")
-        stream_manager = AudioStreamManager(self.state)
-        self.state.stream_manager = stream_manager
-        stream_manager.open()
-
-        # 4. 快捷键管理器
-        from util.client.shortcut.shortcut_config import Shortcut
-        from util.client.shortcut.shortcut_manager import ShortcutManager
-        shortcuts = [Shortcut(**sc) for sc in Config.shortcuts]
-        logger.info(f"正在初始化快捷键管理器，共 {len(shortcuts)} 个快捷键")
-
-        shortcut_manager = ShortcutManager(self.state, shortcuts)
-        self.state.shortcut_manager = shortcut_manager
-        shortcut_manager.start()
-        self.state.shortcut_handler = shortcut_manager
-
-        # 5. UDP 控制 (可选)
-        if Config.udp_control:
-            from util.client.udp.udp_control import UDPController
-            logger.info(f"正在启用 UDP 控制，端口: {Config.udp_control_port}")
-            udp_controller = UDPController(shortcut_manager)
-            self.state.udp_controller = udp_controller
-            udp_controller.start()
-
-        # 6. Windows 周期性内存清理 (仅针对长期运行的 Mic 模式)
-        if system() == 'Windows':
-            from util.tools.empty_working_set import empty_current_working_set
-            empty_current_working_set()
+        # 3. 委派硬件资源管理 (音频、快捷键、UDP)
+        self.hardware_manager.setup_mic_resources()
 
     def _check_macos_permissions(self):
         """检查 MacOS 权限设置 (类方法移入)"""
