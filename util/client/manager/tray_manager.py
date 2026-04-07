@@ -1,10 +1,9 @@
 # coding: utf-8
 import os
-import logging
+from . import logger
 from config_client import ClientConfig as Config
-from util.client.cleanup import request_exit_from_tray
+from ..cleanup import request_exit_from_tray
 
-logger = logging.getLogger('client')
 
 class TrayManager:
     """
@@ -20,7 +19,7 @@ class TrayManager:
             return
 
         try:
-            from util.client.ui import enable_min_to_tray
+            from ..ui import enable_min_to_tray
         except ImportError as e:
             logger.warning(f"托盘模块导入失败，跳过托盘功能: {e}")
             return
@@ -52,15 +51,15 @@ class TrayManager:
 
     def _clear_memory(self):
         """清除 LLM 对话历史回调"""
-        from util.client.llm.llm_handler import clear_llm_history
-        from util.client.ui import toast
+        from ..llm.llm_handler import clear_llm_history
+        from ..ui import toast
         clear_llm_history()
         toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
 
     def _add_hotword(self):
         """打开添加热词界面回调"""
         try:
-            from util.client.ui import on_add_hotword
+            from ..ui import on_add_hotword
             on_add_hotword()
         except ImportError as e:
             logger.warning(f"无法导入热词菜单处理器: {e}")
@@ -68,7 +67,7 @@ class TrayManager:
     def _add_rectify(self):
         """打开添加纠错界面回调"""
         try:
-            from util.client.ui import on_add_rectify_record
+            from ..ui import on_add_rectify_record
             on_add_rectify_record()
         except ImportError as e:
             logger.warning(f"无法导入纠错菜单处理器: {e}")
@@ -76,7 +75,7 @@ class TrayManager:
     def _add_context(self):
         """打开编辑上下文界面回调"""
         try:
-            from util.client.ui import on_edit_context
+            from ..ui import on_edit_context
             on_edit_context()
         except ImportError as e:
             logger.warning(f"无法导入上下文菜单处理器: {e}")
@@ -85,5 +84,5 @@ class TrayManager:
         """复制最后一次识别结果到剪贴板回调"""
         text = self.state.last_output_text
         if text:
-            from util.client.llm.llm_clipboard import copy_to_clipboard
+            from ..llm.llm_clipboard import copy_to_clipboard
             copy_to_clipboard(text)

@@ -1,11 +1,10 @@
 # coding: utf-8
-import logging
+from . import logger
 from pathlib import Path
 from config_client import ClientConfig as Config
-from util.client.hotword import get_hotword_manager
-from util.client.llm.llm_handler import init_llm_system
+from ..hotword import get_hotword_manager
+from ..llm.llm_handler import init_llm_system
 
-logger = logging.getLogger('client')
 
 class ResourceManager:
     """

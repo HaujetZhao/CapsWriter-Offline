@@ -12,12 +12,12 @@ import asyncio
 import logging
 from pathlib import Path
 
-from util.client.state import get_state
+from .state import get_state
 from util.logger import setup_logger
 from . import logger
 from config_client import ClientConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
-from util.client.cleanup import cleanup_client_resources, request_exit_from_tray
+from .cleanup import cleanup_client_resources, request_exit_from_tray
 from .manager import (
     ResourceManager, HardwareManager, TrayManager,
     MicRunner, FileRunner

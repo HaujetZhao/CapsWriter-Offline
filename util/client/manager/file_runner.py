@@ -1,9 +1,8 @@
 # coding: utf-8
-import logging
+from . import logger
 from pathlib import Path
 from util.tools.lifecycle import lifecycle
 
-logger = logging.getLogger('client')
 
 class FileRunner:
     """
@@ -17,8 +16,8 @@ class FileRunner:
 
     async def run(self):
         """文件转录模式主循环 (Coroutine)"""
-        from util.client.transcribe import FileTranscriber, SrtAdjuster
-        from util.client.ui import TipsDisplay
+        from ..transcribe import FileTranscriber, SrtAdjuster
+        from ..ui import TipsDisplay
         
         logger.info("=" * 50)
         logger.info("CapsWriter Offline Client 正在启动（文件转录模式）")

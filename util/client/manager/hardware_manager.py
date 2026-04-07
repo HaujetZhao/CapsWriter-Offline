@@ -1,12 +1,11 @@
 # coding: utf-8
-import logging
+from . import logger
 from platform import system
 from config_client import ClientConfig as Config
-from util.client.audio import AudioStreamManager
-from util.client.shortcut.shortcut_config import Shortcut
-from util.client.shortcut.shortcut_manager import ShortcutManager
+from ..audio import AudioStreamManager
+from ..shortcut.shortcut_config import Shortcut
+from ..shortcut.shortcut_manager import ShortcutManager
 
-logger = logging.getLogger('client')
 
 class HardwareManager:
     """
@@ -52,7 +51,7 @@ class HardwareManager:
     def _setup_udp_control(self):
         """配置并开启 UDP 控制器"""
         if Config.udp_control:
-            from util.client.udp.udp_control import UDPController
+            from ..udp.udp_control import UDPController
             logger.info(f"正在启用 UDP 控制，端口: {Config.udp_control_port}")
             self.udp_controller = UDPController(self.shortcut_manager)
             self.state.udp_controller = self.udp_controller
