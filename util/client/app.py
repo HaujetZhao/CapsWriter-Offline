@@ -11,7 +11,6 @@ import sys
 import asyncio
 import logging
 from pathlib import Path
-from platform import system
 
 from util.client.state import get_state
 from util.logger import setup_logger
@@ -64,25 +63,12 @@ class CapsWriterClient:
         # 3. 委派公共资源管理 (热词、LLM)
         self.resource_manager.initialize()
 
-    def _check_macos_permissions(self):
-        """检查 MacOS 权限设置 (类方法移入)"""
-        if system() == 'Darwin' and not sys.argv[1:]:
-            if os.getuid() != 0:
-                print('在 MacOS 上需要以管理员启动客户端才能监听键盘活动，请 sudo 启动')
-                input('按回车退出')
-                sys.exit(1)
-            else:
-                os.umask(0o000)
-
     async def start(self):
         """
         启动客户端 (唯一入口)
         
         自动根据命令行参数识别模式。
         """
-        # 0. MacOS 权限检查
-        self._check_macos_permissions()
-        
         # 1. 注册全局清理函数
         lifecycle.register_on_shutdown(cleanup_client_resources)
         
