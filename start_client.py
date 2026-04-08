@@ -1,10 +1,9 @@
 # coding: utf-8
-
-"""
-这个文件仅仅是为了 PyInstaller 打包用
-"""
-
-from core_client import run
+import os
+import asyncio
+from util.client import CapsWriterClient
 
 if __name__ == "__main__":
-    run()
+    # 直接实例化并启动门面类即可
+    # 环境初始化职责已下放至 CapsWriterClient
+    asyncio.run(CapsWriterClient().start())

@@ -12,6 +12,7 @@ import asyncio
 import logging
 from pathlib import Path
 
+import colorama
 from .state import get_state
 from util.logger import setup_logger
 from . import logger
@@ -31,11 +32,10 @@ class CapsWriterClient:
     
     管理的外部接口简洁：start()。
     """
-    def __init__(self, base_dir: str = None):
-        # 1. 确定工作目录
-        self.base_dir = base_dir or os.getcwd()
-        if not os.path.exists(self.base_dir):
-            self.base_dir = os.path.dirname(os.path.abspath(__file__))
+    def __init__(self):
+        # 1. 确定并切换工作目录
+        self.base_dir = Path(__file__).parents[2]
+        os.chdir(self.base_dir)
             
         # 2. 初始化核心状态单例 (基础设施层)
         self.state = get_state()
@@ -97,6 +97,9 @@ class CapsWriterClient:
         
         自动根据命令行参数识别模式。
         """
+        # 0. 终端颜色支持
+        colorama.init()
+
         # 1. 注册全局清理函数 (使用实例方法)
         lifecycle.register_on_shutdown(self.teardown)
         
