@@ -9,8 +9,9 @@ CapsWriter Offline 服务端主程序门面类 (Facade)
 
 import os
 import asyncio
-from util.logger import setup_logger
 import logging
+from pathlib import Path
+from util.logger import setup_logger
 from config_server import ServerConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
 from util.server.cleanup import (
@@ -29,7 +30,11 @@ class CapsWriterServer:
     管理的外部接口极其简洁：start()。
     """
     def __init__(self):
-        # 1. 初始化核心状态管理类 (基础设施层)
+        # 1. 确定并切换工作目录
+        self.base_dir = Path(__file__).parents[2]
+        os.chdir(self.base_dir)
+
+        # 2. 初始化核心状态管理类 (基础设施层)
         self.process_manager = ProcessManager()
         self.socket_manager = SocketManager()
         
