@@ -10,7 +10,7 @@ import os
 import queue
 import errno
 from multiprocessing import Process, Manager
-from util.server.context import Context, console
+from util.server.context import get_context, console
 from util.server.worker import start_worker
 from util.server.check_model import check_model
 from util.tools.lifecycle import lifecycle
@@ -38,7 +38,8 @@ class ProcessManager:
 
         # 2. 初始化共享资源
         # 使用 Manager 管理共享列表，用于追踪活动连接
-        Context.sockets_id = Manager().list()
+        context = get_context()
+        context.sockets_id = Manager().list()
         
         # 获取标准输入文件描述符，用于 Windows 下的信号传递补丁
         stdin_fn = sys.stdin.fileno()
@@ -46,16 +47,16 @@ class ProcessManager:
         # 3. 创建并启动进程
         self._process = Process(
             target=start_worker,
-            args=(Context.queue_in,
-                  Context.queue_out,
-                  Context.sockets_id, 
+            args=(context.queue_in,
+                  context.queue_out,
+                  context.sockets_id, 
                   stdin_fn),
             daemon=False
         )
         self._process.start()
         
         # 存入全局上下文便于其他模块引用（兼容旧代码）
-        Context.recognize_process = self._process
+        context.recognize_process = self._process
         logger.info(f"识别子进程已拉起 (PID: {self._process.pid})")
 
         # 4. 等待模型加载完成 (轮询方式)
@@ -70,7 +71,7 @@ class ProcessManager:
         while not lifecycle.is_shutting_down:
             try:
                 # 阻塞最多 100ms
-                status = Context.queue_out.get(timeout=0.1)
+                status = get_context().queue_out.get(timeout=0.1)
                 if status is True:
                     # 收到 True 说明模型加载成功
                     break
@@ -113,7 +114,7 @@ class ProcessManager:
             logger.info(f"正在终止识别子进程 (PID: {self._process.pid})...")
             # 发送 None 任务通知优雅退出 (作为兜底)
             try:
-                Context.queue_in.put(None)
+                get_context().queue_in.put(None)
             except:
                 pass
             

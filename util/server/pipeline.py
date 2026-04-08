@@ -9,7 +9,7 @@
 
 import re
 import time
-from util.server.context import Context, console
+from util.server.context import get_context, console
 from util.server.schema import Task, Result
 from util.server.formatter import TextFormatter
 from util.server.audio import process_audio_task
@@ -58,9 +58,9 @@ class TaskPipeline:
         处理单个音频任务片段并返回识别结果
         """
         try:
-            # 1. 会话与上下文准备
-            is_first_segment = task.task_id not in Context.sessions
-            session = Context.get_session(task.task_id, task.socket_id, task.source)
+            context = get_context()
+            is_first_segment = task.task_id not in context.sessions
+            session = context.get_session(task.task_id, task.socket_id, task.source)
             result = session.result
             
             # 2. 预处理音频并获取采样点
@@ -126,7 +126,8 @@ class TaskPipeline:
                     t_per_char = result.duration / len(chars)
                     result.tokens, result.timestamps = chars, [i * t_per_char for i in range(len(chars))]
             
-            Context.sessions.pop(task.task_id, None)
+            context = get_context()
+            context.sessions.pop(task.task_id, None)
             result.is_final = True
             
             # 打印统计
@@ -143,7 +144,7 @@ class TaskPipeline:
 
 def clear_results_by_socket_id(socket_id: str) -> None:
     """清理指定 socket_id 关联的所有任务结果缓存"""
-    count = Context.clear_sessions_by_socket_id(socket_id)
+    count = get_context().clear_sessions_by_socket_id(socket_id)
     if count > 0:
         logger.debug(f"已清理断开连接相关的缓存: socket_id={socket_id}, 任务数={count}")
 

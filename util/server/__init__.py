@@ -14,14 +14,14 @@
 - ws_send: WebSocket 发送处理
 """
 
-from util.server.context import Context, console
+from util.server.context import get_context, console
 from util import get_logger
 logger = get_logger('server')
 
 from util.server.schema import Task, Result
 
 __all__ = [
-    'Context',
+    'get_context',
     'console',
     'Task',
     'Result',

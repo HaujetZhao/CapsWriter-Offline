@@ -14,12 +14,10 @@ from pathlib import Path
 from util.logger import setup_logger
 from config_server import ServerConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
-from util.server.cleanup import (
-    setup_tray, print_banner, 
-    cleanup_server_resources, console
-)
+from util.server.context import console
 from .manager.process_manager import ProcessManager
 from .manager.server_manager import SocketManager
+from .manager.tray_manager import TrayManager
 from . import logger
 
 
@@ -37,6 +35,7 @@ class CapsWriterServer:
         # 2. 初始化核心状态管理类 (基础设施层)
         self.process_manager = ProcessManager()
         self.socket_manager = SocketManager()
+        self.tray_manager = TrayManager(str(self.base_dir))
         
         # 2. 基本配置
         self.version = __version__
@@ -63,14 +62,43 @@ class CapsWriterServer:
         lifecycle.initialize(logger=logger, exit_on_signal=False)
         
         # 注册全局清理回调
-        lifecycle.register_on_shutdown(cleanup_server_resources)
+        lifecycle.register_on_shutdown(self.teardown)
         
         # 注册托盘与 Banner
-        setup_tray()
-        print_banner()
+        self.tray_manager.setup_tray()
+        self._print_banner()
         
         logger.info("=" * 50)
         logger.info(f"CapsWriter Offline Server (v{self.version}) 准备就绪")
+
+    def _print_banner(self):
+        """打印启动信息"""
+        console.line(2)
+        console.rule('[bold #d55252]CapsWriter Offline Server'); console.line()
+        console.print(f'版本：[bold green]{self.version}', end='\n\n')
+        console.print(f'项目地址：[cyan underline]https://github.com/HaujetZhao/CapsWriter-Offline', end='\n\n')
+        console.print(f'当前基文件夹：[cyan underline]{self.base_dir}', end='\n\n')
+        console.print(f'绑定的服务地址：[cyan underline]{Config.addr}:{Config.port}', end='\n\n')
+
+    def teardown(self):
+        """
+        清理服务端资源
+        """
+        logger.info("=" * 50)
+        logger.info("开始清理服务端资源...")
+
+        # 1. 终止识别子进程
+        self.process_manager.stop()
+
+        # 2. 停止托盘图标
+        try:
+            from util.ui.tray import stop_tray
+            stop_tray()
+        except:
+            pass
+
+        logger.info("服务端资源清理完成")
+        console.print('[green4]再见！')
 
     def start(self):
         """

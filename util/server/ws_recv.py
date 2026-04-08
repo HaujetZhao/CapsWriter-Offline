@@ -11,7 +11,7 @@ from base64 import b64decode
 
 import websockets
 
-from util.server.context import console, Context
+from util.server.context import console, get_context
 from util.server.schema import Task
 from util.protocol import AudioMessage
 from util.constants import AudioFormat
@@ -57,7 +57,7 @@ async def message_handler(websocket, msg: AudioMessage, cache: AudioCache) -> No
     
     根据消息中的分段参数，将音频数据分段后提交到识别队列。
     """
-    queue_in = Context.queue_in
+    queue_in = get_context().queue_in
 
     global status_mic
     is_start = not bool(cache.chunks)
@@ -148,8 +148,9 @@ async def ws_recv(websocket) -> None:
     global status_mic
 
     # 登记 socket 到连接池
-    sockets = Context.sockets
-    sockets_id = Context.sockets_id
+    context = get_context()
+    sockets = context.sockets
+    sockets_id = context.sockets_id
     socket_id = str(websocket.id)
     sockets[socket_id] = websocket
     sockets_id.append(socket_id)
