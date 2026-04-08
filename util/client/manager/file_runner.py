@@ -9,9 +9,10 @@ class FileRunner:
     """
     文件模式运行器：负责文件转录模式下的逻辑，包括音视频文件的 ASR 转录和字幕文件的时间轴调整。
     """
-    def __init__(self, state, ws_manager, files: list[Path]):
+    def __init__(self, state, ws_manager, resource_manager, files: list[Path]):
         self.state = state
         self.ws_manager = ws_manager
+        self.resource_manager = resource_manager
         self.files = files
 
     async def run(self):
@@ -19,13 +20,12 @@ class FileRunner:
         from ..transcribe import FileTranscriber, SrtAdjuster
         from ..ui import TipsDisplay
         
-        logger.info("=" * 50)
-        logger.info("CapsWriter Offline Client 正在启动（文件转录模式）")
-        logger.info(f"版本: {__version__}")
-        logger.info(f"日志级别: {Config.log_level}")
-        logger.info(f"待处理文件: {[str(f) for f in self.files]}")
-        
         TipsDisplay.show_file_tips()
+        
+        # 委派公共资源管理 (热词、LLM)
+        self.resource_manager.initialize()
+        
+        logger.info(f"待处理文件: {[str(f) for f in self.files]}")
         
         srt_adjuster = SrtAdjuster()
         

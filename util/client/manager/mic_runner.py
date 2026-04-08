@@ -9,11 +9,12 @@ class MicRunner:
     """
     麦克风模式运行器：负责麦克风模式下的资源初始化、识别处理器循环及生命周期监控。
     """
-    def __init__(self, state, ws_manager, hardware_manager, tray_manager):
+    def __init__(self, state, ws_manager, hardware_manager, tray_manager, resource_manager):
         self.state = state
         self.ws_manager = ws_manager
         self.hardware_manager = hardware_manager
         self.tray_manager = tray_manager
+        self.resource_manager = resource_manager
         self.processor = None
 
     def _setup_resources(self):
@@ -24,6 +25,9 @@ class MicRunner:
         # 2. UI 提示
         from ..ui import TipsDisplay
         TipsDisplay.show_mic_tips()
+
+        # 3. 委派公共资源管理 (热词、LLM)
+        self.resource_manager.initialize()
 
         # 3. 委派硬件资源管理 (音频、快捷键、UDP)
         self.hardware_manager.setup_mic_resources()

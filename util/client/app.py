@@ -14,7 +14,6 @@ from pathlib import Path
 
 import colorama
 from .state import get_state
-from util.logger import setup_logger
 from . import logger
 from config_client import ClientConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
@@ -46,23 +45,6 @@ class CapsWriterClient:
         self.tray_manager = TrayManager(self.state, self.base_dir)
         self.ws_manager = WebSocketManager(self.state)
 
-    def _setup_logging(self):
-        """重新配置主日志级别"""
-        setup_logger('client', level=Config.log_level)
-
-    def _setup_common(self):
-        """
-        初始化客户端基础环境 (双模共有)
-        """
-        # 1. 基础状态启动
-        self.state.initialize()
-        
-        # 2. 日志
-        self._setup_logging()
-
-        # 3. 委派公共资源管理 (热词、LLM)
-        self.resource_manager.initialize()
-
     def teardown(self):
         """
         统一释放所有资源（清理顺序：硬件 -> 托盘 -> WebSocket -> State）
@@ -93,18 +75,19 @@ class CapsWriterClient:
 
     async def _run_async(self):
         """内部异步运行环境"""
-        # 3. 基础环境初始化 (双模共有)
-        self._setup_common()
-        
+        self.state.initialize()
+
         files = [Path(f) for f in sys.argv[1:] if os.path.exists(f)]
+
+
 
         if files:
             # 文件转录模式
-            runner = FileRunner(self.state, self.ws_manager, files)
+            runner = FileRunner(self.state, self.ws_manager, self.resource_manager, files)
         else:
             # 麦克风实时模式
             runner = MicRunner(
-                self.state, self.ws_manager, self.hardware_manager, self.tray_manager
+                self.state, self.ws_manager, self.hardware_manager, self.tray_manager, self.resource_manager
             )
         
         # 运行主循环
@@ -116,7 +99,7 @@ class CapsWriterClient:
         
         自动根据命令行参数识别模式。内部管理异步循环。
         """
-        # 0. 终端颜色支持
+        # 0. 终端支持代码
         colorama.init()
 
         # 1. 注册全局清理函数 (使用实例方法)

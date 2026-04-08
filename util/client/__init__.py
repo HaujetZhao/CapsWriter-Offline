@@ -16,7 +16,11 @@
 - ui/: 用户界面
 """
 
-from util import get_logger
+from config_client import ClientConfig as Config
+from util.logger import get_logger, setup_logger
+
+# 直接在这里配置主日志级别
+setup_logger('client', level=Config.log_level)
 logger = get_logger('client')
 
 # 门面类
