@@ -2,19 +2,18 @@
 import asyncio
 from . import logger
 from util.tools.lifecycle import lifecycle
+from config_client import ClientConfig as Config, __version__
 
 
 class MicRunner:
     """
     麦克风模式运行器：负责麦克风模式下的资源初始化、识别处理器循环及生命周期监控。
     """
-    def __init__(self, state, ws_manager, hardware_manager, tray_manager, version, log_level):
+    def __init__(self, state, ws_manager, hardware_manager, tray_manager):
         self.state = state
         self.ws_manager = ws_manager
         self.hardware_manager = hardware_manager
         self.tray_manager = tray_manager
-        self.version = version
-        self.log_level = log_level
         self.processor = None
 
     def _setup_resources(self):
@@ -38,8 +37,8 @@ class MicRunner:
         
         logger.info("=" * 50)
         logger.info("CapsWriter Offline Client 正在启动（麦克风模式）")
-        logger.info(f"版本: {self.version}")
-        logger.info(f"日志级别: {self.log_level}")
+        logger.info(f"版本: {__version__}")
+        logger.info(f"日志级别: {Config.log_level}")
 
         try:
             self.processor = ResultProcessor(self.state, self.ws_manager)

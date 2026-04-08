@@ -39,7 +39,7 @@ colorama.init()
 logger = setup_logger('client', level=Config.log_level)
 
 def run():
-    from util.client.app import CapsWriterClient
+    from util.client import CapsWriterClient
     
     # 实例化并启动门面类
     client = CapsWriterClient(BASE_DIR)

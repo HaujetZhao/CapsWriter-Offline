@@ -39,8 +39,6 @@ class CapsWriterClient:
             
         # 2. 初始化核心状态单例 (基础设施层)
         self.state = get_state()
-        self.version = __version__
-        self.log_level = Config.log_level
 
         # 3. 初始化各管理器 (职责下放)
         self.resource_manager = ResourceManager(self.state)
@@ -50,7 +48,7 @@ class CapsWriterClient:
 
     def _setup_logging(self):
         """重新配置主日志级别"""
-        setup_logger('client', level=self.log_level)
+        setup_logger('client', level=Config.log_level)
 
     def _setup_common(self):
         """
@@ -114,12 +112,11 @@ class CapsWriterClient:
         try:
             if files:
                 # 文件转录模式
-                runner = FileRunner(self.state, self.ws_manager, files, self.version, self.log_level)
+                runner = FileRunner(self.state, self.ws_manager, files)
             else:
                 # 麦克风实时模式
                 runner = MicRunner(
-                    self.state, self.ws_manager, self.hardware_manager, self.tray_manager,
-                    self.version, self.log_level
+                    self.state, self.ws_manager, self.hardware_manager, self.tray_manager
                 )
             
             # 运行主循环

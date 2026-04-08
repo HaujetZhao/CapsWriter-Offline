@@ -1,19 +1,18 @@
 # coding: utf-8
-from . import logger
 from pathlib import Path
+from . import logger
 from util.tools.lifecycle import lifecycle
+from config_client import ClientConfig as Config, __version__
 
 
 class FileRunner:
     """
     文件模式运行器：负责文件转录模式下的逻辑，包括音视频文件的 ASR 转录和字幕文件的时间轴调整。
     """
-    def __init__(self, state, ws_manager, files: list[Path], version, log_level):
+    def __init__(self, state, ws_manager, files: list[Path]):
         self.state = state
         self.ws_manager = ws_manager
         self.files = files
-        self.version = version
-        self.log_level = log_level
 
     async def run(self):
         """文件转录模式主循环 (Coroutine)"""
@@ -22,8 +21,8 @@ class FileRunner:
         
         logger.info("=" * 50)
         logger.info("CapsWriter Offline Client 正在启动（文件转录模式）")
-        logger.info(f"版本: {self.version}")
-        logger.info(f"日志级别: {self.log_level}")
+        logger.info(f"版本: {__version__}")
+        logger.info(f"日志级别: {Config.log_level}")
         logger.info(f"待处理文件: {[str(f) for f in self.files]}")
         
         TipsDisplay.show_file_tips()
