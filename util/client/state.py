@@ -59,13 +59,6 @@ class ClientState:
     websocket: Optional['WebSocketClientProtocol'] = None
     stream: Optional['sd.InputStream'] = None
 
-    # 组件引用 (用于清理)
-    shortcut_handler: Any = None
-    stream_manager: Any = None
-    processor: Any = None
-    mouse_handler: Any = None
-    udp_controller: Any = None
-
     recording: bool = False
     recording_start_time: float = 0.0
     audio_files: Dict[str, Path] = field(default_factory=dict)

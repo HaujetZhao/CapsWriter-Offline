@@ -51,15 +51,16 @@ class ResultProcessor:
     - 保存录音和日记
     """
     
-    def __init__(self, state: 'ClientState'):
+    def __init__(self, state: 'ClientState', ws_manager: 'WebSocketManager'):
         """
         初始化结果处理器
 
         Args:
             state: 客户端状态实例
+            ws_manager: WebSocket 管理器实例
         """
         self.state = state
-        self._ws_manager = WebSocketManager(state)
+        self._ws_manager = ws_manager
         self._hotword_manager = get_hotword_manager()
         self._text_output = TextOutput()
         self._exit_event = asyncio.Event()

@@ -8,8 +8,9 @@ class MicRunner:
     """
     麦克风模式运行器：负责麦克风模式下的资源初始化、识别处理器循环及生命周期监控。
     """
-    def __init__(self, state, hardware_manager, tray_manager, version, log_level):
+    def __init__(self, state, ws_manager, hardware_manager, tray_manager, version, log_level):
         self.state = state
+        self.ws_manager = ws_manager
         self.hardware_manager = hardware_manager
         self.tray_manager = tray_manager
         self.version = version
@@ -41,7 +42,7 @@ class MicRunner:
         logger.info(f"日志级别: {self.log_level}")
 
         try:
-            self.processor = ResultProcessor(self.state)
+            self.processor = ResultProcessor(self.state, self.ws_manager)
 
             # 主循环：只要没收到退出信号，就一直运行
             while not lifecycle.is_shutting_down:

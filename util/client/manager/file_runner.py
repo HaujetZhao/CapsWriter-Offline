@@ -8,8 +8,9 @@ class FileRunner:
     """
     文件模式运行器：负责文件转录模式下的逻辑，包括音视频文件的 ASR 转录和字幕文件的时间轴调整。
     """
-    def __init__(self, state, files: list[Path], version, log_level):
+    def __init__(self, state, ws_manager, files: list[Path], version, log_level):
         self.state = state
+        self.ws_manager = ws_manager
         self.files = files
         self.version = version
         self.log_level = log_level
@@ -48,10 +49,8 @@ class FileRunner:
                 
                 logger.info(f"文件处理完成: {file}")
             
-            # 关闭残结
-            if self.state.websocket:
-                await self.state.websocket.close()
-                self.state.websocket = None
+            # 关闭连接
+            await self.ws_manager.close()
             
             logger.info("所有文件已处理完成")
             

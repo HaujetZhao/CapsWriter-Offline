@@ -26,7 +26,7 @@ import typer
 from config_client import ClientConfig as Config, __version__
 from util.logger import setup_logger
 from util.tools.lifecycle import lifecycle
-from util.client.cleanup import cleanup_client_resources, request_exit_from_tray
+
 
 # 确保根目录位置正确，用相对路径加载模型
 BASE_DIR = os.path.dirname(__file__)

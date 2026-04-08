@@ -169,3 +169,23 @@ class WebSocketManager:
                 logger.debug(f"关闭连接时发生错误: {e}")
             finally:
                 self.state.websocket = None
+
+    def close_sync(self) -> None:
+        """
+        从同步上下文（如 teardown）关闭连接
+        
+        使用 run_coroutine_threadsafe 安全地将关闭操作调度到已有的事件循环。
+        如果事件循环未运行，则直接置空连接引用。
+        """
+        if self.state.websocket is None:
+            return
+
+        loop = self.state.loop
+        if loop and loop.is_running():
+            import asyncio
+            asyncio.run_coroutine_threadsafe(self.close(), loop)
+            logger.debug("已调度 WebSocket 关闭（threadsafe）")
+        else:
+            # 事件循环已停止，直接清空引用
+            self.state.websocket = None
+            logger.debug("事件循环已停，直接置空 WebSocket 引用")

@@ -17,7 +17,8 @@ from util.logger import setup_logger
 from . import logger
 from config_client import ClientConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
-from .cleanup import cleanup_client_resources, request_exit_from_tray
+from .state import console
+from .websocket_manager import WebSocketManager
 from .manager import (
     ResourceManager, HardwareManager, TrayManager,
     MicRunner, FileRunner
@@ -45,6 +46,7 @@ class CapsWriterClient:
         self.resource_manager = ResourceManager(self.state)
         self.hardware_manager = HardwareManager(self.state)
         self.tray_manager = TrayManager(self.state, self.base_dir)
+        self.ws_manager = WebSocketManager(self.state)
 
     def _setup_logging(self):
         """重新配置主日志级别"""
@@ -63,14 +65,42 @@ class CapsWriterClient:
         # 3. 委派公共资源管理 (热词、LLM)
         self.resource_manager.initialize()
 
+    def teardown(self):
+        """
+        统一释放所有资源（清理顺序：硬件 -> 托盘 -> WebSocket -> State）
+        """
+        logger.info("正在执行 CapsWriterClient 资源释放...")
+        
+        # 1. 硬件资源 (音频、快捷键、UDP)
+        self.hardware_manager.teardown()
+            
+        # 2. 托盘资源
+        try:
+            from .ui import stop_tray
+            stop_tray()
+        except Exception:
+            pass
+            
+        # 3. 关闭 WebSocket 连接
+        self.ws_manager.close_sync()
+
+        # 4. 重置 State
+        try:
+            self.state.reset()
+        except Exception as e:
+            logger.warning(f"重置状态时发生错误: {e}")
+
+        logger.info("资源释放完成")
+        console.print('[green4]再见！')
+
     async def start(self):
         """
         启动客户端 (唯一入口)
         
         自动根据命令行参数识别模式。
         """
-        # 1. 注册全局清理函数
-        lifecycle.register_on_shutdown(cleanup_client_resources)
+        # 1. 注册全局清理函数 (使用实例方法)
+        lifecycle.register_on_shutdown(self.teardown)
         
         # 2. 初始化生命周期
         lifecycle.initialize(logger=logger, exit_on_signal=True)
@@ -84,11 +114,11 @@ class CapsWriterClient:
         try:
             if files:
                 # 文件转录模式
-                runner = FileRunner(self.state, files, self.version, self.log_level)
+                runner = FileRunner(self.state, self.ws_manager, files, self.version, self.log_level)
             else:
                 # 麦克风实时模式
                 runner = MicRunner(
-                    self.state, self.hardware_manager, self.tray_manager, 
+                    self.state, self.ws_manager, self.hardware_manager, self.tray_manager,
                     self.version, self.log_level
                 )
             
