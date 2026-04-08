@@ -86,7 +86,7 @@ class HotwordManager:
         
         self._observer: Optional[Observer] = None
 
-        self.load_all()
+        
 
     def _get_display_width(self, text: str) -> int:
         """计算字符串的显示宽度（考虑中文字符占2个单位）"""

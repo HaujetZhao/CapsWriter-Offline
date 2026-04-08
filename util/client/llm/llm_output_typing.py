@@ -12,16 +12,12 @@ from config_client import ClientConfig as Config
 from util.tools.asyncio_to_thread import to_thread
 from util.client.output.text_output import TextOutput
 from util.client.clipboard import paste_text
-from util.client.llm.llm_stop_monitor import reset, should_stop
 from . import logger
 
 
-async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=None, role_config=None, content=None) -> tuple:
+async def handle_typing_mode(handler, text: str, paste: bool = None, matched_hotwords=None, role_config=None, content=None) -> tuple:
     """打字输出模式"""
-    from util.client.llm.llm_handler import get_handler
     from util.client.llm.llm_error_handler import handle_llm_error
-
-    handler = get_handler()
     # 如果没传，则现场检测一次（兼容性）
     if not role_config or content is None:
         role_config, content = handler.detect_role(text)
@@ -32,7 +28,7 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
         await output_text(result_text, paste)
         return (result_text, 0, 0.0)
 
-    reset()  # 重置停止标志
+    handler.monitor.reset()  # 重置停止标志
 
     try:
         if paste:
@@ -50,9 +46,9 @@ async def handle_typing_mode(text: str, paste: bool = None, matched_hotwords=Non
 async def _process_paste(handler, role_config, content, matched_hotwords) -> tuple:
     """处理粘贴模式：获取全文后一次性粘贴"""
     polished_text, token_count, gen_time = await to_thread(
-        handler.process, role_config, content, matched_hotwords, None, should_stop
+        handler.process, role_config, content, matched_hotwords, None
     )
-    if should_stop():
+    if handler.monitor.should_stop():
         return ("", 0, 0.0)
 
     final_text = TextOutput.strip_punc(polished_text or content)
@@ -96,11 +92,11 @@ async def _process_streaming(handler, role_config, content, matched_hotwords) ->
 
     # 执行流式处理
     polished_text, token_count, gen_time = await to_thread(
-        handler.process, role_config, content, matched_hotwords, stream_write_chunk, should_stop
+        handler.process, role_config, content, matched_hotwords, stream_write_chunk
     )
 
     # 阻塞，直到正常结束，或用户按下 ESC
-    if should_stop():
+    if handler.monitor.should_stop():
         final_text = TextOutput.strip_punc(''.join(chunks) or content)
         return (final_text, 0, 0.0)
 

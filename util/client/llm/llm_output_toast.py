@@ -8,17 +8,14 @@ import logging
 
 from util.client.output.text_output import TextOutput
 from util.tools.asyncio_to_thread import to_thread
-from util.client.llm.llm_stop_monitor import reset, should_stop, create_stop_callback
+from util.tools.asyncio_to_thread import to_thread
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_toast_mode(text: str, role_config=None, matched_hotwords=None, content=None) -> tuple:
+async def handle_toast_mode(handler, text: str, role_config=None, matched_hotwords=None, content=None) -> tuple:
     """Toast 浮动窗口模式"""
-    from util.client.llm.llm_handler import get_handler
     from util.ui.toast import ToastMessageManager, ToastMessage
-
-    handler = get_handler()
     # 兼容性检测
     if not role_config or content is None:
         role_config, content_detected = handler.detect_role(text)
@@ -27,8 +24,8 @@ async def handle_toast_mode(text: str, role_config=None, matched_hotwords=None, 
     if not role_config:
         return ("", 0, 0.0)
 
-    reset()  # 重置停止标志
-    task_stop_event = create_stop_callback()
+    handler.monitor.reset()  # 重置停止标志
+    task_stop_event = handler.monitor.create_stop_callback()
     toast_manager = ToastMessageManager()
     msg_id = None
 
@@ -65,10 +62,10 @@ async def handle_toast_mode(text: str, role_config=None, matched_hotwords=None, 
 
         # 流式调用 LLM
         polished_text, token_count, gen_time = await to_thread(
-            handler.process, role_config, content, matched_hotwords, stream_toast_chunk, should_stop
+            handler.process, role_config, content, matched_hotwords, stream_toast_chunk
         )
 
-        if should_stop():
+        if handler.monitor.should_stop():
             toast_manager.close_toast(msg_id)
             return (''.join(chunks) or content, token_count, gen_time)
         else:

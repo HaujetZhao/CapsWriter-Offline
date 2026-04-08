@@ -7,7 +7,7 @@ from util import get_logger
 logger = get_logger('client')
 
 # 核心处理器
-from .llm_handler import LLMHandler, get_handler, init_llm_system
+from .llm_handler import LLMHandler, LLMResult
 
 # 角色配置和加载
 from .llm_role_config import RoleConfig
@@ -29,18 +29,15 @@ from .llm_get_selection import (
 
 # 监控和输出
 from .llm_watcher import LLMFileWatcher
-from .llm_stop_monitor import reset, should_stop
+from .llm_stop_monitor import StopMonitor
 
 from .llm_output_toast import handle_toast_mode
 from .llm_output_typing import handle_typing_mode
 
-from .llm_process_text import llm_process_text, LLMResult
 
 __all__ = [
     # 核心
     'LLMHandler',
-    'get_handler',
-    'init_llm_system',
 
     # 角色管理
     'RoleConfig',
@@ -60,14 +57,12 @@ __all__ = [
 
     # 监控
     'LLMFileWatcher',
-    'reset',
-    'should_stop',
+    'StopMonitor',
 
     # 输出
     'handle_toast_mode',
     'handle_typing_mode',
 
     # 主入口
-    'llm_process_text',
     'LLMResult',
 ]

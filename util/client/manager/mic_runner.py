@@ -43,6 +43,11 @@ class MicRunner:
         if Config.udp_control:
             self.app.udp.start()
 
+        # 5. 开启后台服务 (热词监视、LLM 监控)
+        self.app.hotword.load_all()
+        self.app.hotword.start_file_watcher()
+        self.app.llm.start()
+
     async def run(self):
         """麦克风模式主循环 (Coroutine)"""
         # 确保硬件资源已就绪

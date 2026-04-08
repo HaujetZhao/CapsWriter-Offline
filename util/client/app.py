@@ -31,7 +31,7 @@ from .shortcut.shortcut_config import Shortcut
 from .udp.udp_control import UDPController
 
 from .hotword.manager import HotwordManager
-from .llm.llm_handler import get_handler, init_llm_system
+from .llm.llm_handler import LLMHandler
 from .output.text_output import TextOutput
 from .diary.diary_writer import DiaryWriter
 from .ui import stop_tray
@@ -46,30 +46,23 @@ class CapsWriterClient:
     管理的外部接口简洁：start()。
     """
     def __init__(self):
-        # 1. 确定并切换工作目录
+        # 1. 确保正确的工作目录
         self.base_dir = Path(__file__).parents[2]
         os.chdir(self.base_dir)
             
-        # 2. 初始化核心状态 (基础设施层)
+        # 2. 初始化状态容器
         self.state = ClientState(app=self)
 
-        # 3. 初始化核心功能组件 (基础设施级)
+        # 3. 初始化热词管理器
         self.hotword = HotwordManager(
             hotword_files=None,
             threshold=Config.hot_thresh,
             similar_threshold=Config.hot_similar,
             rectify_threshold=Config.hot_rectify
         )
-        self.hotword.start_file_watcher()
-        
+
         # 4. 初始化 LLM 润色系统
-        self.llm = None
-        if Config.llm_enabled:
-            try:
-                self.llm = get_handler(self)
-            except Exception as e:
-                console.print(f'[red]LLM 系统初始化失败: {e}[/]')
-                logger.error(f"LLM 系统初始化失败: {e}", exc_info=True)
+        self.llm = LLMHandler(app=self)
         
         self.output = TextOutput()
         self.diary = DiaryWriter(base_path=self.base_dir / '日记')

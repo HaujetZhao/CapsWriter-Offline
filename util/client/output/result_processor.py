@@ -22,7 +22,7 @@ from util.client.output.text_output import TextOutput
 from util.tools.window_detector import get_active_window_info
 from . import logger
 from util.tools.lifecycle import lifecycle
-from util.client.llm.llm_process_text import llm_process_text
+
 from util.client.udp.udp_broadcaster import broadcast_output_udp
 from util.tools.zhconv import convert as zhconv_convert
 from util.client.audio.file_manager import AudioFileManager
@@ -288,7 +288,7 @@ class ResultProcessor:
         # LLM 处理和输出
         llm_result = None
         if Config.llm_enabled:
-            llm_result = await llm_process_text(
+            llm_result = await self.app.llm.process_and_output(
                 text,
                 paste=paste,
                 matched_hotwords=potential_hotwords  # 传递上下文热词给 LLM
