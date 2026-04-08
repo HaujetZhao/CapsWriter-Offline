@@ -31,11 +31,34 @@ class HardwareManager:
         # 4. Windows 周期性内存清理
         self._check_windows_memory_cleanup()
 
+    def teardown(self):
+        """释放所有硬件资源"""
+        logger.info("正在关闭硬件资源...")
+        if self.udp_controller:
+            try:
+                self.udp_controller.stop()
+                logger.debug("UDP 控制器已停止")
+            except Exception as e:
+                logger.warning(f"停止 UDP 控制器时出错: {e}")
+
+        if self.shortcut_manager:
+            try:
+                self.shortcut_manager.stop()
+                logger.debug("快捷键监听已停止")
+            except Exception as e:
+                logger.warning(f"停止快捷键监听时出错: {e}")
+
+        if self.stream_manager:
+            try:
+                self.stream_manager.close()
+                logger.debug("音频流已关闭")
+            except Exception as e:
+                logger.warning(f"关闭音频流时出错: {e}")
+
     def _setup_audio_stream(self):
         """配置并开启音频流"""
         logger.info("正在打开音频流...")
         self.stream_manager = AudioStreamManager(self.state)
-        self.state.stream_manager = self.stream_manager
         self.stream_manager.open()
 
     def _setup_shortcuts(self):
@@ -44,9 +67,7 @@ class HardwareManager:
         logger.info(f"正在初始化快捷键管理器，共 {len(shortcuts)} 个快捷键")
 
         self.shortcut_manager = ShortcutManager(self.state, shortcuts)
-        self.state.shortcut_manager = self.shortcut_manager
         self.shortcut_manager.start()
-        self.state.shortcut_handler = self.shortcut_manager
 
     def _setup_udp_control(self):
         """配置并开启 UDP 控制器"""
@@ -54,7 +75,6 @@ class HardwareManager:
             from ..udp.udp_control import UDPController
             logger.info(f"正在启用 UDP 控制，端口: {Config.udp_control_port}")
             self.udp_controller = UDPController(self.shortcut_manager)
-            self.state.udp_controller = self.udp_controller
             self.udp_controller.start()
 
     def _check_windows_memory_cleanup(self):

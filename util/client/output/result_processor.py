@@ -22,8 +22,8 @@ from util.client.output.text_output import TextOutput
 from util.tools.window_detector import get_active_window_info
 from . import logger
 from util.tools.lifecycle import lifecycle
-from util.client.state import get_state
 from util.client.llm.llm_process_text import llm_process_text
+from util.client.udp.udp_broadcaster import broadcast_output_udp
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
@@ -319,6 +319,7 @@ class ResultProcessor:
         else:
             await self._text_output.output(text, paste=paste)
             get_state().set_output_text(text)
+            broadcast_output_udp(text)
 
         # 保存录音与写入 md 文件
         file_audio = None

@@ -185,26 +185,12 @@ class ClientState:
 
     def set_output_text(self, text: str) -> None:
         """
-        设置最近一次输出文本并通过 UDP 广播（如果启用）
+        设置最近一次输出文本
         
         Args:
             text: 输出文本内容
         """
-        from config_client import ClientConfig as Config
-        
-        # 更新状态
         self.last_output_text = text
-        
-        # UDP 广播到配置的目标地址（如果启用）
-        if Config.udp_broadcast and Config.udp_broadcast_targets:
-            message = text.encode('utf-8')
-            for addr, port in Config.udp_broadcast_targets:
-                try:
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(message, (addr, port))
-                        logger.debug(f"UDP 发送输出文本到 {addr}:{port}, 长度: {len(text)}")
-                except Exception as e:
-                    logger.warning(f"UDP 发送输出文本到 {addr}:{port} 失败: {e}")
 
 
 # 全局状态实例

@@ -22,6 +22,7 @@ from util.client.llm.llm_get_selection import get_selected_text, record_selectio
 from util.client.llm.llm_process_text import LLMResult
 from . import logger
 from util.client.hotword import get_hotword_manager
+from util.client.udp.udp_broadcaster import broadcast_output_udp
 
 
 # ======================================================================
@@ -185,6 +186,7 @@ class LLMHandler:
             # 更新全局状态并 UDP 广播
             from util.client.state import get_state
             get_state().set_output_text(text)
+            broadcast_output_udp(text)
 
             return LLMResult(result=text, role_name=None, processed=False, 
                                 token_count=0, polish_time=0, input_text=text)
@@ -201,6 +203,7 @@ class LLMHandler:
         if result:
             from util.client.state import get_state
             get_state().set_output_text(result)
+            broadcast_output_udp(result)
 
         return LLMResult(
             result=result,

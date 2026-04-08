@@ -42,7 +42,6 @@ class MicRunner:
 
         try:
             self.processor = ResultProcessor(self.state)
-            self.state.processor = self.processor # 注入状态以便清理
 
             # 主循环：只要没收到退出信号，就一直运行
             while not lifecycle.is_shutting_down:
