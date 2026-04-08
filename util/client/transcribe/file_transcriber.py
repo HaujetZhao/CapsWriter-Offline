@@ -39,10 +39,18 @@ class FileTranscriber:
     4. 调用 ResultHandler 处理结果
     """
     
-    def __init__(self, state: 'ClientState', file: Path):
+    def __init__(self, state: 'ClientState', file: Path, ws_manager: 'WebSocketManager'):
+        """
+        初始化文件转录器
+        
+        Args:
+            state: 客户端状态实例
+            file: 要转录的文件路径
+            ws_manager: WebSocket 管理器实例
+        """
         self.state = state
         self.file = file
-        self._ws_manager = WebSocketManager(state)
+        self._ws_manager = ws_manager
         self.task_id: Optional[str] = None
         self._audio_duration: float = 0.0
     

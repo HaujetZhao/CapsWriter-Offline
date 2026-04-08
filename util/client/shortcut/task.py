@@ -27,17 +27,19 @@ class ShortcutTask:
     跟踪每个快捷键独立的录音状态，防止互相干扰。
     """
 
-    def __init__(self, shortcut: 'Shortcut', state: 'ClientState', recorder_class=None):
+    def __init__(self, shortcut: 'Shortcut', state: 'ClientState', ws_manager: 'WebSocketManager', recorder_class=None):
         """
         初始化快捷键任务
 
         Args:
             shortcut: 快捷键配置
             state: 客户端状态实例
+            ws_manager: WebSocket 管理器实例
             recorder_class: AudioRecorder 类（可选，用于延迟导入）
         """
         self.shortcut = shortcut
         self.state = state
+        self.ws_manager = ws_manager
         self._recorder_class = recorder_class
 
         # 任务状态
@@ -61,7 +63,7 @@ class ShortcutTask:
         if self._recorder_class is None:
             from util.client.audio.recorder import AudioRecorder
             self._recorder_class = AudioRecorder
-        return self._recorder_class(self.state)
+        return self._recorder_class(self.state, self.ws_manager)
 
     def launch(self) -> None:
         """启动录音任务"""

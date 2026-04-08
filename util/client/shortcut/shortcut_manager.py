@@ -35,16 +35,18 @@ class ShortcutManager:
     所有事件处理都在 win32_event_filter 中完成，确保高性能和低延迟。
     """
 
-    def __init__(self, state: 'ClientState', shortcuts: List['Shortcut']):
+    def __init__(self, state: 'ClientState', shortcuts: List['Shortcut'], ws_manager: 'WebSocketManager'):
         """
         初始化快捷键管理器
 
         Args:
             state: 客户端状态实例
             shortcuts: 快捷键配置列表
+            ws_manager: WebSocket 管理器实例
         """
         self.state = state
         self.shortcuts = shortcuts
+        self.ws_manager = ws_manager
 
         # 监听器
         self.keyboard_listener: Optional[keyboard.Listener] = None
@@ -76,7 +78,7 @@ class ShortcutManager:
             if not shortcut.enabled:
                 continue
 
-            task = ShortcutTask(shortcut, self.state)
+            task = ShortcutTask(shortcut, self.state, self.ws_manager)
             task._manager_ref = lambda: self  # 弱引用，用于回调
             task.pool = self._pool
             task.threshold = shortcut.get_threshold(Config.threshold)

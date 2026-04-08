@@ -37,7 +37,7 @@ class FileRunner:
                     srt_adjuster.adjust(file)
                 # 情况 2：媒体文件，执行 ASR 识别转录
                 else:
-                    transcriber = FileTranscriber(self.state, file)
+                    transcriber = FileTranscriber(self.state, file, self.ws_manager)
                     if await transcriber.check():
                         await transcriber.send()
                         await transcriber.receive()

@@ -40,9 +40,9 @@ class CapsWriterClient:
         self.state = get_state()
 
         # 3. 初始化各管理器 (职责下放)
-        self.hardware_manager = HardwareManager(self.state)
-        self.tray_manager = TrayManager(self.state, self.base_dir)
         self.ws_manager = WebSocketManager(self.state)
+        self.hardware_manager = HardwareManager(self.state, self.ws_manager)
+        self.tray_manager = TrayManager(self.state, self.base_dir)
 
     def teardown(self):
         """

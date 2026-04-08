@@ -11,8 +11,9 @@ class HardwareManager:
     """
     硬件管理器：负责音频流、快捷键和 UDP 控制等硬件相关资源的初始化与生命周期管理。
     """
-    def __init__(self, state):
+    def __init__(self, state, ws_manager):
         self.state = state
+        self.ws_manager = ws_manager
         self.stream_manager = None
         self.shortcut_manager = None
         self.udp_controller = None
@@ -66,7 +67,7 @@ class HardwareManager:
         shortcuts = [Shortcut(**sc) for sc in Config.shortcuts]
         logger.info(f"正在初始化快捷键管理器，共 {len(shortcuts)} 个快捷键")
 
-        self.shortcut_manager = ShortcutManager(self.state, shortcuts)
+        self.shortcut_manager = ShortcutManager(self.state, shortcuts, self.ws_manager)
         self.shortcut_manager.start()
 
     def _setup_udp_control(self):

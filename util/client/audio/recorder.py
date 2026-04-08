@@ -40,15 +40,16 @@ class AudioRecorder:
     - 将音频数据发送到识别服务端
     """
     
-    def __init__(self, state: 'ClientState'):
+    def __init__(self, state: 'ClientState', ws_manager: 'WebSocketManager'):
         """
         初始化录制器
         
         Args:
             state: 客户端状态实例
+            ws_manager: WebSocket 管理器实例
         """
         self.state = state
-        self._ws_manager = WebSocketManager(state)
+        self._ws_manager = ws_manager
         self.task_id: Optional[str] = None
         self._file_manager: Optional[AudioFileManager] = None
         self._start_time: float = 0.0
