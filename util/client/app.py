@@ -97,10 +97,14 @@ class CapsWriterClient:
         # 2. 托盘资源
         stop_tray()
 
-        # 3. 关闭 WebSocket 连接
+        # 3. 关闭异步监控服务
+        self.hotword.stop_file_watcher()
+        self.llm.stop()
+
+        # 4. 关闭 WebSocket 连接
         self.ws.close_sync()
 
-        # 4. 重置 State
+        # 5. 重置 State
         try:
             self.state.reset()
         except Exception as e:
