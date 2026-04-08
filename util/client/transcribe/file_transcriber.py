@@ -39,20 +39,28 @@ class FileTranscriber:
     4. 调用 ResultHandler 处理结果
     """
     
-    def __init__(self, state: 'ClientState', file: Path, ws_manager: 'WebSocketManager'):
+    def __init__(self, app: 'CapsWriterClient', file: Path):
         """
         初始化文件转录器
         
         Args:
-            state: 客户端状态实例
+            app: 客户端 App 实例
             file: 要转录的文件路径
-            ws_manager: WebSocket 管理器实例
         """
-        self.state = state
+        self.app = app
         self.file = file
-        self._ws_manager = ws_manager
         self.task_id: Optional[str] = None
         self._audio_duration: float = 0.0
+
+    @property
+    def state(self) -> 'ClientState':
+        """快捷访问状态单例"""
+        return self.app.state
+
+    @property
+    def _ws_manager(self) -> 'WebSocketManager':
+        """快捷访问桥接到 app.ws"""
+        return self.app.ws
     
     async def check(self) -> bool:
         """检查转录条件"""

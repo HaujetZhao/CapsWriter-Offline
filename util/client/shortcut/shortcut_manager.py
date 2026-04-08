@@ -35,18 +35,16 @@ class ShortcutManager:
     所有事件处理都在 win32_event_filter 中完成，确保高性能和低延迟。
     """
 
-    def __init__(self, state: 'ClientState', shortcuts: List['Shortcut'], ws_manager: 'WebSocketManager'):
+    def __init__(self, app: 'CapsWriterClient', shortcuts: List['Shortcut']):
         """
         初始化快捷键管理器
 
         Args:
-            state: 客户端状态实例
+            app: 客户端 App 实例
             shortcuts: 快捷键配置列表
-            ws_manager: WebSocket 管理器实例
         """
-        self.state = state
+        self.app = app
         self.shortcuts = shortcuts
-        self.ws_manager = ws_manager
 
         # 监听器
         self.keyboard_listener: Optional[keyboard.Listener] = None
@@ -70,6 +68,11 @@ class ShortcutManager:
         # 初始化快捷键任务
         self._init_tasks()
 
+    @property
+    def state(self) -> 'ClientState':
+        """快捷访问状态单例"""
+        return self.app.state
+
     def _init_tasks(self) -> None:
         """初始化所有快捷键任务"""
         from config_client import ClientConfig as Config
@@ -78,7 +81,7 @@ class ShortcutManager:
             if not shortcut.enabled:
                 continue
 
-            task = ShortcutTask(shortcut, self.state, self.ws_manager)
+            task = ShortcutTask(self.app, shortcut)
             task._manager_ref = lambda: self  # 弱引用，用于回调
             task.pool = self._pool
             task.threshold = shortcut.get_threshold(Config.threshold)

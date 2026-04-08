@@ -9,9 +9,12 @@ class TrayManager:
     """
     托盘管理器：负责系统托盘图标的初始化、菜单构建及回调处理。
     """
-    def __init__(self, state, base_dir: str):
-        self.state = state
-        self.base_dir = base_dir
+    def __init__(self, app):
+        self.app = app
+
+    @property
+    def state(self):
+        return self.app.state
 
     def setup_tray(self):
         """初始化系统托盘图标"""
@@ -25,7 +28,7 @@ class TrayManager:
             return
 
         # 获取图标路径
-        icon_path = os.path.join(self.base_dir, 'assets', 'icon.ico')
+        icon_path = os.path.join(self.app.base_dir, 'assets', 'icon.ico')
         
         # 启用托盘
         enable_min_to_tray(
@@ -45,16 +48,16 @@ class TrayManager:
 
     def _restart_audio(self):
         """重启音频流回调"""
-        if self.state.stream_manager:
-            self.state.stream_manager.reopen()
+        if hasattr(self.app, 'stream') and self.app.stream:
+            self.app.stream.reopen()
             logger.info("用户请求重启音频")
 
     def _clear_memory(self):
         """清除 LLM 对话历史回调"""
-        from ..llm.llm_handler import clear_llm_history
         from ..ui import toast
-        clear_llm_history()
-        toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
+        if self.app.llm:
+            self.app.llm.clear_history()
+            toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
 
     def _add_hotword(self):
         """打开添加热词界面回调"""

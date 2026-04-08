@@ -8,7 +8,7 @@ Windows 内存管理工具
 
 import ctypes
 from typing import Optional
-
+from platform import system
 
 def empty_working_set(pid: int) -> None:
     """
@@ -41,5 +41,6 @@ def empty_current_working_set() -> None:
     获取当前进程 ID 并清空其工作集。
     通常在程序初始化完成后调用，释放初始化阶段占用的内存。
     """
-    pid = ctypes.windll.kernel32.GetCurrentProcessId()
-    empty_working_set(pid)
+    if system() == 'Windows':
+        pid = ctypes.windll.kernel32.GetCurrentProcessId()
+        empty_working_set(pid)

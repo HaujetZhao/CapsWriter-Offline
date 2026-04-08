@@ -26,6 +26,7 @@ from . import logger
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
+    from util.client.app import CapsWriterClient
 
 # 日志记录器
 
@@ -40,21 +41,29 @@ class AudioRecorder:
     - 将音频数据发送到识别服务端
     """
     
-    def __init__(self, state: 'ClientState', ws_manager: 'WebSocketManager'):
+    def __init__(self, app: 'CapsWriterClient'):
         """
         初始化录制器
         
         Args:
-            state: 客户端状态实例
-            ws_manager: WebSocket 管理器实例
+            app: 客户端 App 实例
         """
-        self.state = state
-        self._ws_manager = ws_manager
+        self.app = app
         self.task_id: Optional[str] = None
         self._file_manager: Optional[AudioFileManager] = None
         self._start_time: float = 0.0
         self._duration: float = 0.0
         self._cache: list = []
+
+    @property
+    def state(self) -> 'ClientState':
+        """快捷访问状态单例"""
+        return self.app.state
+
+    @property
+    def _ws_manager(self) -> 'WebSocketManager':
+        """快捷访问桥接到 app.ws"""
+        return self.app.ws
     
     async def _send_message(self, message: AudioMessage) -> None:
         """发送消息到服务端"""

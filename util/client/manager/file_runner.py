@@ -9,10 +9,17 @@ class FileRunner:
     """
     文件模式运行器：负责文件转录模式下的逻辑，包括音视频文件的 ASR 转录和字幕文件的时间轴调整。
     """
-    def __init__(self, state, ws_manager, files: list[Path]):
-        self.state = state
-        self.ws_manager = ws_manager
+    def __init__(self, app, files: list[Path]):
+        self.app = app
         self.files = files
+
+    @property
+    def state(self):
+        return self.app.state
+
+    @property
+    def ws_manager(self):
+        return self.app.ws
 
     async def run(self):
         """文件转录模式主循环 (Coroutine)"""
@@ -37,7 +44,7 @@ class FileRunner:
                     srt_adjuster.adjust(file)
                 # 情况 2：媒体文件，执行 ASR 识别转录
                 else:
-                    transcriber = FileTranscriber(self.state, file, self.ws_manager)
+                    transcriber = FileTranscriber(self.app, file)
                     if await transcriber.check():
                         await transcriber.send()
                         await transcriber.receive()

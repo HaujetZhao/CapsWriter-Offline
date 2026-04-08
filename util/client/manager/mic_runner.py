@@ -1,20 +1,30 @@
 # coding: utf-8
 import asyncio
 from . import logger
-from util.tools.lifecycle import lifecycle
+from ..ui import TipsDisplay
 from config_client import ClientConfig as Config, __version__
+from util.tools.lifecycle import lifecycle
 
 
 class MicRunner:
     """
     麦克风模式运行器：负责麦克风模式下的资源初始化、识别处理器循环及生命周期监控。
     """
-    def __init__(self, state, ws_manager, hardware_manager, tray_manager):
-        self.state = state
-        self.ws_manager = ws_manager
-        self.hardware_manager = hardware_manager
-        self.tray_manager = tray_manager
+    def __init__(self, app):
+        self.app = app
         self.processor = None
+
+    @property
+    def state(self):
+        return self.app.state
+
+    @property
+    def ws_manager(self):
+        return self.app.ws
+
+    @property
+    def tray_manager(self):
+        return self.app.tray
 
     def _setup_resources(self):
         """初始化麦克风模式特有资源 (音频硬件、快捷键、UI 托盘)"""
@@ -22,17 +32,16 @@ class MicRunner:
         self.tray_manager.setup_tray()
 
         # 2. UI 提示
-        from ..ui import TipsDisplay
         TipsDisplay.show_mic_tips()
 
-        # 3. 初始化热词与大模型子系统
-        from ..hotword import init_hotword_system
-        from ..llm.llm_handler import init_llm_system
-        init_hotword_system()
-        init_llm_system()
-
-        # 3. 委派硬件资源管理 (音频、快捷键、UDP)
-        self.hardware_manager.setup_mic_resources()
+        # 3. 开启硬件资源 (音频流、快捷键监听)
+        logger.info("正在开启硬件资源...")
+        self.app.stream.open()
+        self.app.shortcut.start()
+        
+        # 4. 开启 UDP 控制 (如果启用)
+        if Config.udp_control:
+            self.app.udp.start()
 
     async def run(self):
         """麦克风模式主循环 (Coroutine)"""
@@ -47,7 +56,7 @@ class MicRunner:
         logger.info(f"日志级别: {Config.log_level}")
 
         try:
-            self.processor = ResultProcessor(self.state, self.ws_manager)
+            self.processor = ResultProcessor(self.app)
 
             # 主循环：只要没收到退出信号，就一直运行
             while not lifecycle.is_shutting_down:

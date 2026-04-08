@@ -20,7 +20,7 @@ from . import logger
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
-
+    from .app import CapsWriterClient
 
 
 class WebSocketManager:
@@ -31,20 +31,25 @@ class WebSocketManager:
     错误处理功能。
     
     Attributes:
-        state: 客户端状态实例
+        app: 客户端 App 实例
         max_retries: 最大重试次数
     """
     
-    def __init__(self, state: 'ClientState', max_retries: int = 3):
+    def __init__(self, app: 'CapsWriterClient', max_retries: int = 3):
         """
         初始化 WebSocket 管理器
         
         Args:
-            state: 客户端状态实例
+            app: 客户端 App 实例
             max_retries: 连接失败时的最大重试次数
         """
-        self.state = state
+        self.app = app
         self.max_retries = max_retries
+
+    @property
+    def state(self) -> 'ClientState':
+        """快捷访问状态单例"""
+        return self.app.state
     
     @property
     def is_connected(self) -> bool:

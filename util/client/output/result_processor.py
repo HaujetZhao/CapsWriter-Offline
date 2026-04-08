@@ -24,9 +24,13 @@ from . import logger
 from util.tools.lifecycle import lifecycle
 from util.client.llm.llm_process_text import llm_process_text
 from util.client.udp.udp_broadcaster import broadcast_output_udp
+from util.tools.zhconv import convert as zhconv_convert
+from util.client.audio.file_manager import AudioFileManager
+from util.client.llm.llm_write_md import write_llm_md
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
+    from util.client.app import CapsWriterClient
 
 
 
@@ -51,20 +55,41 @@ class ResultProcessor:
     - 保存录音和日记
     """
     
-    def __init__(self, state: 'ClientState', ws_manager: 'WebSocketManager'):
+    def __init__(self, app: 'CapsWriterClient'):
         """
         初始化结果处理器
 
         Args:
-            state: 客户端状态实例
-            ws_manager: WebSocket 管理器实例
+            app: 客户端 App 实例
         """
-        self.state = state
-        self._ws_manager = ws_manager
-        self._hotword_manager = get_hotword_manager()
-        self._text_output = TextOutput()
+        self.app = app
         self._exit_event = asyncio.Event()
         self._loop = asyncio.get_running_loop()  # 保存事件循环引用
+
+    @property
+    def state(self) -> 'ClientState':
+        """快捷访问状态单例"""
+        return self.app.state
+
+    @property
+    def ws(self) -> 'WebSocketManager':
+        """快捷访问连接管理器"""
+        return self.app.ws
+
+    @property
+    def hotword(self) -> 'HotwordManager':
+        """快捷访问热词管理器"""
+        return self.app.hotword
+
+    @property
+    def output(self) -> 'TextOutput':
+        """快捷访问文本输出器"""
+        return self.app.output
+
+    @property
+    def diary(self) -> 'DiaryWriter':
+        """快捷访问日记写入器"""
+        return self.app.diary
 
     def request_exit(self):
         """请求退出处理循环（线程安全）"""
@@ -127,7 +152,7 @@ class ResultProcessor:
     
     async def process_loop(self) -> None:
         """主处理循环"""
-        if not await self._ws_manager.connect():
+        if not await self.ws.connect():
             logger.debug("WebSocket 连接检查失败")
             return
 
@@ -135,70 +160,21 @@ class ResultProcessor:
         logger.info("WebSocket 连接成功")
 
         try:
-            while True:
-                # 检查退出事件
-                if self._exit_event.is_set():
-                    logger.info("检测到退出事件，停止处理循环")
+            while not self._exit_event.is_set():
+                # 直接等待接收消息，退出由 self.ws.receive() 的取消或外部 request_exit 处理
+                # 这里使用 wait_for 只是为了能定期检查 _exit_event
+                try:
+                    message = await asyncio.wait_for(self.ws.receive(), timeout=1.0)
+                except asyncio.TimeoutError:
+                    continue
+                except (ConnectionClosedError, ConnectionClosedOK):
+                    logger.warning("WebSocket 连接已关闭")
                     break
 
-                # 创建一个任务来接收消息 (通过协议管理器)
-                recv_task = asyncio.create_task(self._ws_manager.receive())
-                logger.debug("已创建接收消息任务")
-
-                # 创建一个任务来等待退出事件
-                exit_wait_task = asyncio.create_task(self._exit_event.wait())
-                logger.debug("已创建退出等待任务")
-
-                # 等待任意一个任务完成
-                done, pending = await asyncio.wait(
-                    [recv_task, exit_wait_task],
-                    return_when=asyncio.FIRST_COMPLETED
-                )
-                logger.debug(f"任务完成: done={len(done)}, pending={len(pending)}")
-
-                # 取消未完成的任务
-                for task in pending:
-                    task.cancel()
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
-
-                # 检查是否是退出请求
-                if exit_wait_task in done:
-                    logger.info("收到退出请求，停止处理循环")
-                    # 取消接收任务
-                    if recv_task not in done and not recv_task.done():
-                        recv_task.cancel()
-                        try:
-                            await recv_task
-                        except asyncio.CancelledError:
-                            pass
+                if message is None:
                     break
-
-                # 如果是接收任务完成，处理消息
-                if recv_task in done:
-                    try:
-                        message = recv_task.result()
-                        if message is None:
-                            logger.info("接收任务返回 None，停止处理循环")
-                            break
-                            
-                        # 再次检查退出标志
-                        if lifecycle.is_shutting_down:
-                            logger.info("处理消息前检测到退出请求")
-                            break
-                        logger.debug("开始处理消息")
-                        await self._handle_message(message)
-                        logger.debug("消息处理完成")
-                    except asyncio.CancelledError:
-                        raise
-                    except ConnectionClosedError:
-                        logger.warning("WebSocket 连接已关闭")
-                        break
-                    except Exception as e:
-                        logger.error(f"处理消息时发生错误: {e}", exc_info=True)
-                        raise
+                    
+                await self._handle_message(message)
 
         except ConnectionClosedError:
             console.print('[red]连接断开\n')
@@ -244,14 +220,12 @@ class ResultProcessor:
         # 繁体转换
         if Config.traditional_convert:
             try:
-                from util.tools.zhconv import convert as zhconv_convert
                 text = zhconv_convert(text, Config.traditional_locale)
-                logger.debug(f"繁体转换后: {text[:50]}{'...' if len(text) > 50 else ''}")
             except Exception as e:
                 logger.warning(f"繁体转换失败: {e}")
 
         # 1. 音素检索，热词替换
-        correction_result = self._hotword_manager.get_phoneme_corrector().correct(text, k=10)
+        correction_result = self.hotword.get_phoneme_corrector().correct(text, k=10)
         if Config.hot:
             text = correction_result.text
 
@@ -259,7 +233,7 @@ class ResultProcessor:
         text = TextOutput.strip_punc(text)
 
         # 3. 正则替换
-        text = self._hotword_manager.get_rule_corrector().substitute(text)
+        text = self.hotword.get_rule_corrector().substitute(text)
 
         # 保存最近一次识别结果
         self.state.last_recognition_text = text
@@ -318,33 +292,26 @@ class ResultProcessor:
                 matched_hotwords=potential_hotwords  # 传递上下文热词给 LLM
             )
         else:
-            await self._text_output.output(text, paste=paste)
+            await self.output.output(text, paste=paste)
             get_state().set_output_text(text)
             broadcast_output_udp(text)
 
         # 保存录音与写入 md 文件
         file_audio = None
         if Config.save_audio:
-            from util.client.diary.diary_writer import DiaryWriter
-
             # 重命名音频文件
             file_path = self.state.pop_audio_file(message.task_id)
             if file_path:
-                from util.client.audio.file_manager import AudioFileManager
                 file_manager = AudioFileManager()
                 file_manager.file_path = file_path
                 file_audio = file_manager.rename(text, message.time_start)
-                logger.debug(f"保存录音文件: {file_audio}")
 
             # 写入日记
-            diary_writer = DiaryWriter()
-            diary_writer.write(text, message.time_start, file_audio)
-            logger.debug("写入 MD 文件")
+            self.diary.write(text, message.time_start, file_audio)
 
         # LLM 结果显示和保存
         if Config.llm_enabled and llm_result and llm_result.processed:
             console.print(self._format_llm_result(llm_result))
-            from util.client.llm.llm_write_md import write_llm_md
             write_llm_md(
                 llm_result.input_text,
                 llm_result.result,
@@ -352,7 +319,6 @@ class ResultProcessor:
                 message.time_start,
                 file_audio
             )
-            logger.debug("写入 LLM MD 文件")
 
         # 检测修饰键状态（调试用）
         self._log_modifier_key_state()

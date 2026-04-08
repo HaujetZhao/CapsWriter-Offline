@@ -19,10 +19,24 @@ from config_client import ClientConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
 from .state import console
 from .websocket_manager import WebSocketManager
+from typing import TYPE_CHECKING, Optional
 from .manager import (
-    HardwareManager, TrayManager,
+    TrayManager,
     MicRunner, FileRunner
 )
+from .audio.stream import AudioStreamManager
+from .shortcut.shortcut_manager import ShortcutManager
+from .shortcut.shortcut_config import Shortcut
+
+from .udp.udp_control import UDPController
+
+from .hotword import get_hotword_manager, init_hotword_system
+from .llm.llm_handler import get_handler, init_llm_system
+from .output.text_output import TextOutput
+from .diary.diary_writer import DiaryWriter
+from .ui import stop_tray
+from util.tools.empty_working_set import empty_current_working_set
+from platform import system
 
 
 class CapsWriterClient:
@@ -38,11 +52,28 @@ class CapsWriterClient:
             
         # 2. 初始化核心状态单例 (基础设施层)
         self.state = get_state()
+        self.state.app = self
 
-        # 3. 初始化各管理器 (职责下放)
-        self.ws_manager = WebSocketManager(self.state)
-        self.hardware_manager = HardwareManager(self.state, self.ws_manager)
-        self.tray_manager = TrayManager(self.state, self.base_dir)
+        # 3. 初始化核心功能组件 (单例持有)
+        init_hotword_system()
+        init_llm_system()
+
+        self.hotword = get_hotword_manager()
+        self.llm = get_handler()
+        self.output = TextOutput()
+        self.diary = DiaryWriter(base_path=self.base_dir / '日记')
+
+        # 初始化各管理器
+        self.ws = WebSocketManager(self)
+        self.tray = TrayManager(self)
+
+        # 实例化硬件资源管理组件
+        self.stream = AudioStreamManager(self)
+        self.shortcut = ShortcutManager(self, [Shortcut(**sc) for sc in Config.shortcuts])
+        self.udp = UDPController(self.shortcut)
+
+        # 内存清理
+        empty_current_working_set()
 
     def teardown(self):
         """
@@ -50,18 +81,20 @@ class CapsWriterClient:
         """
         logger.info("正在执行 CapsWriterClient 资源释放...")
         
-        # 1. 硬件资源 (音频、快捷键、UDP)
-        self.hardware_manager.teardown()
-            
+        # 1. 直接关闭核心硬件资源
+        for resource, name in [(self.udp, 'UDP 控制器'), (self.shortcut, '快捷键监听'), (self.stream, '音频流')]:
+            try:
+                # 统一调用关闭/停止接口 (stop 或 close)
+                getattr(resource, 'stop', getattr(resource, 'close', lambda: None))()
+                logger.debug(f"{name} 已关闭")
+            except Exception as e:
+                logger.warning(f"关闭 {name} 时出错: {e}")
+
         # 2. 托盘资源
-        try:
-            from .ui import stop_tray
-            stop_tray()
-        except Exception:
-            pass
-            
+        stop_tray()
+
         # 3. 关闭 WebSocket 连接
-        self.ws_manager.close_sync()
+        self.ws.close_sync()
 
         # 4. 重置 State
         try:
@@ -78,16 +111,12 @@ class CapsWriterClient:
 
         files = [Path(f) for f in sys.argv[1:] if os.path.exists(f)]
 
-
-
         if files:
             # 文件转录模式
-            runner = FileRunner(self.state, self.ws_manager, files)
+            runner = FileRunner(self, files)
         else:
             # 麦克风实时模式
-            runner = MicRunner(
-                self.state, self.ws_manager, self.hardware_manager, self.tray_manager
-            )
+            runner = MicRunner(self)
         
         # 运行主循环
         await runner.run()
