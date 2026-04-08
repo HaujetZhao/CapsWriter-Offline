@@ -54,6 +54,7 @@ class LLMFileWatcher(FileSystemEventHandler):
         self._lock = threading.Lock()
         self._debounce_delay = WatcherConstants.DEBOUNCE_DELAY
 
+        self._is_started = False
         # 需要监控的配置文件及其处理函数
         # 注意：hot-rectify.txt 由热词 watchdog 统一管理，不在 LLM watcher 中处理
         self._watched_files = {}
@@ -209,6 +210,7 @@ class LLMFileWatcher(FileSystemEventHandler):
         self.observer.schedule(self, str(self.base_dir), recursive=False)
         
         self.observer.start()
+        self._is_started = True
         logger.info("LLM 文件监控已启动")
 
         # 打印所有已加载角色信息
@@ -216,9 +218,11 @@ class LLMFileWatcher(FileSystemEventHandler):
 
     def stop(self):
         """停止监控"""
-        self.observer.stop()
-        self.observer.join()
-        logger.info("LLM 文件监控已停止")
+        if self._is_started:
+            self.observer.stop()
+            self.observer.join()
+            self._is_started = False
+            logger.info("LLM 文件监控已停止")
 
     def _print_all_roles(self):
         """打印所有已加载的角色信息"""

@@ -85,6 +85,7 @@ class HotwordManager:
         )
         
         self._observer: Optional[Observer] = None
+        self._is_watcher_started = False
 
         
 
@@ -167,14 +168,16 @@ class HotwordManager:
             self._observer.schedule(handler, path=str(d), recursive=False)
             
         self._observer.start()
+        self._is_watcher_started = True
         logger.debug(f"已启动热词文件监视: {watched_dirs}")
         return self._observer
 
     def stop_file_watcher(self) -> None:
         """停止文件监视"""
-        if self._observer:
+        if self._is_watcher_started and self._observer:
             self._observer.stop()
             self._observer.join()
+            self._is_watcher_started = False
             self._observer = None
             logger.debug("热词文件监视已停止")
 
