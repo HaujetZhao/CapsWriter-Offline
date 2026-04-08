@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 import sounddevice as sd
 
-from util.client.state import console, get_state
+from util.client.state import console
 from . import logger
 from util.tools.lifecycle import lifecycle
 

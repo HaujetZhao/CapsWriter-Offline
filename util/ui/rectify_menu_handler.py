@@ -11,7 +11,7 @@ import tkinter as tk
 from pathlib import Path
 from typing import Optional
 
-from util.client.state import get_state
+
 from util.client.state import console
 from . import logger
 
@@ -31,7 +31,7 @@ def get_dialog_manager() -> Optional['_RectifyDialogManager']:
         return _dialog_manager
 
 
-def on_add_rectify_record():
+def on_add_rectify_record(app):
     """
     处理"添加纠错记录"菜单点击
 
@@ -44,8 +44,8 @@ def on_add_rectify_record():
     4. 保存到 hot-rectify.txt 并触发重载
     """
     try:
-        # 1. 从全局状态获取最近一次识别结果
-        state = get_state()
+        # 1. 从 App 获取最近一次识别结果
+        state = app.state
         recognition_text = state.last_recognition_text or ""  # 如果为 None，使用空字符串
 
         logger.info(f"用户点击'添加纠错记录'，识别结果: '{recognition_text[:30]}...'")
@@ -219,12 +219,16 @@ class _RectifyDialogManager:
 
 if __name__ == "__main__":
     # 测试代码
-    from util.client.state import get_state
+    from util.client.state import ClientState
+    
+    class MockApp:
+        def __init__(self):
+            self.state = ClientState(app=self)
 
     # 模拟识别结果
-    state = get_state()
-    state.last_recognition_text = "原锯子不对"
+    app = MockApp()
+    app.state.last_recognition_text = "原锯子不对"
 
     # 测试菜单处理
     print("测试菜单处理...")
-    on_add_rectify_record()
+    on_add_rectify_record(app)

@@ -188,21 +188,4 @@ class ClientState:
         self.last_output_text = text
 
 
-# 全局状态实例
-_global_state: Optional[ClientState] = None
 
-
-def get_state() -> ClientState:
-    """
-    获取全局客户端状态实例
-    
-    如果尚未初始化，则创建新实例。
-    
-    Returns:
-        ClientState 实例
-    """
-    global _global_state
-    if _global_state is None:
-        _global_state = ClientState()
-        logger.debug("创建全局 ClientState 实例")
-    return _global_state

@@ -11,7 +11,7 @@ import tkinter as tk
 from pathlib import Path
 from typing import Optional
 
-from util.client.state import get_state, console
+from util.client.state import console
 from . import logger
 
 

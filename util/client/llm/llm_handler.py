@@ -31,8 +31,9 @@ from util.client.udp.udp_broadcaster import broadcast_output_udp
 class LLMHandler:
     """LLM 润色处理器（协调器）"""
 
-    def __init__(self, hotwords_file: str = 'hot.txt'):
+    def __init__(self, app):
         logger.info("初始化 LLM 处理器")
+        self.app = app
 
         # 获取热词管理器单例
         self.hotword_manager = get_hotword_manager()
@@ -135,7 +136,7 @@ class LLMHandler:
             logger.debug(f"角色 '{role_name}' 启用历史，当前历史条数: {len(context_manager.history)}")
         
         # 获取选中文字（如果启用）
-        selection_text = get_selected_text(role_config)
+        selection_text = get_selected_text(role_config, self.app.state)
         
         # 构建消息
         messages = self.message_builder.build_messages(
@@ -184,8 +185,7 @@ class LLMHandler:
             await output_text(text, paste)
             
             # 更新全局状态并 UDP 广播
-            from util.client.state import get_state
-            get_state().set_output_text(text)
+            self.app.state.set_output_text(text)
             broadcast_output_udp(text)
 
             return LLMResult(result=text, role_name=None, processed=False, 
@@ -201,8 +201,7 @@ class LLMHandler:
         # 5. 后置处理
         # 更新全局状态（即便是中断了，也记录已经输出的部分）
         if result:
-            from util.client.state import get_state
-            get_state().set_output_text(result)
+            self.app.state.set_output_text(result)
             broadcast_output_udp(result)
 
         return LLMResult(
@@ -223,12 +222,14 @@ _handler: Optional[LLMHandler] = None
 _watcher: Optional[LLMFileWatcher] = None
 
 
-def get_handler() -> LLMHandler:
+def get_handler(app=None) -> LLMHandler:
     """获取 LLM 处理器实例（单例）"""
     global _handler, _watcher
 
     if _handler is None:
-        _handler = LLMHandler()
+        if app is None:
+            raise ValueError("LLMHandler 必须使用 app 实例初始化")
+        _handler = LLMHandler(app)
         # 创建 Watcher，传入回调函数实现解耦
         _watcher = LLMFileWatcher(
             on_roles_reload=lambda: _handler.reload_roles(),
@@ -239,12 +240,12 @@ def get_handler() -> LLMHandler:
     return _handler
 
 
-def init_llm_system():
+def init_llm_system(app):
     """初始化 LLM 系统（便捷函数）"""
     from config_client import ClientConfig as Config
     if Config.llm_enabled:
         try:
-            get_handler()
+            get_handler(app)
         except Exception as e:
             from util.client.state import console
             console.print(f'[red]LLM 系统初始化失败: {e}[/]')

@@ -295,7 +295,7 @@ class ResultProcessor:
             )
         else:
             await self.output.output(text, paste=paste)
-            get_state().set_output_text(text)
+            self.state.set_output_text(text)
             broadcast_output_udp(text)
 
         # 保存录音与写入 md 文件

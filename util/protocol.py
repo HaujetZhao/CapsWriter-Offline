@@ -6,10 +6,10 @@
 这些类同时用于服务端和客户端，确保消息格式一致。
 """
 
+from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from typing import List, Literal, Optional
 import json
-from __future__ import annotations
 
 
 @dataclass

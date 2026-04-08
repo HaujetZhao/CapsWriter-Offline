@@ -71,7 +71,7 @@ class TrayManager:
         """打开添加纠错界面回调"""
         try:
             from ..ui import on_add_rectify_record
-            on_add_rectify_record()
+            on_add_rectify_record(self.app)
         except ImportError as e:
             logger.warning(f"无法导入纠错菜单处理器: {e}")
 

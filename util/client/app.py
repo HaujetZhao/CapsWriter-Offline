@@ -13,7 +13,7 @@ import logging
 from pathlib import Path
 
 import colorama
-from .state import get_state
+from .state import ClientState
 from . import logger
 from config_client import ClientConfig as Config, __version__
 from util.tools.lifecycle import lifecycle
@@ -50,16 +50,15 @@ class CapsWriterClient:
         self.base_dir = Path(__file__).parents[2]
         os.chdir(self.base_dir)
             
-        # 2. 初始化核心状态单例 (基础设施层)
-        self.state = get_state()
-        self.state.app = self
+        # 2. 初始化核心状态 (基础设施层)
+        self.state = ClientState(app=self)
 
         # 3. 初始化核心功能组件 (单例持有)
         init_hotword_system()
-        init_llm_system()
+        init_llm_system(self)
 
         self.hotword = get_hotword_manager()
-        self.llm = get_handler()
+        self.llm = get_handler(self)
         self.output = TextOutput()
         self.diary = DiaryWriter(base_path=self.base_dir / '日记')
 

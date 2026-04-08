@@ -13,15 +13,13 @@ import pyclip
 import keyboard
 from . import logger
 from .llm_clipboard import safe_paste
-from util.client.state import get_state
-state = get_state()
 
 
 # 全局变量：记录每个角色最后一次使用的选中文字
 _last_selection_by_role = {}
 
 
-def get_selected_text(role_config) -> str:
+def get_selected_text(role_config, state) -> str:
     """
     获取用户当前选中的文字（通过模拟 Ctrl+C）
 
