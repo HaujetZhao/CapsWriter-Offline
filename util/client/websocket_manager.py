@@ -35,7 +35,7 @@ class WebSocketManager:
         max_retries: 最大重试次数
     """
     
-    def __init__(self, app: 'CapsWriterClient', max_retries: int = 3):
+    def __init__(self, app: CapsWriterClient, max_retries: int = 3):
         """
         初始化 WebSocket 管理器
         
@@ -47,7 +47,7 @@ class WebSocketManager:
         self.max_retries = max_retries
 
     @property
-    def state(self) -> 'ClientState':
+    def state(self) -> ClientState:
         """快捷访问状态单例"""
         return self.app.state
     

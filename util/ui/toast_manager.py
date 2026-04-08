@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Toast 消息管理器模块
 
@@ -100,10 +101,10 @@ class ToastMessageManager:
         - UUID 消息标识，精确匹配和操作
     """
 
-    _instance: Optional['ToastMessageManager'] = None
+    _instance: Optional[ToastMessageManager] = None
     _lock = threading.Lock()
 
-    def __new__(cls) -> 'ToastMessageManager':
+    def __new__(cls) -> ToastMessageManager:
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
@@ -115,7 +116,7 @@ class ToastMessageManager:
             return
 
         self._initialized = True
-        self.message_queue: 'Queue[ToastMessage]' = Queue()
+        self.message_queue: Queue[ToastMessage] = Queue()
         self.is_running = False
         self.active_windows: List = []  # 运行时类型，避免循环导入
         self.root: Optional[tk.Tk] = None
@@ -278,7 +279,7 @@ class ToastMessageManager:
                 return
         logger.warning(f"未找到消息 ID: {msg_id[:8]}")
 
-    async def wait_for_window(self, msg_id: str, timeout: float = 1.0) -> Optional['ToastWindowBase']:
+    async def wait_for_window(self, msg_id: str, timeout: float = 1.0) -> Optional[ToastWindowBase]:
         """异步等待指定 ID 的窗口创建完成
 
         Args:

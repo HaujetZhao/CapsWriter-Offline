@@ -5,6 +5,7 @@
 管理单个快捷键的录音任务状态
 """
 
+from __future__ import annotations
 import asyncio
 import time
 from threading import Event
@@ -12,11 +13,12 @@ from typing import TYPE_CHECKING, Optional
 
 from . import logger
 from util.tools.my_status import Status
-
+ 
 if TYPE_CHECKING:
     from util.client.shortcut.shortcut_config import Shortcut
     from util.client.state import ClientState
     from util.client.audio.recorder import AudioRecorder
+    from util.client.app import CapsWriterClient
 
 
 
@@ -27,7 +29,7 @@ class ShortcutTask:
     跟踪每个快捷键独立的录音状态，防止互相干扰。
     """
 
-    def __init__(self, app: 'CapsWriterClient', shortcut: 'Shortcut', recorder_class=None):
+    def __init__(self, app: CapsWriterClient, shortcut: Shortcut, recorder_class=None):
         """
         初始化快捷键任务
 
@@ -57,11 +59,11 @@ class ShortcutTask:
         self._status = Status('开始录音', spinner='point')
 
     @property
-    def state(self) -> 'ClientState':
+    def state(self) -> ClientState:
         """快捷访问状态单例"""
         return self.app.state
 
-    def _get_recorder(self) -> 'AudioRecorder':
+    def _get_recorder(self) -> AudioRecorder:
         """获取 AudioRecorder 实例"""
         if self._recorder_class is None:
             from util.client.audio.recorder import AudioRecorder

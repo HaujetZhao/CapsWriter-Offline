@@ -31,6 +31,8 @@ from util.client.llm.llm_write_md import write_llm_md
 if TYPE_CHECKING:
     from util.client.state import ClientState
     from util.client.app import CapsWriterClient
+    from util.client.hotword.manager import HotwordManager
+    from util.client.diary.diary_writer import DiaryWriter
 
 
 
@@ -55,7 +57,7 @@ class ResultProcessor:
     - 保存录音和日记
     """
     
-    def __init__(self, app: 'CapsWriterClient'):
+    def __init__(self, app: CapsWriterClient):
         """
         初始化结果处理器
 
@@ -67,27 +69,27 @@ class ResultProcessor:
         self._loop = asyncio.get_running_loop()  # 保存事件循环引用
 
     @property
-    def state(self) -> 'ClientState':
+    def state(self) -> ClientState:
         """快捷访问状态单例"""
         return self.app.state
 
     @property
-    def ws(self) -> 'WebSocketManager':
+    def ws(self) -> WebSocketManager:
         """快捷访问连接管理器"""
         return self.app.ws
 
     @property
-    def hotword(self) -> 'HotwordManager':
+    def hotword(self) -> HotwordManager:
         """快捷访问热词管理器"""
         return self.app.hotword
 
     @property
-    def output(self) -> 'TextOutput':
+    def output(self) -> TextOutput:
         """快捷访问文本输出器"""
         return self.app.output
 
     @property
-    def diary(self) -> 'DiaryWriter':
+    def diary(self) -> DiaryWriter:
         """快捷访问日记写入器"""
         return self.app.diary
 

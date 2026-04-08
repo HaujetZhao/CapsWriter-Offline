@@ -26,6 +26,7 @@ from . import logger
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
+    from util.client.app import CapsWriterClient
 
 
 class FileTranscriber:
@@ -39,7 +40,7 @@ class FileTranscriber:
     4. 调用 ResultHandler 处理结果
     """
     
-    def __init__(self, app: 'CapsWriterClient', file: Path):
+    def __init__(self, app: CapsWriterClient, file: Path):
         """
         初始化文件转录器
         
@@ -53,7 +54,7 @@ class FileTranscriber:
         self._audio_duration: float = 0.0
 
     @property
-    def state(self) -> 'ClientState':
+    def state(self) -> ClientState:
         """快捷访问状态单例"""
         return self.app.state
 

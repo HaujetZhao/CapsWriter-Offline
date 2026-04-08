@@ -35,10 +35,10 @@ class GlobalHotkeyManager:
     """
 
     # 单例实例
-    _instance: Optional['GlobalHotkeyManager'] = None
+    _instance: Optional[GlobalHotkeyManager] = None
     _lock = threading.Lock()
 
-    def __new__(cls) -> 'GlobalHotkeyManager':
+    def __new__(cls) -> GlobalHotkeyManager:
         """单例模式"""
         with cls._lock:
             if cls._instance is None:

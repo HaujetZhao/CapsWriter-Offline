@@ -9,6 +9,7 @@
 from dataclasses import dataclass, field, asdict
 from typing import List, Literal, Optional
 import json
+from __future__ import annotations
 
 
 @dataclass
@@ -39,7 +40,7 @@ class AudioMessage:
         return json.dumps(asdict(self), ensure_ascii=False)
     
     @classmethod
-    def from_dict(cls, data: dict) -> 'AudioMessage':
+    def from_dict(cls, data: dict) -> AudioMessage:
         """从字典创建实例"""
         return cls(
             task_id=data['task_id'],
@@ -95,7 +96,7 @@ class RecognitionMessage:
         return asdict(self)
     
     @classmethod
-    def from_dict(cls, data: dict) -> 'RecognitionMessage':
+    def from_dict(cls, data: dict) -> RecognitionMessage:
         """从字典创建实例"""
         return cls(
             task_id=data['task_id'],

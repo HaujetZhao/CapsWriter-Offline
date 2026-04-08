@@ -45,7 +45,7 @@ class AudioStreamManager:
     SAMPLE_RATE = 48000
     BLOCK_DURATION = 0.05  # 50ms
     
-    def __init__(self, app: 'CapsWriterClient'):
+    def __init__(self, app: CapsWriterClient):
         """
         初始化音频流管理器
         
@@ -57,7 +57,7 @@ class AudioStreamManager:
         self._running = False  # 标志是否应该运行
 
     @property
-    def state(self) -> 'ClientState':
+    def state(self) -> ClientState:
         """快捷访问状态单例"""
         return self.app.state
     

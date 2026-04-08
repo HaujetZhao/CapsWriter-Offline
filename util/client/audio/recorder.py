@@ -41,7 +41,7 @@ class AudioRecorder:
     - 将音频数据发送到识别服务端
     """
     
-    def __init__(self, app: 'CapsWriterClient'):
+    def __init__(self, app: CapsWriterClient):
         """
         初始化录制器
         
@@ -56,12 +56,12 @@ class AudioRecorder:
         self._cache: list = []
 
     @property
-    def state(self) -> 'ClientState':
+    def state(self) -> ClientState:
         """快捷访问状态单例"""
         return self.app.state
 
     @property
-    def _ws_manager(self) -> 'WebSocketManager':
+    def _ws_manager(self) -> WebSocketManager:
         """快捷访问桥接到 app.ws"""
         return self.app.ws
     
