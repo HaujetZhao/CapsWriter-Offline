@@ -25,18 +25,15 @@ from . import logger
 class MessageBuilder:
     """LLM 消息构建器"""
 
-    def __init__(self):
+    def __init__(self, app):
         """
         初始化消息构建器
         """
-        # 延迟导入避免循环依赖
-        pass
+        self.app = app
 
     def _get_rectify_rag(self):
         """从 HotwordManager 获取 RectificationRAG"""
-        from util.client.hotword import get_hotword_manager
-        manager = get_hotword_manager()
-        return manager.get_rectify_rag()
+        return self.app.hotword.get_rectify_rag()
 
     def build_messages(
         self,

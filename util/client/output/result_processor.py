@@ -17,7 +17,7 @@ from config_client import ClientConfig as Config
 from util.client.state import console
 from util.client.websocket_manager import WebSocketManager
 from util.protocol import RecognitionMessage
-from util.client.hotword import get_hotword_manager
+
 from util.client.output.text_output import TextOutput
 from util.tools.window_detector import get_active_window_info
 from . import logger

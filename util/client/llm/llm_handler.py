@@ -21,7 +21,6 @@ from util.client.llm.llm_processor import LLMProcessor
 from util.client.llm.llm_get_selection import get_selected_text, record_selection_usage
 from util.client.llm.llm_process_text import LLMResult
 from . import logger
-from util.client.hotword import get_hotword_manager
 from util.client.udp.udp_broadcaster import broadcast_output_udp
 
 
@@ -35,8 +34,8 @@ class LLMHandler:
         logger.info("初始化 LLM 处理器")
         self.app = app
 
-        # 获取热词管理器单例
-        self.hotword_manager = get_hotword_manager()
+        # 获取热词管理器
+        self.hotword_manager = app.hotword
 
         # 角色管理
         self.role_loader = RoleLoader()
@@ -50,8 +49,8 @@ class LLMHandler:
         # 客户端池
         self.client_pool = ClientPool()
 
-        # 消息构建器（内部从 HotwordManager 获取 rectify_rag）
-        self.message_builder = MessageBuilder()
+        # 消息构建器
+        self.message_builder = MessageBuilder(app)
 
         # 角色检测器
         self.role_detector = RoleDetector(self.role_loader)

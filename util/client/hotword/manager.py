@@ -49,8 +49,7 @@ except ImportError:
             def line(self): print()
         console = MockConsole()
 
-# 全局单例
-_manager: Optional[HotwordManager] = None
+
 
 class HotwordManager:
     """热词管理器：负责资源协调、热词文件加载与动态监控"""
@@ -86,6 +85,8 @@ class HotwordManager:
         )
         
         self._observer: Optional[Observer] = None
+
+        self.load_all()
 
     def _get_display_width(self, text: str) -> int:
         """计算字符串的显示宽度（考虑中文字符占2个单位）"""
@@ -249,24 +250,4 @@ class _HotwordFileHandler(FileSystemEventHandler):
             break
 
 
-# ======================================================================
-# --- 全局单例访问函数 ---
 
-def get_hotword_manager(hotword_files: Optional[Dict[str, Path]] = None, 
-                        threshold: float = 0.7, 
-                        similar_threshold: Optional[float] = None,
-                        rectify_threshold: float = 0.5) -> HotwordManager:
-    """
-    获取热词管理器单例实例。
-    第一次调用时可以传入配置参数，后续调用将返回已存在的实例。
-    """
-    global _manager
-    if _manager is None:
-        # 如果是主项目运行，这里可以从 config 拿默认值逻辑可以放在调用端
-        _manager = HotwordManager(
-            hotword_files=hotword_files,
-            threshold=threshold,
-            similar_threshold=similar_threshold,
-            rectify_threshold=rectify_threshold
-        )
-    return _manager
