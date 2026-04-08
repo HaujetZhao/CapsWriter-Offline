@@ -20,7 +20,7 @@ from util.tools.lifecycle import lifecycle
 from .state import console
 from .websocket_manager import WebSocketManager
 from .manager import (
-    ResourceManager, HardwareManager, TrayManager,
+    HardwareManager, TrayManager,
     MicRunner, FileRunner
 )
 
@@ -40,7 +40,6 @@ class CapsWriterClient:
         self.state = get_state()
 
         # 3. 初始化各管理器 (职责下放)
-        self.resource_manager = ResourceManager(self.state)
         self.hardware_manager = HardwareManager(self.state)
         self.tray_manager = TrayManager(self.state, self.base_dir)
         self.ws_manager = WebSocketManager(self.state)
@@ -83,11 +82,11 @@ class CapsWriterClient:
 
         if files:
             # 文件转录模式
-            runner = FileRunner(self.state, self.ws_manager, self.resource_manager, files)
+            runner = FileRunner(self.state, self.ws_manager, files)
         else:
             # 麦克风实时模式
             runner = MicRunner(
-                self.state, self.ws_manager, self.hardware_manager, self.tray_manager, self.resource_manager
+                self.state, self.ws_manager, self.hardware_manager, self.tray_manager
             )
         
         # 运行主循环
