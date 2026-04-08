@@ -91,11 +91,30 @@ class CapsWriterClient:
         logger.info("资源释放完成")
         console.print('[green4]再见！')
 
-    async def start(self):
+    async def _run_async(self):
+        """内部异步运行环境"""
+        # 3. 基础环境初始化 (双模共有)
+        self._setup_common()
+        
+        files = [Path(f) for f in sys.argv[1:] if os.path.exists(f)]
+
+        if files:
+            # 文件转录模式
+            runner = FileRunner(self.state, self.ws_manager, files)
+        else:
+            # 麦克风实时模式
+            runner = MicRunner(
+                self.state, self.ws_manager, self.hardware_manager, self.tray_manager
+            )
+        
+        # 运行主循环
+        await runner.run()
+
+    def start(self):
         """
         启动客户端 (唯一入口)
         
-        自动根据命令行参数识别模式。
+        自动根据命令行参数识别模式。内部管理异步循环。
         """
         # 0. 终端颜色支持
         colorama.init()
@@ -106,26 +125,11 @@ class CapsWriterClient:
         # 2. 初始化生命周期
         lifecycle.initialize(logger=logger, exit_on_signal=True)
         
-        # 3. 基础环境初始化 (双模共有)
-        self._setup_common()
-        
-        # 4. 根据参数进入不同模式
-        files = [Path(f) for f in sys.argv[1:] if os.path.exists(f)]
-        
         try:
-            if files:
-                # 文件转录模式
-                runner = FileRunner(self.state, self.ws_manager, files)
-            else:
-                # 麦克风实时模式
-                runner = MicRunner(
-                    self.state, self.ws_manager, self.hardware_manager, self.tray_manager
-                )
+            # 使用 asyncio 运行主异步过程
+            asyncio.run(self._run_async())
             
-            # 运行主循环
-            await runner.run()
-            
-            # 5. 正常完成清理
+            # 4. 正常完成清理
             lifecycle.cleanup()
             
         except (KeyboardInterrupt, asyncio.CancelledError):
