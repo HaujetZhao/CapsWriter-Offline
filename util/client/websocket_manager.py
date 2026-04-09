@@ -35,16 +35,14 @@ class WebSocketManager:
         max_retries: 最大重试次数
     """
     
-    def __init__(self, app: CapsWriterClient, max_retries: int = 3):
+    def __init__(self, app: CapsWriterClient):
         """
         初始化 WebSocket 管理器
         
         Args:
             app: 客户端 App 实例
-            max_retries: 连接失败时的最大重试次数
         """
         self.app = app
-        self.max_retries = max_retries
 
     @property
     def state(self) -> ClientState:
@@ -75,27 +73,23 @@ class WebSocketManager:
         
         url = f"ws://{Config.addr}:{Config.port}"
         
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                logger.debug(f"正在连接服务端 {url} (尝试 {attempt}/{self.max_retries})")
-                
-                self.state.websocket = await websockets.connect(
-                    url,
-                    subprotocols=["binary"],
-                    max_size=None
-                )
-                
-                logger.info(f"WebSocket 连接成功: {url}")
-                return True
-                
-            except ConnectionRefusedError:
-                logger.debug(f"连接被拒绝 (尝试 {attempt}/{self.max_retries})")
-            except TimeoutError:
-                logger.debug(f"连接超时 (尝试 {attempt}/{self.max_retries})")
-            except Exception as e:
-                logger.debug(f"连接失败: {e} (尝试 {attempt}/{self.max_retries})")
+        try:
+            logger.debug(f"正在连接服务端 {url}")
+            
+            self.state.websocket = await websockets.connect(
+                url,
+                subprotocols=["binary"],
+                max_size=None
+            )
+            
+            logger.info(f"WebSocket 建立成功: {url}")
+            return True
+            
+        except (ConnectionRefusedError, TimeoutError):
+            logger.debug(f"连接服务端 {url} 被拒绝或超时")
+        except Exception as e:
+            logger.debug(f"连接服务端 {url} 失败: {e}")
         
-        logger.debug(f"连接服务端 {url} 失败，已重试 {self.max_retries} 次 (请检查服务端是否已启动)")
         return False
     
     async def send(self, message: AudioMessage) -> bool:
