@@ -44,7 +44,8 @@ class UDPController:
     
     def start(self) -> None:
         """启动 UDP 监听"""
-        if self.running:
+        if self.running and self._thread and self._thread.is_alive():
+            logger.debug("UDP 控制器已在运行，跳过启动")
             return
         
         self.running = True
@@ -54,12 +55,17 @@ class UDPController:
     
     def stop(self) -> None:
         """停止 UDP 监听"""
+        if not self.running:
+            return
+            
         self.running = False
         if self._sock:
             try:
                 self._sock.close()
             except Exception:
                 pass
+            finally:
+                self._sock = None
         logger.info("UDP 控制器已停止")
     
     def _listen(self) -> None:

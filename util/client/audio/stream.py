@@ -102,13 +102,17 @@ class AudioStreamManager:
         else:
             logger.debug("音频流已正常结束")
     
-    def open(self) -> Optional[sd.InputStream]:
+    def start(self) -> Optional[sd.InputStream]:
         """
-        打开音频流
+        启动音频流
         
         Returns:
             创建的音频输入流，如果失败返回 None
         """
+        if self._running:
+            logger.debug("音频流已在运行，跳过启动")
+            return self.state.stream
+            
         # 检测音频设备
         try:
             device = sd.query_devices(kind='input')
@@ -151,29 +155,32 @@ class AudioStreamManager:
             logger.error(f"创建音频流失败: {e}", exc_info=True)
             return None
     
-    def close(self) -> None:
-        """关闭音频流"""
+    def stop(self) -> None:
+        """停止音频流"""
+        if not self._running:
+            return
+            
         self._running = False  # 标记为停止
         if self.state.stream is not None:
             try:
                 self.state.stream.close()
-                logger.debug("音频流已关闭")
+                logger.debug("音频流已停止")
             except Exception as e:
-                logger.debug(f"关闭音频流时发生错误: {e}")
+                logger.debug(f"停止音频流时发生错误: {e}")
             finally:
                 self.state.stream = None
     
     def reopen(self) -> Optional[sd.InputStream]:
         """
-        重新打开音频流
+        重新启动音频流
         
         Returns:
             新创建的音频输入流
         """
         logger.info("正在重启音频流...")
         
-        # 关闭旧流
-        self.close()
+        # 停止旧流
+        self.stop()
         
         # 重载 PortAudio，更新设备列表
         try:
@@ -187,5 +194,5 @@ class AudioStreamManager:
         # 等待设备稳定
         time.sleep(0.1)
         
-        # 打开新流
-        return self.open()
+        # 启动新流
+        return self.start()

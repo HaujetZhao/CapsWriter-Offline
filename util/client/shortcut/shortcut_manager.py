@@ -255,18 +255,24 @@ class ShortcutManager:
         has_mouse = any(s.type == 'mouse' for s in self.shortcuts if s.enabled)
 
         if has_keyboard:
-            self.keyboard_listener = keyboard.Listener(
-                win32_event_filter=self.create_keyboard_filter()
-            )
-            self.keyboard_listener.start()
-            logger.info("键盘监听器已启动")
+            if self.keyboard_listener and self.keyboard_listener.is_alive():
+                logger.debug("键盘监听器已在运行，跳过启动")
+            else:
+                self.keyboard_listener = keyboard.Listener(
+                    win32_event_filter=self.create_keyboard_filter()
+                )
+                self.keyboard_listener.start()
+                logger.info("键盘监听器已启动")
 
         if has_mouse:
-            self.mouse_listener = mouse.Listener(
-                win32_event_filter=self.create_mouse_filter()
-            )
-            self.mouse_listener.start()
-            logger.info("鼠标监听器已启动")
+            if self.mouse_listener and self.mouse_listener.is_alive():
+                logger.debug("鼠标监听器已在运行，跳过启动")
+            else:
+                self.mouse_listener = mouse.Listener(
+                    win32_event_filter=self.create_mouse_filter()
+                )
+                self.mouse_listener.start()
+                logger.info("鼠标监听器已启动")
 
         # 打印所有启用的快捷键
         for shortcut in self.shortcuts:
@@ -278,12 +284,22 @@ class ShortcutManager:
     def stop(self) -> None:
         """停止所有监听器和清理资源"""
         if self.keyboard_listener:
-            self.keyboard_listener.stop()
-            logger.debug("键盘监听器已停止")
-
+            try:
+                self.keyboard_listener.stop()
+                logger.debug("键盘监听器已停止")
+            except Exception:
+                pass
+            finally:
+                self.keyboard_listener = None
+                
         if self.mouse_listener:
-            self.mouse_listener.stop()
-            logger.debug("鼠标监听器已停止")
+            try:
+                self.mouse_listener.stop()
+                logger.debug("鼠标监听器已停止")
+            except Exception:
+                pass
+            finally:
+                self.mouse_listener = None
 
         # 取消所有任务
         for task in self.tasks.values():

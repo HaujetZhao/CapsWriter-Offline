@@ -34,9 +34,9 @@ class MicRunner:
         # 2. UI 提示
         TipsDisplay.show_mic_tips()
 
-        # 3. 开启硬件资源 (音频流、快捷键监听)
+        # 3. 开启运行组件 (音频流、快捷键监听)
         logger.info("正在开启硬件资源...")
-        self.app.stream.open()
+        self.app.stream.start()
         self.app.shortcut.start()
         
         # 4. 开启 UDP 控制 (如果启用)

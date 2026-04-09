@@ -85,14 +85,10 @@ class CapsWriterClient:
         """
         logger.info("正在执行 CapsWriterClient 资源释放...")
         
-        # 1. 直接关闭核心硬件资源
-        for resource, name in [(self.udp, 'UDP 控制器'), (self.shortcut, '快捷键监听'), (self.stream, '音频流')]:
-            try:
-                # 统一调用关闭/停止接口 (stop 或 close)
-                getattr(resource, 'stop', getattr(resource, 'close', lambda: None))()
-                logger.debug(f"{name} 已关闭")
-            except Exception as e:
-                logger.warning(f"关闭 {name} 时出错: {e}")
+        # 1. 停止核心运行组件
+        self.udp.stop()
+        self.shortcut.stop()
+        self.stream.stop()
 
         # 2. 托盘资源
         stop_tray()
