@@ -12,7 +12,6 @@ import base64
 import json
 import time
 import uuid
-import websockets
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
@@ -71,13 +70,11 @@ class FileTranscriber:
 
         # 2. 检查服务端连接
         if not await self._ws_manager.connect():
-            console.print('无法连接到服务端')
             logger.error("无法连接到服务端")
             return False
         
         # 3. 检查文件是否存在
         if not self.file.exists():
-            console.print(f'文件不存在：{self.file}')
             logger.error(f"文件不存在: {self.file}")
             return False
         
@@ -85,7 +82,6 @@ class FileTranscriber:
     
     async def send(self) -> None:
         """发送音频数据到服务端 (异步流式处理)"""
-        websocket = self.state.websocket
         
         self.task_id = str(uuid.uuid1())
         console.print(f'\n任务标识：{self.task_id}')
@@ -135,7 +131,8 @@ class FileTranscriber:
                     seg_overlap=Config.file_seg_overlap,
                     context=Config.context
                 )
-                await self._ws_manager.send(message)
+                if not await self._ws_manager.send(message):
+                    raise ConnectionError("消息发送失败，连接可能已断开")
 
             # 发送结束标志
             final_message = AudioMessage(
@@ -148,7 +145,8 @@ class FileTranscriber:
                 seg_overlap=Config.file_seg_overlap,
                 context=Config.context
             )
-            await self._ws_manager.send(final_message)
+            if not await self._ws_manager.send(final_message):
+                raise ConnectionError("结束标志发送失败")
             await process.wait()
             
             if self._audio_duration == 0:
@@ -157,14 +155,12 @@ class FileTranscriber:
 
             logger.debug("音频数据发送完成")
             
-        except websockets.exceptions.ConnectionClosed:
-            console.print('\n[bold red]错误：与服务端的连接已断开，请检查服务端是否正常运行。[/bold red]')
-            logger.error(f"发送数据时连接断开: {self.file}")
+        except ConnectionError as e:
+            logger.error(f"发送数据失败: {e}, 文件: {self.file}")
             if 'process' in locals() and process.returncode is None:
                 process.terminate()
-            raise
+            return
         except Exception as e:
-            console.print(f'\n[red]转录过程中发生错误: {e}')
             logger.error(f"转录发送异常: {e}", exc_info=True)
             if 'process' in locals() and process.returncode is None:
                 process.terminate()
@@ -172,7 +168,6 @@ class FileTranscriber:
     
     async def receive(self) -> None:
         """接收转录结果"""
-        websocket = self.state.websocket
         
         try:
             while True:
@@ -184,9 +179,8 @@ class FileTranscriber:
                 if msg.is_final:
                     message = msg # 保持变量名兼容后续调用
                     break
-        except websockets.exceptions.ConnectionClosed:
-            console.print('\n[bold red]错误：在等待识别结果时，与服务端的连接已断开。[/bold red]')
-            logger.error(f"接收结果时连接断开: {self.file}")
+        except ConnectionError as e:
+            logger.error(f"{e}, 文件: {self.file}")
             return
         except Exception as e:
             logger.error(f"接收消息错误: {e}")

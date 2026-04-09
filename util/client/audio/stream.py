@@ -120,14 +120,8 @@ class AudioStreamManager:
             )
             logger.info(f"找到音频设备: {device_name}, 声道数: {self._channels}")
         except UnicodeDecodeError:
-            console.print(
-                "由于编码问题，暂时无法获得麦克风设备名字",
-                end='\n\n',
-                style='bright_red'
-            )
             logger.warning("无法获取音频设备名称（编码问题）")
         except sd.PortAudioError:
-            console.print("没有找到麦克风设备", end='\n\n', style='bright_red')
             logger.error("未找到麦克风设备")
             input('按回车键退出')
             sys.exit(1)

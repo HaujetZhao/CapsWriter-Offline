@@ -179,7 +179,6 @@ class ResultProcessor:
                 await self._handle_message(message)
 
         except ConnectionClosedError:
-            console.print('[red]连接断开\n')
             logger.error("WebSocket 连接断开")
         except ConnectionClosedOK:
             console.print('[yellow]连接已正常关闭\n')
@@ -189,7 +188,6 @@ class ResultProcessor:
             raise
         except Exception as e:
             logger.error(f"接收结果时发生错误: {e}", exc_info=True)
-            print(e)
         finally:
             self._cleanup()
 
