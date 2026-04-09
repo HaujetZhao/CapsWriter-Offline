@@ -11,7 +11,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 服务端配置
 class ServerConfig:
     addr = '0.0.0.0'
-    port = '6022'
+    port = '6023'
 
     # 语音模型选择：'qwen_asr', 'fun_asr_nano', 'sensevoice', 'paraformer'
     model_type = 'qwen_asr'
