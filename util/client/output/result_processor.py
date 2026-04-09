@@ -11,12 +11,10 @@ import asyncio
 import json
 from typing import TYPE_CHECKING, Optional
 
-from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
-
 from config_client import ClientConfig as Config
 from util.client.state import console
-from util.client.websocket_manager import WebSocketManager
 from util.protocol import RecognitionMessage
+from util.client.websocket_manager import CommunicationError
 
 from util.client.output.text_output import TextOutput
 from util.tools.window_detector import get_active_window_info
@@ -47,7 +45,7 @@ def _estimate_tokens(text: str) -> int:
 
 class ResultProcessor:
     """
-    识别结果处理器会车，会车处理器回车，回车处理器
+    识别结果处理器
     
     负责处理服务端返回的识别结果：
     - 接收 WebSocket 消息
@@ -153,43 +151,26 @@ class ResultProcessor:
             logger.debug(f"检测按键状态失败: {e}")
     
     async def process_loop(self) -> None:
-        """主处理循环"""
-        if not await self.ws.connect():
-            logger.debug("WebSocket 连接检查失败")
+        """循环处理服务端发来的消息"""
+
+        # 连接服务端
+        if await self.ws.connect():
+            logger.info("WebSocket 连接成功")
+        else:
+            logger.debug("WebSocket 连接失败")
             return
 
-        console.print('[green]连接成功\n')
-        logger.info("WebSocket 连接成功")
+        # 处理消息
+        while not self._exit_event.is_set():
+            # 接收消息，断联退出
+            try:
+                message = await self.ws.receive()
+            except CommunicationError:
+                break
 
-        try:
-            while not self._exit_event.is_set():
-                # 直接等待接收消息，退出由 self.ws.receive() 的取消或外部 request_exit 处理
-                # 这里使用 wait_for 只是为了能定期检查 _exit_event
-                try:
-                    message = await asyncio.wait_for(self.ws.receive(), timeout=1.0)
-                except asyncio.TimeoutError:
-                    continue
-                except (ConnectionClosedError, ConnectionClosedOK):
-                    logger.warning("WebSocket 连接已关闭")
-                    break
+            await self._handle_message(message)
 
-                if message is None:
-                    break
-                    
-                await self._handle_message(message)
-
-        except ConnectionClosedError:
-            logger.error("WebSocket 连接断开")
-        except ConnectionClosedOK:
-            console.print('[yellow]连接已正常关闭\n')
-            logger.info("WebSocket 连接已正常关闭")
-        except asyncio.CancelledError:
-            logger.info("处理循环被取消")
-            raise
-        except Exception as e:
-            logger.error(f"接收结果时发生错误: {e}", exc_info=True)
-        finally:
-            self._cleanup()
+        self._cleanup()
 
     async def _handle_message(self, message: Optional[RecognitionMessage]) -> None:
         """处理接收到的消息"""

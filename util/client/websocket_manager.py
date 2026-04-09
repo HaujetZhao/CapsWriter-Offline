@@ -23,6 +23,11 @@ if TYPE_CHECKING:
     from .app import CapsWriterClient
 
 
+class CommunicationError(Exception):
+    """通信层通用异常"""
+    pass
+
+
 class WebSocketManager:
     """
     WebSocket 连接管理器
@@ -110,19 +115,12 @@ class WebSocketManager:
             await self.state.websocket.send(message.to_json())
             return True
             
-        except ConnectionClosedError:
-            logger.error("发送失败：连接已断开")
+        except (websockets.exceptions.ConnectionClosedError, websockets.exceptions.ConnectionClosedOK):
             self.state.websocket = None
-            return False
-            
-        except ConnectionClosedOK:
-            logger.info("发送失败：连接已正常关闭")
-            self.state.websocket = None
-            return False
+            raise CommunicationError("发送失败：连接已断开")
             
         except Exception as e:
-            logger.error(f"发送消息时发生错误: {e}", exc_info=True)
-            return False
+            raise CommunicationError(f"发送消息时发生未知错误: {e}")
     
     async def receive(self) -> Optional[RecognitionMessage]:
         """
@@ -140,23 +138,15 @@ class WebSocketManager:
             data = json.loads(raw_message)
             return RecognitionMessage.from_dict(data)
             
-        except ConnectionClosedError:
-            logger.error("接收失败：连接已断开")
+        except (websockets.exceptions.ConnectionClosedError, websockets.exceptions.ConnectionClosedOK):
             self.state.websocket = None
-            return None
-            
-        except ConnectionClosedOK:
-            logger.info("接收失败：连接已正常关闭")
-            self.state.websocket = None
-            return None
+            raise CommunicationError("接收失败：连接已断开")
             
         except json.JSONDecodeError as e:
-            logger.error(f"消息解析失败: {e}")
-            return None
+            raise CommunicationError(f"消息解析失败: {e}")
             
         except Exception as e:
-            logger.error(f"接收消息时发生错误: {e}", exc_info=True)
-            return None
+            raise CommunicationError(f"接收消息时发生未知错误: {e}")
     
     async def close(self) -> None:
         """关闭 WebSocket 连接"""
