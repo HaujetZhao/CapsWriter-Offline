@@ -6,7 +6,7 @@
 """
 
 import time
-from util.server.context import console
+from util.server.state import console
 from config_server import (
     ServerConfig as Config, 
     ModelPaths

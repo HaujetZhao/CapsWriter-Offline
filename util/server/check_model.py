@@ -10,7 +10,7 @@ from pathlib import Path
 
 from config_server import ServerConfig as Config
 from config_server import ModelPaths, ModelDownloadLinks
-from util.server.context import console
+from util.server.state import console
 from . import logger
 
 

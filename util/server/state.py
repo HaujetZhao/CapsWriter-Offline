@@ -1,40 +1,43 @@
 # coding: utf-8
 """
-服务端全局状态模块
+服务端状态管理模块
 
-提供服务端运行时的全局共享状态，包括 WebSocket 连接池和消息队列。
-使用类变量实现全局状态，方便跨模块访问。
+提供 ServerState (主进程) 和 WorkerState (子进程) 类。
 """
 
 from __future__ import annotations
 from dataclasses import dataclass, field
 from multiprocessing import Queue, Process
-from typing import Dict, List, Optional, Any
+from typing import TYPE_CHECKING, Dict, List, Optional, Any
 
 import websockets
 from rich.console import Console
 
 from util.server.schema import Result, RecognitionSession
 
+if TYPE_CHECKING:
+    from .app import CapsWriterServer
+
 # Rich console 用于控制台输出（服务端统一使用此实例）
 console = Console(highlight=False)
 
 
 @dataclass
-class ServerContext:
+class ServerState:
     """
-    服务端全局上下文容器
+    主进程运行状态
     
-    存储服务端运行时的共享状态：
+    存储服务端主进程运行时的共享状态：
     - sockets: WebSocket 连接字典，以 socket_id 为键
     - sockets_id: 跨进程的 socket ID 列表（由 Manager 创建）
     - queue_in: 任务输入队列（主进程 -> 识别进程）
     - queue_out: 结果输出队列（识别进程 -> 主进程）
     - recognize_process: 识别子进程句柄
-    - sessions: 活跃识别会话，以 task_id 为键
     """
+    app: Optional[CapsWriterServer] = None
+
     # WebSocket 连接池
-    sockets: Dict[str, websockets.WebSocketClientProtocol] = field(default_factory=dict)
+    sockets: Dict[str, websockets.WebSocketServerProtocol] = field(default_factory=dict)
     
     # 跨进程共享的 socket ID 列表（需要用 Manager().list() 初始化）
     sockets_id: Optional[List] = None
@@ -46,6 +49,19 @@ class ServerContext:
     # 识别子进程
     recognize_process: Optional[Process] = None
 
+    def initialize(self) -> None:
+        """初始化状态（如有需要）"""
+        pass
+
+
+@dataclass
+class WorkerState:
+    """
+    识别子进程运行状态
+    
+    存储识别 Worker 进程运行时的状态：
+    - sessions: 活跃识别会话，以 task_id 为键
+    """
     # 识别会话集
     sessions: Dict[str, RecognitionSession] = field(default_factory=dict)
 
@@ -65,19 +81,3 @@ class ServerContext:
         for task_id in tasks_to_remove:
             self.sessions.pop(task_id, None)
         return len(tasks_to_remove)
-
-
-# 全局状态实例
-_global_context: Optional[ServerContext] = None
-
-
-def get_context() -> ServerContext:
-    """
-    获取全局服务端上下文实例
-    
-    如果尚未初始化，则创建新实例。
-    """
-    global _global_context
-    if _global_context is None:
-        _global_context = ServerContext()
-    return _global_context

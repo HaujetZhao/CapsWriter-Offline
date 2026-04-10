@@ -9,7 +9,7 @@
 
 import re
 import time
-from util.server.context import get_context, console
+from util.server.state import WorkerState, console
 from util.server.schema import Task, Result
 from util.server.formatter import TextFormatter
 from util.server.audio import process_audio_task
@@ -33,11 +33,12 @@ class TaskPipeline:
     基于任务源（mic/file）和引擎能力（Capabilities）自适应调整流水线深度。
     """
 
-    def __init__(self, recognizer, punc_model=None, aligner=None):
+    def __init__(self, recognizer, punc_model=None, aligner=None, state: WorkerState = None):
         self.recognizer = recognizer
         self.punc_model = punc_model
         self.aligner = aligner
         self.formatter = TextFormatter(punc_model)
+        self.state = state or WorkerState()
 
     def _process_simple_merge(self, result: Result, stream_result_text: str) -> None:
         """ 处理简单文本拼接（主要输出，用于语音输入） """
@@ -58,9 +59,8 @@ class TaskPipeline:
         处理单个音频任务片段并返回识别结果
         """
         try:
-            context = get_context()
-            is_first_segment = task.task_id not in context.sessions
-            session = context.get_session(task.task_id, task.socket_id, task.source)
+            is_first_segment = task.task_id not in self.state.sessions
+            session = self.state.get_session(task.task_id, task.socket_id, task.source)
             result = session.result
             
             # 2. 预处理音频并获取采样点
@@ -126,8 +126,7 @@ class TaskPipeline:
                     t_per_char = result.duration / len(chars)
                     result.tokens, result.timestamps = chars, [i * t_per_char for i in range(len(chars))]
             
-            context = get_context()
-            context.sessions.pop(task.task_id, None)
+            self.state.sessions.pop(task.task_id, None)
             result.is_final = True
             
             # 打印统计
@@ -143,8 +142,6 @@ class TaskPipeline:
 
 
 def clear_results_by_socket_id(socket_id: str) -> None:
-    """清理指定 socket_id 关联的所有任务结果缓存"""
-    count = get_context().clear_sessions_by_socket_id(socket_id)
-    if count > 0:
-        logger.debug(f"已清理断开连接相关的缓存: socket_id={socket_id}, 任务数={count}")
+    """该方法已弃用，因为 sessions 现在存储在子进程的 WorkerState 中"""
+    pass
 

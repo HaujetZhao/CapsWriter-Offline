@@ -116,4 +116,4 @@ class RecognizerWorker:
         logger.info("正在停止 Worker 并回收资源...")
         self.loader.cleanup()
         self._is_running = False
-        logger.debug("Worker 资源已完成回收")
+        logger.info("Worker 资源已完成回收")

@@ -13,14 +13,13 @@ import logging
 from pathlib import Path
 from util.logger import setup_logger
 from config_server import ServerConfig as Config, __version__
-from util.server.context import console
+from .state import ServerState, console
 from util.tools.signal_handler import register_signal
 from .manager.process_manager import ProcessManager
 from .manager.server_manager import SocketManager
 from .manager.tray_manager import TrayManager
 from . import logger
 import colorama 
-
 
 class CapsWriterServer:
     """
@@ -38,8 +37,11 @@ class CapsWriterServer:
         asyncio.set_event_loop(self.loop)
 
         # 2. 初始化核心状态管理类 (基础设施层)
+        self.state = ServerState(app=self)
+        self.state.initialize()
+
         self.process_manager = ProcessManager(self)
-        self.socket_manager = SocketManager()
+        self.socket_manager = SocketManager(self)
         self.tray_manager = TrayManager(self)
         
         # 2. 基本配置
@@ -82,8 +84,11 @@ class CapsWriterServer:
         logger.info("=" * 50)
         logger.info("开始清理服务端资源...")
 
+        self.state.queue_out.put(None)
+        
         # 0. 停止协程
         self.loop.stop()
+
 
         # 1. 终止识别子进程
         self.process_manager.stop()
@@ -135,4 +140,5 @@ class CapsWriterServer:
         try:
             self.loop.run_until_complete(self.socket_manager.run()) 
         except RuntimeError:
+            print('...')
             ...

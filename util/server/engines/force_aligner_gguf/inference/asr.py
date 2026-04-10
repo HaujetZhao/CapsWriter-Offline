@@ -5,7 +5,6 @@ import re
 import codecs
 import dataclasses
 import numpy as np
-import multiprocessing as mp
 from pathlib import Path
 from collections import deque
 from typing import Optional, List

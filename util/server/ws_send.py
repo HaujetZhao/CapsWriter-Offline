@@ -3,7 +3,7 @@ import base64
 import asyncio
 from multiprocessing import Queue
 
-from util.server.context import console, get_context
+from util.server.state import console
 from util.server.schema import Result
 from util.protocol import RecognitionMessage
 from util.tools.asyncio_to_thread import to_thread
@@ -12,11 +12,11 @@ from rich import inspect
 
 
 
-async def ws_send():
+async def ws_send(app):
 
-    context = get_context()
-    queue_out = context.queue_out
-    sockets = context.sockets
+    state = app.state
+    queue_out = state.queue_out
+    sockets = state.sockets
 
     logger.info("WebSocket 发送任务已启动")
 

@@ -11,7 +11,7 @@ import queue
 import errno
 from multiprocessing import Process, Manager
 from typing import TYPE_CHECKING
-from util.server.context import get_context, console
+from util.server.state import console
 from util.server.worker import start_worker
 from util.server.check_model import check_model
 from . import logger
@@ -46,8 +46,8 @@ class ProcessManager:
 
         # 2. 初始化共享资源
         # 使用 Manager 管理共享列表，用于追踪活动连接
-        context = get_context()
-        context.sockets_id = Manager().list()
+        state = self.app.state
+        state.sockets_id = Manager().list()
         
         # 获取标准输入文件描述符，用于 Windows 下的信号传递补丁
         stdin_fn = sys.stdin.fileno()
@@ -55,16 +55,16 @@ class ProcessManager:
         # 3. 创建并启动进程
         self._process = Process(
             target=start_worker,
-            args=(context.queue_in,
-                  context.queue_out,
-                  context.sockets_id, 
+            args=(state.queue_in,
+                  state.queue_out,
+                  state.sockets_id, 
                   stdin_fn),
             daemon=True
         )
         self._process.start()
         
-        # 存入全局上下文便于其他模块引用（兼容旧代码）
-        context.recognize_process = self._process
+        # 存入状态以便其他模块引用
+        state.recognize_process = self._process
         logger.info(f"识别子进程已拉起 (PID: {self._process.pid})")
 
         # 4. 等待模型加载完成 (轮询方式)
@@ -79,7 +79,7 @@ class ProcessManager:
         while self.is_alive:
             try:
                 # 阻塞最多 100ms
-                status = get_context().queue_out.get(timeout=0.1)
+                status = self.app.state.queue_out.get(timeout=0.1)
                 if status is True:
                     # 收到 True 说明模型加载成功
                     break
@@ -116,10 +116,8 @@ class ProcessManager:
         if self._process and self._process.is_alive():
             logger.info(f"正在终止识别子进程 (PID: {self._process.pid})...")
             # 发送 None 任务通知优雅退出 (作为兜底)
-            try:
-                get_context().queue_in.put(None)
-            except:
-                pass
+
+            self.app.state.queue_in.put(None)
             
             # 如果 2 秒内没退，则强制 kill
             self._process.join(timeout=2)

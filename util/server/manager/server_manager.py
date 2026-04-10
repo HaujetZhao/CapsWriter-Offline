@@ -7,6 +7,7 @@ WebSocket 管理器 (SocketManager)
 """
 
 import asyncio
+import functools
 import websockets
 from config_server import ServerConfig as Config
 from util.server.ws_recv import ws_recv
@@ -20,10 +21,11 @@ class SocketManager:
     
     管理的异步任务包括：接收连接 (ws_recv)、数据发送循环 (ws_send)。
     """
-    def __init__(self):
+    def __init__(self, app):
         self._server_task = None
         self._send_task = None
         self._shutdown_task = None
+        self.app = app
 
     async def run(self):
         """
@@ -40,8 +42,12 @@ class SocketManager:
 
         # 3. 启动 WebSocket 服务器
         logger.info(f"正在拉起 WebSocket 服务 (监听: {Config.addr}:{Config.port})")
+        
+        # 使用 partial 将 app 注入 ws_recv
+        handler = functools.partial(ws_recv, app=self.app)
+
         async with websockets.serve(
-            ws_recv,
+            handler,
             Config.addr,
             Config.port,
             subprotocols=["binary"],
@@ -49,6 +55,6 @@ class SocketManager:
         ) as server:
             
             # 4. 创建识别结果回传任务 (全局任务)
-            await ws_send()
+            await ws_send(self.app)
             
         logger.info("SocketManager: WebSocket 服务已彻底退出")

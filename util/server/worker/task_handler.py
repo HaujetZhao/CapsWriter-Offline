@@ -7,6 +7,7 @@
 
 from multiprocessing import Queue
 from util.server.pipeline import TaskPipeline
+from ..state import WorkerState
 from . import logger
 
 
@@ -29,6 +30,9 @@ class TaskHandler:
         self.queue_out = queue_out
         self.sockets_id = sockets_id
         
+        # 子进程状态管理
+        self.state = WorkerState()
+        
         # 引擎与管线组件
         self.recognizer = None
         self.punc_model = None
@@ -41,7 +45,7 @@ class TaskHandler:
         self.punc_model = punc_model
         self.aligner = aligner
         # 初始化持久化管线对象
-        self.pipeline = TaskPipeline(recognizer, punc_model, aligner)
+        self.pipeline = TaskPipeline(recognizer, punc_model, aligner, self.state)
 
     def loop(self):
         """

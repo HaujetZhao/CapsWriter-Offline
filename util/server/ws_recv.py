@@ -11,7 +11,7 @@ from base64 import b64decode
 
 import websockets
 
-from util.server.context import console, get_context
+from util.server.state import console
 from util.server.schema import Task
 from util.protocol import AudioMessage
 from util.constants import AudioFormat
@@ -51,13 +51,13 @@ class AudioCache:
         self.byte_count = 0
 
 
-async def message_handler(websocket, msg: AudioMessage, cache: AudioCache) -> None:
+async def message_handler(websocket, msg: AudioMessage, cache: AudioCache, app) -> None:
     """
     处理客户端发送的音频消息
     
     根据消息中的分段参数，将音频数据分段后提交到识别队列。
     """
-    queue_in = get_context().queue_in
+    queue_in = app.state.queue_in
 
     global status_mic
     is_start = not bool(cache.chunks)
@@ -139,7 +139,7 @@ async def message_handler(websocket, msg: AudioMessage, cache: AudioCache) -> No
         raise
 
 
-async def ws_recv(websocket) -> None:
+async def ws_recv(websocket, app) -> None:
     """
     WebSocket 接收主函数
     
@@ -148,9 +148,9 @@ async def ws_recv(websocket) -> None:
     global status_mic
 
     # 登记 socket 到连接池
-    context = get_context()
-    sockets = context.sockets
-    sockets_id = context.sockets_id
+    state = app.state
+    sockets = state.sockets
+    sockets_id = state.sockets_id
     socket_id = str(websocket.id)
     sockets[socket_id] = websocket
     sockets_id.append(socket_id)
@@ -168,7 +168,7 @@ async def ws_recv(websocket) -> None:
                 data = json.loads(raw_message)
                 msg = AudioMessage.from_dict(data)
                 # 处理音频数据
-                await message_handler(websocket, msg, cache)
+                await message_handler(websocket, msg, cache, app)
             except Exception as e:
                 logger.error(f"消息解析失败: {str(e)}")
                 continue
