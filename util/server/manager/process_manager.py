@@ -51,7 +51,7 @@ class ProcessManager:
                   context.queue_out,
                   context.sockets_id, 
                   stdin_fn),
-            daemon=False
+            daemon=True
         )
         self._process.start()
         

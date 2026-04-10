@@ -19,7 +19,6 @@ from util.client.websocket_manager import CommunicationError
 from util.client.output.text_output import TextOutput
 from util.tools.window_detector import get_active_window_info
 from . import logger
-from util.tools.lifecycle import lifecycle
 
 from util.client.udp.udp_broadcaster import broadcast_output_udp
 from util.tools.zhconv import convert as zhconv_convert
@@ -157,7 +156,7 @@ class ResultProcessor:
         if await self.ws.connect():
             logger.info("WebSocket 连接成功")
         else:
-            logger.debug("WebSocket 连接失败")
+            logger.info("WebSocket 连接失败")
             return
 
         # 处理消息
@@ -177,9 +176,6 @@ class ResultProcessor:
         if message is None:
             return
 
-        # 再次检查退出标志
-        if lifecycle.is_shutting_down:
-            return
 
         # 使用 text 字段（简单拼接结果，用于语音输入）
         text = message.text

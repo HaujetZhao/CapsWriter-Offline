@@ -3,7 +3,6 @@ import asyncio
 from . import logger
 from ..ui import TipsDisplay
 from config_client import ClientConfig as Config, __version__
-from util.tools.lifecycle import lifecycle
 
 
 class MicRunner:

@@ -18,11 +18,10 @@ import sounddevice as sd
 
 from util.client.state import console
 from . import logger
-from util.tools.lifecycle import lifecycle
 
 if TYPE_CHECKING:
     from util.client.state import ClientState
-    from .app import CapsWriterClient
+    from ..app import CapsWriterClient
 
 
 
@@ -94,13 +93,11 @@ class AudioStreamManager:
         """音频流结束回调"""
         if not threading.main_thread().is_alive():
             return
+        if not self._running:
+            return
         
-        # 只有在应该运行且不是手动停止、且系统未处于关闭状态的情况下才重启
-        if self._running and not lifecycle.is_shutting_down:
-            logger.info("音频流意外结束，正在尝试重启...")
-            self.reopen()
-        else:
-            logger.debug("音频流已正常结束")
+        logger.info("音频流意外结束，正在尝试重启...")
+        self.reopen()
     
     def start(self) -> Optional[sd.InputStream]:
         """

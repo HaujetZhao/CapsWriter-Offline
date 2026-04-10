@@ -1,7 +1,6 @@
 # coding: utf-8
 from pathlib import Path
 from . import logger
-from util.tools.lifecycle import lifecycle
 from config_client import ClientConfig as Config, __version__
 
 
@@ -34,8 +33,6 @@ class FileRunner:
         
         try:
             for file in self.files:
-                if lifecycle.is_shutting_down:
-                    break
 
                 logger.info(f"正在处理文件: {file}")
                 
@@ -56,9 +53,7 @@ class FileRunner:
             
             logger.info("所有文件已处理完成")
             
-            # 只有在非停机请求下才阻塞等待回车
-            if not lifecycle.is_shutting_down:
-                input('\n按回车退出\n')
+            input('\n按回车退出\n')
 
         except Exception as e:
             logger.error(f"文件模式运行异常: {e}", exc_info=True)

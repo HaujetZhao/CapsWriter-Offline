@@ -77,7 +77,7 @@ class ClientState:
         
         创建事件循环和消息队列，准备开始接收音频数据。
         """
-        self.loop = asyncio.get_event_loop()
+        self.loop = self.app.loop
         self.queue_in = asyncio.Queue()
         self.queue_out = asyncio.Queue()
         logger.debug("客户端状态已初始化")

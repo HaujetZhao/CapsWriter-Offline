@@ -9,14 +9,12 @@ CapsWriter Offline 客户端主程序门面类 (Facade)
 import os
 import sys
 import asyncio
-import logging
 from pathlib import Path
 
-import colorama
 from .state import ClientState
 from . import logger
 from config_client import ClientConfig as Config, __version__
-from util.tools.lifecycle import lifecycle
+from util.tools.signal_handler import register_signal
 from .state import console
 from .websocket_manager import WebSocketManager
 from typing import TYPE_CHECKING, Optional
@@ -39,6 +37,7 @@ from util.tools.empty_working_set import empty_current_working_set
 from platform import system
 
 
+
 class CapsWriterClient:
     """
     CapsWriter 客户端门面类
@@ -46,14 +45,19 @@ class CapsWriterClient:
     管理的外部接口简洁：start()。
     """
     def __init__(self):
-        # 1. 确保正确的工作目录
+        # 确保正确的工作目录
         self.base_dir = Path(__file__).parents[2]
         os.chdir(self.base_dir)
             
-        # 2. 初始化状态容器
+        # 初始化事件循环
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+            
+        # 初始化状态容器
         self.state = ClientState(app=self)
+        self.state.initialize()
 
-        # 3. 初始化热词管理器
+        # 初始化热词管理器
         self.hotword = HotwordManager(
             hotword_files=None,
             threshold=Config.hot_thresh,
@@ -79,11 +83,14 @@ class CapsWriterClient:
         # 内存清理
         empty_current_working_set()
 
-    def teardown(self):
+    def stop(self):
         """
         统一释放所有资源（清理顺序：硬件 -> 托盘 -> WebSocket -> State）
         """
         logger.info("正在执行 CapsWriterClient 资源释放...")
+
+        # 0. 停止协程
+        self.loop.stop()
         
         # 1. 停止核心运行组件
         self.udp.stop()
@@ -93,7 +100,7 @@ class CapsWriterClient:
         # 2. 托盘资源
         stop_tray()
 
-        # 3. 关闭异步监控服务
+        # 3. 关闭监控
         self.hotword.stop_file_watcher()
         self.llm.stop()
 
@@ -109,9 +116,16 @@ class CapsWriterClient:
         logger.info("资源释放完成")
         console.print('[green4]再见！')
 
-    async def _run_async(self):
-        """内部异步运行环境"""
-        self.state.initialize()
+
+    def start(self):
+        """
+        启动客户端 (唯一入口)
+        
+        自动根据命令行参数识别模式。内部管理异步循环。
+        """
+
+        # 注册退出函数
+        register_signal(self.stop)
 
         files = [Path(f) for f in sys.argv[1:] if os.path.exists(f)]
 
@@ -122,35 +136,9 @@ class CapsWriterClient:
             # 麦克风实时模式
             runner = MicRunner(self)
         
-        # 运行主循环
-        await runner.run()
-
-    def start(self):
-        """
-        启动客户端 (唯一入口)
-        
-        自动根据命令行参数识别模式。内部管理异步循环。
-        """
-        # 0. 终端支持代码
-        colorama.init()
-
-        # 1. 注册全局清理函数 (使用实例方法)
-        lifecycle.register_on_shutdown(self.teardown)
-        
-        # 2. 初始化生命周期
-        lifecycle.initialize(logger=logger, exit_on_signal=True)
-        
         try:
-            # 使用 asyncio 运行主异步过程
-            asyncio.run(self._run_async())
-            
-            # 4. 正常完成清理
-            lifecycle.cleanup()
-            
-        except (KeyboardInterrupt, asyncio.CancelledError):
-            logger.info("用户请求停止...")
-            lifecycle.cleanup()
-        except Exception as e:
-            logger.error(f"客户端运行出错: {e}", exc_info=True)
-            lifecycle.cleanup()
-            raise
+            self.loop.run_until_complete(runner.run())
+        except RuntimeError:
+            ...
+
+

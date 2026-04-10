@@ -2,7 +2,6 @@
 import os
 from . import logger
 from config_client import ClientConfig as Config
-from util.tools.lifecycle import lifecycle
 
 
 class TrayManager:
@@ -34,7 +33,7 @@ class TrayManager:
         enable_min_to_tray(
             'CapsWriter Client',
             icon_path,
-            exit_callback=self._request_exit,
+            exit_callback=self.app.stop,
             more_options=[
                 ('📋 复制结果', self._copy_last_result),
                 ('📝 上下文', self._add_context),
@@ -93,4 +92,4 @@ class TrayManager:
     def _request_exit(self, icon=None, item=None):
         """托盘图标引用的退出回调"""
         logger.info("托盘退出: 用户点击退出菜单，准备清理资源并退出")
-        lifecycle.request_shutdown(reason="Tray Icon")
+        self.app.stop()
