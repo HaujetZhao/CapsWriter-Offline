@@ -13,12 +13,13 @@ import logging
 from pathlib import Path
 from util.logger import setup_logger
 from config_server import ServerConfig as Config, __version__
-from util.tools.lifecycle import lifecycle
 from util.server.context import console
+from util.tools.signal_handler import register_signal
 from .manager.process_manager import ProcessManager
 from .manager.server_manager import SocketManager
 from .manager.tray_manager import TrayManager
 from . import logger
+import colorama 
 
 
 class CapsWriterServer:
@@ -32,14 +33,20 @@ class CapsWriterServer:
         self.base_dir = Path(__file__).parents[2]
         os.chdir(self.base_dir)
 
+        # 初始化事件循环
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         # 2. 初始化核心状态管理类 (基础设施层)
-        self.process_manager = ProcessManager()
+        self.process_manager = ProcessManager(self)
         self.socket_manager = SocketManager()
-        self.tray_manager = TrayManager(str(self.base_dir))
+        self.tray_manager = TrayManager(self)
         
         # 2. 基本配置
         self.version = __version__
         self.log_level = Config.log_level
+
+        self.is_alive = False
 
     def _setup_logging(self):
         """配置系统日志级别及第三方库噪音抑制"""
@@ -53,23 +60,7 @@ class CapsWriterServer:
         for handler in logger.handlers:
             ws_logger.addHandler(handler)
 
-    def _setup_env(self):
-        """配置系统生命周期 (信号处理、自动清理、托盘控制)"""
-        # 1. 初始化日志
-        self._setup_logging()
 
-        # 2. 初始化生命周期
-        lifecycle.initialize(logger=logger, exit_on_signal=False)
-        
-        # 注册全局清理回调
-        lifecycle.register_on_shutdown(self.teardown)
-        
-        # 注册托盘与 Banner
-        self.tray_manager.setup_tray()
-        self._print_banner()
-        
-        logger.info("=" * 50)
-        logger.info(f"CapsWriter Offline Server (v{self.version}) 准备就绪")
 
     def _print_banner(self):
         """打印启动信息"""
@@ -80,12 +71,19 @@ class CapsWriterServer:
         console.print(f'当前基文件夹：[cyan underline]{self.base_dir}', end='\n\n')
         console.print(f'绑定的服务地址：[cyan underline]{Config.addr}:{Config.port}', end='\n\n')
 
-    def teardown(self):
+    def stop(self):
         """
         清理服务端资源
         """
+        # 防连续触发
+        if not self.is_alive: return
+        self.is_alive = False 
+
         logger.info("=" * 50)
         logger.info("开始清理服务端资源...")
+
+        # 0. 停止协程
+        self.loop.stop()
 
         # 1. 终止识别子进程
         self.process_manager.stop()
@@ -100,33 +98,41 @@ class CapsWriterServer:
         logger.info("服务端资源清理完成")
         console.print('[green4]再见！')
 
+    
+    async def _run_async(self):
+        """内部异步运行环境"""
+
+
     def start(self):
         """
         同步启动服务端 (主入口)
         
         这是 CoreServer 真正应调用的方法。它将接管进程所有权，直到服务退出。
         """
-        # 1. 环境准备
-        self._setup_env()
-        
-        try:
-            # 2. 启动识别子进程 (模型加载成功前会阻塞)
-            self.process_manager.start_worker()
-            
-            # 3. 运行异步 WebSocket 服务循环
-            # 这会阻塞主线程直到 lifecycle 被标记退出
-            asyncio.run(self.socket_manager.run())
-            
-            # 4. 正常退出后的收尾工作
-            lifecycle.cleanup()
-                
-        except Exception as e:
-            logger.error(f"服务端运行时遭遇不可恢复的错误: {str(e)}", exc_info=True)
-            lifecycle.request_shutdown()
-            lifecycle.cleanup()
-            raise e
+        # 防连续触发
+        if self.is_alive: return
+        self.is_alive = True
 
-    def stop(self):
-        """主动安全停止服务"""
-        logger.info("客户端请求安全停机")
-        lifecycle.request_shutdown()
+        # 注册退出函数
+        register_signal(self.stop)
+
+        """配置系统生命周期 (信号处理、自动清理、托盘控制)"""
+        # 初始化日志
+        self._setup_logging()
+
+        
+        # 注册托盘与 Banner
+        self.tray_manager.setup_tray()
+        self._print_banner()
+        
+        logger.info("=" * 50)
+        logger.info(f"CapsWriter Offline Server (v{self.version}) 准备就绪")
+        
+        # 开启子进程
+        self.process_manager.start_worker()
+        
+        # 开启网络服务
+        try:
+            self.loop.run_until_complete(self.socket_manager.run()) 
+        except RuntimeError:
+            ...

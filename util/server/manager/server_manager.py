@@ -11,7 +11,6 @@ import websockets
 from config_server import ServerConfig as Config
 from util.server.ws_recv import ws_recv
 from util.server.ws_send import ws_send
-from util.tools.lifecycle import lifecycle
 from . import logger
 
 
@@ -34,12 +33,6 @@ class SocketManager:
         """
         loop = asyncio.get_running_loop()
         
-        # 1. 向生命周期管理器同步当前事件循环 (规范初始化)
-        lifecycle.initialize(loop=loop, logger=logger)
-        
-        if lifecycle.is_shutting_down:
-            logger.info("SocketManager: 检测到系统正在停机，放弃启动")
-            return
 
         # 2. 优化守护线程执行器 (防止阻塞事件循环)
         from util.tools.daemon_executor import SimpleDaemonExecutor
@@ -56,41 +49,6 @@ class SocketManager:
         ) as server:
             
             # 4. 创建识别结果回传任务 (全局任务)
-            self._send_task = asyncio.create_task(ws_send())
+            await ws_send()
             
-            # 5. 创建生命周期监控任务 (阻塞等待直到收到退出信号)
-            # 如果系统已经标记关闭，确保触发退出
-            if lifecycle.is_shutting_down:
-                lifecycle.request_shutdown("Startup conflict")
-                
-            self._shutdown_task = asyncio.create_task(lifecycle.wait_for_shutdown())
-
-            # 6. 进入主监听阻塞状态
-            done, pending = await asyncio.wait(
-                [self._send_task, self._shutdown_task],
-                return_when=asyncio.FIRST_COMPLETED
-            )
-
-            # 7. 开始优雅关闭流程
-            if self._shutdown_task in done:
-                logger.info("SocketManager: 收到系统停机指令，正在取消所有网络任务...")
-                
-            # 取消所有尚未完成的任务
-            for task in pending:
-                task.cancel()
-                try:
-                    # 允许任务处理 CancelledError
-                    await task
-                except asyncio.CancelledError:
-                    pass
-                except Exception as e:
-                    logger.error(f"任务取消时遇到异常: {str(e)}")
-            
-            # 检查发送任务是否还有未捕获错误
-            if self._send_task in done and not self._send_task.cancelled():
-                try:
-                    await self._send_task
-                except Exception as e:
-                    logger.error(f"SocketManager: 发送任务意外崩溃: {str(e)}")
-
         logger.info("SocketManager: WebSocket 服务已彻底退出")

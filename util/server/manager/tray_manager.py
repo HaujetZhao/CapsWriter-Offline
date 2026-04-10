@@ -1,16 +1,19 @@
 # coding: utf-8
+from __future__ import annotations
 import os
+from typing import TYPE_CHECKING
 from .. import logger
 from config_server import ServerConfig as Config
-from util.tools.lifecycle import lifecycle
+if TYPE_CHECKING:
+    from ..app import CapsWriterServer
 
 
 class TrayManager:
     """
     托盘管理器：负责系统托盘图标的初始化、菜单构建及回调处理。
     """
-    def __init__(self, base_dir: str):
-        self.base_dir = base_dir
+    def __init__(self, app: CapsWriterServer):
+        self.app = app
 
     def setup_tray(self):
         """初始化系统托盘图标"""
@@ -24,7 +27,7 @@ class TrayManager:
             return
 
         # 获取图标路径
-        icon_path = os.path.join(self.base_dir, 'assets', 'icon.ico')
+        icon_path = os.path.join(self.app.base_dir, 'assets', 'icon.ico')
         
         # 启用托盘
         enable_min_to_tray(
@@ -37,4 +40,4 @@ class TrayManager:
     def _request_exit(self, icon=None, item=None):
         """托盘图标引用的退出回调"""
         logger.info("托盘退出: 用户点击退出菜单，准备清理资源并退出")
-        lifecycle.request_shutdown(reason="Tray Icon")
+        self.app.stop()

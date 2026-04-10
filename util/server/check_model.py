@@ -11,7 +11,6 @@ from pathlib import Path
 from config_server import ServerConfig as Config
 from config_server import ModelPaths, ModelDownloadLinks
 from util.server.context import console
-from util.tools.lifecycle import lifecycle
 from . import logger
 
 
@@ -78,7 +77,6 @@ def check_model() -> None:
 
         ''', style='bright_red')
         input('按回车退出')
-        lifecycle.cleanup()
         sys.exit(1)
 
     # 检查所有必需的文件
@@ -108,7 +106,6 @@ def check_model() -> None:
         logger.error(f"模型文件检查失败，共 {len(missing_files)} 个文件缺失")
         console.print(error_msg)
         input('按回车退出')
-        lifecycle.cleanup()
         sys.exit(1)
 
     # 所有检查通过

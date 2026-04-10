@@ -52,14 +52,14 @@ class RecognizerWorker:
 
         # 注册信号处理器 (优雅退出)
         def signal_handler(signum, frame):
-            sig_name = signal.Signals(signum).name
-            logger.info(f"Worker 接收到信号 {sig_name} ({signum})，开始退出...")
-            self.stop()
-            exit(0)
+            # sig_name = signal.Signals(signum).name
+            # logger.info(f"Worker 接收到信号 {sig_name} ({signum})，开始退出...")
+            # self.stop()
+            # exit(0)
+            ...
 
         # 仅注册主信号
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, lambda signum, frame: None)
         
         # atexit 兜底
         atexit.register(self.stop)
