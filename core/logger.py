@@ -14,7 +14,7 @@ class Logger:
     _loggers = {}
 
     @classmethod
-    def setup(cls, name: str, log_dir: str = None, level: str = 'INFO', max_bytes: int = 10 * 1024 * 1024, backup_count: int = 5, log_filename: str = None):
+    def setup(cls, name: str, log_dir: str = None, level: str = 'INFO', max_bytes: int = 10 * 1024 * 1024, backup_count: int = 0, log_filename: str = None):
         """
         设置并返回一个日志记录器
 
@@ -60,17 +60,14 @@ class Logger:
         # 创建日志目录
         Path(log_dir).mkdir(parents=True, exist_ok=True)
 
-        # 日志文件名处理
-        file_name_prefix = log_filename or name or 'root'
-        log_file = os.path.join(log_dir, f'{file_name_prefix}_{datetime.now().strftime("%Y%m%d")}.log')
-
-        # 创建格式化器
-        formatter = logging.Formatter(
-            fmt='%(asctime)s.%(msecs)03d - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-            datefmt='%H:%M:%S'
-        )
 
         # 1. 文件处理器（根据传入 level 记录）
+        file_name_prefix = log_filename or name or 'root'
+        log_file = os.path.join(log_dir, f'{file_name_prefix}_latest.log')
+        formatter = logging.Formatter(
+            fmt='%(asctime)s.%(msecs)03d %(levelname)-5s [%(filename)20s:%(lineno)-3d] %(message)s',
+            datefmt='%H:%M:%S'
+        )
         file_handler = RotatingFileHandler(
             log_file,
             maxBytes=max_bytes,

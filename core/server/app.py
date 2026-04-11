@@ -11,7 +11,6 @@ import os
 import asyncio
 import logging
 from pathlib import Path
-from core.logger import setup_logger
 from config_server import ServerConfig as Config, __version__
 from .state import ServerState, console
 from core.tools.signal_handler import register_signal
@@ -72,7 +71,6 @@ class CapsWriterServer:
         
         # 0. 停止协程
         self.loop.stop()
-
 
         # 1. 终止识别子进程
         self.process_manager.stop()
