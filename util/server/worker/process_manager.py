@@ -11,9 +11,9 @@ import queue
 import errno
 from multiprocessing import Process, Manager
 from typing import TYPE_CHECKING
-from util.server.state import console
-from util.server.worker import start_worker
-from util.server.check_model import check_model
+from ..state import console
+from . import start_worker
+from ..check_model import check_model
 from . import logger
 if TYPE_CHECKING:
     from ..app import CapsWriterServer

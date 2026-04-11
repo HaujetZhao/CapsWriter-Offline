@@ -81,7 +81,7 @@ class ShortcutTask:
         # 将开始标志放入队列
         asyncio.run_coroutine_threadsafe(
             self.state.queue_in.put({'type': 'begin', 'time': self.recording_start_time, 'data': None}),
-            self.state.loop
+            self.app.loop
         )
 
         # 更新录音状态
@@ -94,7 +94,7 @@ class ShortcutTask:
         recorder = self._get_recorder()
         self.task = asyncio.run_coroutine_threadsafe(
             recorder.record_and_send(),
-            self.state.loop,
+            self.app.loop,
         )
 
     def cancel(self) -> None:
@@ -122,7 +122,7 @@ class ShortcutTask:
                 'time': time.time(),
                 'data': None
             }),
-            self.state.loop
+            self.app.loop
         )
 
         # 执行 restore（可恢复按键 + 非阻塞模式）

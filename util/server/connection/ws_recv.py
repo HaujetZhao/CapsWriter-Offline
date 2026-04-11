@@ -11,12 +11,12 @@ from base64 import b64decode
 
 import websockets
 
-from util.server.state import console
-from util.server.schema import Task
+from ..state import console
+from ..schema import Task
 from util.protocol import AudioMessage
 from util.constants import AudioFormat
 from util.tools.my_status import Status
-from . import logger
+from .. import logger
 
 
 # 麦克风接收状态指示器
@@ -194,7 +194,7 @@ async def ws_recv(websocket, app) -> None:
             sockets_id.remove(socket_id)
         
         # 清理识别结果缓存，防止内存泄漏
-        from util.server.pipeline import clear_results_by_socket_id
+        from ..worker.pipeline import clear_results_by_socket_id
         clear_results_by_socket_id(socket_id)
         
         logger.debug(f"客户端资源已清理: {socket_id}")

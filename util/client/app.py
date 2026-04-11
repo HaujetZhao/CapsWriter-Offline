@@ -55,7 +55,6 @@ class CapsWriterClient:
             
         # 初始化状态容器
         self.state = ClientState(app=self)
-        self.state.initialize()
 
         # 初始化热词管理器
         self.hotword = HotwordManager(

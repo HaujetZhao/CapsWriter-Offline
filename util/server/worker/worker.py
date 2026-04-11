@@ -15,6 +15,7 @@ from platform import system
 
 from .model_loader import ModelLoader
 from .task_handler import TaskHandler
+from ..state import WorkerState
 from . import logger
 
 
@@ -25,20 +26,14 @@ class RecognizerWorker:
     统一调度模型加载器与任务处理器，负责识别进程的完整运行。
     """
     def __init__(self, queue_in: Queue, queue_out: Queue, sockets_id: list, stdin_fn: int = None):
-        """
-        初始化 Worker
+        # 1. 初始化核心状态
+        self.state = WorkerState()
         
-        Args:
-            queue_in: 输入队列
-            queue_out: 输出队列
-            sockets_id: 活动连接列表
-            stdin_fn: 标准输入文件描述符 (用于 Windows Ctrl+C 接管)
-        """
-        # 1. 初始化核心组件
+        # 2. 初始化核心组件 (注入 state)
         self.loader = ModelLoader()
-        self.handler = TaskHandler(queue_in, queue_out, sockets_id)
+        self.handler = TaskHandler(queue_in, queue_out, sockets_id, self.state)
         
-        # 2. 状态追踪
+        # 3. 状态追踪
         self.stdin_fn = stdin_fn
         self._is_running = False
 
@@ -65,55 +60,63 @@ class RecognizerWorker:
         atexit.register(self.stop)
         logger.debug("Worker 运行环境配置完成")
 
-    def run(self):
-        """
-        启动子进程运行
-        
-        执行全流程：环境配置 -> 加载模型 -> 任务循环。
-        """
-        if self._is_running:
-            return
-        
+    def initialize(self):
+        """执行识别子进程环境初始化与模型加载"""
         # 1. 系统环境配置
         self._setup_environment()
-        
+
         # 2. 载入核心识别模型
+        logger.info("Worker 正在加载语音识别模型...")
+        self.loader.load()
+        
+        # 3. 将加载好的引擎委派给处理器
+        self.handler.set_engine(
+            recognizer=self.loader.recognizer, 
+            punc_model=self.loader.punc_model,
+            aligner=self.loader.aligner
+        )
+        
+        # 4. 通知主进程模型已加载成功
+        self.handler.queue_out.put(True)
+        
+        # 5. Windows 下物理内存清理 (优化项)
+        if system() == 'Windows':
+            from util.tools.empty_working_set import empty_current_working_set
+            empty_current_working_set()
+        
+        logger.info("Worker 资源初始化完成")
+
+    def start(self):
+        """
+        启动子进程任务循环
+        """
+        if self._is_running:return
+        self._is_running = True
+
+        self.initialize()
+        
+        # 2. 进入循环
         try:
-            self.loader.load()
-            
-            # 3. 将加载好的引擎委派给处理器
-            self.handler.set_engine(
-                recognizer=self.loader.recognizer, 
-                punc_model=self.loader.punc_model,
-                aligner=self.loader.aligner
-            )
-            
-            # 4. 通知主进程模型已加载成功
-            self.handler.queue_out.put(True)
-            
-            # 5. Windows 下物理内存清理 (优化项)
-            if system() == 'Windows':
-                from util.tools.empty_working_set import empty_current_working_set
-                empty_current_working_set()
-            
-            # 6. 进入循环
-            self._is_running = True
             self.handler.loop()
-            
         except Exception as e:
-            logger.error(f"Worker 启动失败: {str(e)}", exc_info=True)
+            logger.error(f"Worker 运行中发生异常: {str(e)}", exc_info=True)
             raise e
         finally:
             self.stop()
 
+
     def stop(self):
         """统一停止 Worker 并释放资源"""
-        if not self._is_running:
-            # 防止重复清理
-            self.loader.cleanup()
-            return
+        if not self._is_running:return
+        self._is_running = False
 
         logger.info("正在停止 Worker 并回收资源...")
         self.loader.cleanup()
-        self._is_running = False
         logger.info("Worker 资源已完成回收")
+
+
+    def run(self):
+        """
+        供 multiprocessing 调用
+        """
+        self.start()

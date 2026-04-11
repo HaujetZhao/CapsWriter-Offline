@@ -6,7 +6,7 @@
 """
 
 from multiprocessing import Queue
-from util.server.pipeline import TaskPipeline
+from .pipeline import TaskPipeline
 from ..state import WorkerState
 from . import logger
 
@@ -17,7 +17,7 @@ class TaskHandler:
     
     协调输入输出队列与识别引擎之间的任务流。
     """
-    def __init__(self, queue_in: Queue, queue_out: Queue, sockets_id):
+    def __init__(self, queue_in: Queue, queue_out: Queue, sockets_id, state: WorkerState):
         """
         初始化处理器
         
@@ -30,8 +30,8 @@ class TaskHandler:
         self.queue_out = queue_out
         self.sockets_id = sockets_id
         
-        # 子进程状态管理
-        self.state = WorkerState()
+        # 引用由门面注入的状态
+        self.state = state
         
         # 引擎与管线组件
         self.recognizer = None

@@ -3,11 +3,11 @@ import base64
 import asyncio
 from multiprocessing import Queue
 
-from util.server.state import console
-from util.server.schema import Result
+from ..state import console
+from ..schema import Result
 from util.protocol import RecognitionMessage
 from util.tools.asyncio_to_thread import to_thread
-from . import logger
+from .. import logger
 from rich import inspect
 
 

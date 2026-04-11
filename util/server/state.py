@@ -49,9 +49,6 @@ class ServerState:
     # 识别子进程
     recognize_process: Optional[Process] = None
 
-    def initialize(self) -> None:
-        """初始化状态（如有需要）"""
-        pass
 
 
 @dataclass

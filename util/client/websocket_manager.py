@@ -169,7 +169,7 @@ class WebSocketManager:
         if self.state.websocket is None:
             return
 
-        loop = self.state.loop
+        loop = self.app.loop
         if loop and loop.is_running():
             import asyncio
             asyncio.run_coroutine_threadsafe(self.close(), loop)

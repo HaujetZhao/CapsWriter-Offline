@@ -54,12 +54,11 @@ class ClientState:
         last_recognition_text: 最近一次识别的最终文本（热词替换后），供"添加纠错记录"使用
     """
 
-    loop: Optional[asyncio.AbstractEventLoop] = None
-    queue_in: Optional[asyncio.Queue] = None
-    queue_out: Optional[asyncio.Queue] = None
-    websocket: Optional['WebSocketClientProtocol'] = None
-    stream: Optional['sd.InputStream'] = None
-    app: Optional['CapsWriterClient'] = None
+    queue_in: asyncio.Queue = field(default_factory=asyncio.Queue)
+    queue_out: asyncio.Queue = field(default_factory=asyncio.Queue)
+    websocket: Optional[WebSocketClientProtocol] = None
+    stream: Optional[sd.InputStream] = None
+    app: Optional[CapsWriterClient] = None
 
     recording: bool = False
     recording_start_time: float = 0.0
@@ -71,16 +70,7 @@ class ClientState:
     # 最近一次输出内容（如果是 LLM 润色，则是润色结果；否则是原始识别结果）
     last_output_text: Optional[str] = None
     
-    def initialize(self) -> None:
-        """
-        初始化状态
-        
-        创建事件循环和消息队列，准备开始接收音频数据。
-        """
-        self.loop = self.app.loop
-        self.queue_in = asyncio.Queue()
-        self.queue_out = asyncio.Queue()
-        logger.debug("客户端状态已初始化")
+
     
     def reset(self) -> None:
         """

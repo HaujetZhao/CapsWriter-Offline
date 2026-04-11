@@ -2,8 +2,9 @@
 from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
-from .. import logger
 from config_server import ServerConfig as Config
+from ..state import console
+from .. import logger # Server module logger
 if TYPE_CHECKING:
     from ..app import CapsWriterServer
 
@@ -21,7 +22,7 @@ class TrayManager:
             return
 
         try:
-            from util.server.ui import enable_min_to_tray
+            from . import enable_min_to_tray
         except ImportError as e:
             logger.warning(f"托盘模块导入失败，跳过托盘功能: {e}")
             return

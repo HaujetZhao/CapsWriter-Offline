@@ -79,14 +79,14 @@ class AudioStreamManager:
         import asyncio
         
         # 将数据放入队列
-        if self.state.loop and self.state.queue_in:
+        if self.app.loop and self.state.queue_in:
             asyncio.run_coroutine_threadsafe(
                 self.state.queue_in.put({
                     'type': 'data',
                     'time': time.time(),
                     'data': indata.copy(),
                 }),
-                self.state.loop
+                self.app.loop
             )
     
     def _on_stream_finished(self) -> None:

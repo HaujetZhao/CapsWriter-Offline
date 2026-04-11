@@ -10,51 +10,51 @@ import asyncio
 import functools
 import websockets
 from config_server import ServerConfig as Config
-from util.server.ws_recv import ws_recv
-from util.server.ws_send import ws_send
-from . import logger
+from .ws_recv import ws_recv
+from .ws_send import ws_send
+from .. import logger # Server module logger
 
 
 class SocketManager:
     """
     WebSocket 网络管理器
     
-    管理的异步任务包括：接收连接 (ws_recv)、数据发送循环 (ws_send)。
+    负责拉起并维护 WebSocket Server 以及识别结果的异步发送任务。
     """
     def __init__(self, app):
-        self._server_task = None
-        self._send_task = None
-        self._shutdown_task = None
         self.app = app
+        self._is_running = False
 
     async def run(self):
         """
-        异步运行 WebSocket 服务
-        
-        执行全流程：注册生命周期循环 -> 启动业务任务 -> 维持服务 -> 优雅停止。
+        启动 WebSocket 网络服务
         """
+        if self._is_running: return
+        self._is_running = True
+
         loop = asyncio.get_running_loop()
         
-
-        # 2. 优化守护线程执行器 (防止阻塞事件循环)
+        # 1. 优化守护线程执行器 (防止阻塞事件循环)
+        from ..worker.pipeline import clear_results_by_socket_id
         from util.tools.daemon_executor import SimpleDaemonExecutor
         loop.set_default_executor(SimpleDaemonExecutor())
 
-        # 3. 启动 WebSocket 服务器
-        logger.info(f"正在拉起 WebSocket 服务 (监听: {Config.addr}:{Config.port})")
-        
-        # 使用 partial 将 app 注入 ws_recv
+        # 2. 准备连接处理器 (注入 app 引用)
         handler = functools.partial(ws_recv, app=self.app)
 
+        # 3. 启动服务
+        logger.info(f"正在拉起 WebSocket 服务 (监听: {Config.addr}:{Config.port})")
+        
         async with websockets.serve(
             handler,
             Config.addr,
             Config.port,
             subprotocols=["binary"],
             max_size=None
-        ) as server:
-            
-            # 4. 创建识别结果回传任务 (全局任务)
+        ):
+            # 4. 进入识别结果发送循环 (作为主阻塞任务)
+            logger.info("WebSocket 发送协程已就绪")
             await ws_send(self.app)
             
-        logger.info("SocketManager: WebSocket 服务已彻底退出")
+        self._is_running = False
+        logger.info("SocketManager: WebSocket 服务已退出")

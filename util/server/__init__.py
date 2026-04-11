@@ -15,13 +15,17 @@
 """
 
 from util.server.state import console
-from util import get_logger
+from util.logger import get_logger, setup_logger
+from config_server import ServerConfig as Config, __version__
+
+setup_logger('server', level=Config.log_level)
 logger = get_logger('server')
 
 from util.server.schema import Task, Result
 
 __all__ = [
     'console',
+    'logger',
     'Task',
     'Result',
 ]
