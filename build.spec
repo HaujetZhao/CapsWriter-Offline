@@ -156,9 +156,7 @@ a_2.binaries = filtered_binaries
 
 
 # 排除不要打包的模块（这些将作为源文件复制）
-private_module = ['util', 'config_client', 'config_server', 'LLM', 
-                  'core_server',
-                  'core_client',
+private_module = ['core', 'config_client', 'config_server', 'LLM', 
                   ]
 
 pure = a_1.pure.copy()
@@ -283,7 +281,7 @@ from platform import system
 from subprocess import run
 
 if system() == 'Windows':
-    link_folders = ['models', 'assets', 'util', 'LLM',  'log']  # 不再链接 util，因为 util 已经被复制
+    link_folders = ['models', 'assets', 'core', 'LLM',  'log']  
     for folder in link_folders:
         if not exists(folder):
             continue

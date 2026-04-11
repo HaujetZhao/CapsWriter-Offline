@@ -1,6 +1,6 @@
 # coding: utf-8
 import os
-from util.client import CapsWriterClient
+from core.client import CapsWriterClient
 
 if __name__ == "__main__":
     # 直接实例化并启动门面类即可

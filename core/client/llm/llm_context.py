@@ -1,0 +1,97 @@
+"""
+LLM 上下文管理器
+
+功能：
+1. 管理对话历史
+2. 自动清理过期对话
+3. 修剪历史长度
+"""
+
+import time
+from typing import Dict, List
+from threading import Lock
+from core.client.llm.llm_constants import ContextConstants, estimate_tokens
+from . import logger
+
+
+class ContextManager:
+    """对话上下文管理器"""
+
+    def __init__(self, max_length: int = 2000):
+        self.max_length = max_length
+        self.history = []
+        self.last_interaction = None
+        self._lock = Lock()
+
+    def add_message(self, role: str, content: str):
+        """添加消息到历史"""
+        with self._lock:
+            timestamp = time.time()
+            self.history.append({
+                'timestamp': timestamp,
+                'role': role,
+                'content': content,
+            })
+            self.last_interaction = timestamp
+            self._trim_history()
+
+    def clear(self):
+        """清除对话历史"""
+        with self._lock:
+            self.history = []
+            self.last_interaction = None
+            logger.info("对话历史已清除")
+
+    def get_history(self) -> List[Dict]:
+        """获取对话历史"""
+        with self._lock:
+            return [
+                {'role': msg['role'], 'content': msg['content']}
+                for msg in self.history
+            ]
+
+    def _estimate_tokens(self, text: str) -> int:
+        """估算文本的 token 数量（使用统一的常量）"""
+        return estimate_tokens(text)
+
+    def _trim_history(self):
+        """基于 token 数量智能修剪历史
+
+        策略：
+        1. 如果超过限制的 80%，立即清理
+        2. 保留 20% 空间给模型思考输出
+        3. 从最早的消息开始删除，优先保留最近的对话
+        """
+        if not self.history:
+            return
+
+        # 计算当前历史的总 token 数
+        total_tokens = sum(
+            self._estimate_tokens(msg['content'])
+            for msg in self.history
+        )
+
+        # 使用配置的阈值，保留空间给模型输出
+        target_tokens = int(self.max_length * ContextConstants.TRIM_THRESHOLD_RATIO)
+
+        # 如果总 token 数在阈值范围内，不需要修剪
+        if total_tokens <= target_tokens:
+            return
+
+        threshold_percent = int(ContextConstants.TRIM_THRESHOLD_RATIO * 100)
+        logger.info(f"[上下文裁剪] 当前 {total_tokens} tokens ({total_tokens/self.max_length*100:.1f}%)，触发清理（阈值：{target_tokens} tokens, {threshold_percent}%）")
+
+        # 从头部（最旧的消息）开始删除，直到满足阈值限制
+        removed_count = 0
+        while self.history and total_tokens > target_tokens:
+            # 删除最旧的消息
+            removed_msg = self.history.pop(0)
+            removed_tokens = self._estimate_tokens(removed_msg['content'])
+            total_tokens -= removed_tokens
+            removed_count += 1
+
+        # 调试信息：打印裁剪结果
+        if len(self.history) > 0:
+            final_tokens = sum(self._estimate_tokens(msg['content']) for msg in self.history)
+            logger.info(f"[上下文裁剪] 已删除 {removed_count} 条旧消息，保留 {len(self.history)} 条消息")
+            logger.info(f"[上下文裁剪] 当前约 {final_tokens} tokens ({final_tokens/self.max_length*100:.1f}%)，剩余空间 {self.max_length - final_tokens} tokens")

@@ -42,15 +42,15 @@ def should_include_file(file_path, is_client_only=False):
     - models/模型名/文件 会被打包（层级深度 == 2）
     - models/模型名/子目录/文件  不会被打包（层级深度 >= 3）
     - 如果是【仅客户端】打包：
-        - 排除 util 目录下的所有 .dll 文件（客户端不需要本地识别引擎）
+        - 排除 core 目录下的所有 .dll 文件（客户端不需要本地识别引擎）
     """
     path = Path(file_path)
     parts = path.parts
 
     # 1. 客户端特殊排除逻辑
     if is_client_only:
-        # 排除 util 中的 dll 文件
-        if 'util' in parts and path.suffix.lower() == '.dll':
+        # 排除 core 中的 dll 文件
+        if 'core' in parts and path.suffix.lower() == '.dll':
             return False
 
     # 2. 检查是否在 models 目录下
