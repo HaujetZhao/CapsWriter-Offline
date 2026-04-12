@@ -29,7 +29,6 @@ class FileRunner:
         
         logger.info(f"待处理文件: {[str(f) for f in self.files]}")
         
-        srt_adjuster = SrtAdjuster()
         
         try:
             for file in self.files:
@@ -38,18 +37,18 @@ class FileRunner:
                 
                 # 情况 1：文本类文件，执行 SRT 时间轴调整
                 if file.suffix.lower() in ['.txt', '.json', '.srt', '.vtt']:
+                    srt_adjuster = SrtAdjuster()
                     srt_adjuster.adjust(file)
+                    
                 # 情况 2：媒体文件，执行 ASR 识别转录
                 else:
                     transcriber = FileTranscriber(self.app, file)
                     if await transcriber.check():
                         await transcriber.send()
                         await transcriber.receive()
+                        await transcriber.close()
                 
                 logger.info(f"文件处理完成: {file}")
-            
-            # 关闭连接
-            await self.ws_manager.close()
             
             logger.info("所有文件已处理完成")
             

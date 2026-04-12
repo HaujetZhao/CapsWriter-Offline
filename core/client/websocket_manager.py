@@ -17,6 +17,8 @@ from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 from config_client import ClientConfig as Config
 from core.protocol import AudioMessage, RecognitionMessage
 from . import logger
+import asyncio
+
 
 if TYPE_CHECKING:
     from core.client.state import ClientState
@@ -151,13 +153,9 @@ class WebSocketManager:
     async def close(self) -> None:
         """关闭 WebSocket 连接"""
         if self.state.websocket is not None:
-            try:
-                await self.state.websocket.close()
-                logger.info("WebSocket 连接已关闭")
-            except Exception as e:
-                logger.debug(f"关闭连接时发生错误: {e}")
-            finally:
-                self.state.websocket = None
+            await self.state.websocket.close()
+            self.state.websocket = None
+            logger.info("WebSocket 连接已关闭")
 
     def close_sync(self) -> None:
         """
@@ -171,7 +169,6 @@ class WebSocketManager:
 
         loop = self.app.loop
         if loop and loop.is_running():
-            import asyncio
             asyncio.run_coroutine_threadsafe(self.close(), loop)
             logger.debug("已调度 WebSocket 关闭（threadsafe）")
         else:

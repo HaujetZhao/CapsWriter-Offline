@@ -64,19 +64,20 @@ class FileTranscriber:
     
     async def check(self) -> bool:
         """检查转录条件"""
-        # 1. 检查媒体工具环境 (FFmpeg)
+        # 检查文件是否存在
+        if not self.file.exists():
+            logger.error(f"文件不存在: {self.file}")
+            return False
+
+        # 检查媒体工具环境 (FFmpeg)
         if not MediaTool.check_environment():
             return False
 
-        # 2. 检查服务端连接
+        # 检查服务端连接
         if not await self._ws_manager.connect():
             logger.error("无法连接到服务端")
             return False
         
-        # 3. 检查文件是否存在
-        if not self.file.exists():
-            logger.error(f"文件不存在: {self.file}")
-            return False
         
         return True
     
@@ -197,3 +198,7 @@ class FileTranscriber:
             f"转录完成: {self.file}, 处理耗时: {process_duration:.2f}s, "
             f"文本长度: {len(text_display)}"
         )
+
+    async def close(self) -> None:
+        """释放资源，关闭 WebSocket 连接"""
+        await self._ws_manager.close()
