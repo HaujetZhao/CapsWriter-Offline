@@ -30,7 +30,7 @@ class ProcessManager:
         self.app = app
         self.is_alive = False
 
-    def start_worker(self):
+    def start(self):
         """
         启动识别子进程并等待模型加载完成
         

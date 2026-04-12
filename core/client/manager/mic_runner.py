@@ -28,7 +28,7 @@ class MicRunner:
     def _setup_resources(self):
         """初始化麦克风模式特有资源 (音频硬件、快捷键、UI 托盘)"""
         # 1. 托盘
-        self.tray_manager.setup_tray()
+        self.tray_manager.start()
 
         # 2. UI 提示
         TipsDisplay.show_mic_tips()
@@ -43,8 +43,7 @@ class MicRunner:
             self.app.udp.start()
 
         # 5. 开启后台服务 (热词监视、LLM 监控)
-        self.app.hotword.load_all()
-        self.app.hotword.start_file_watcher()
+        self.app.hotword.start()
         self.app.llm.start()
 
     async def run(self):

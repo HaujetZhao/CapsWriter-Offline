@@ -155,6 +155,15 @@ class HotwordManager:
     def get_rectify_rag(self) -> RectificationRAG:
         return self.rectify_rag
 
+    def start(self) -> None:
+        """开启热词服务：加载资源并启动文件监视"""
+        self.load_all()
+        self.start_file_watcher()
+
+    def stop(self) -> None:
+        """关闭热词服务：停止文件监视"""
+        self.stop_file_watcher()
+
     def start_file_watcher(self) -> Any:
         """启动文件监视"""
         if self._observer: return

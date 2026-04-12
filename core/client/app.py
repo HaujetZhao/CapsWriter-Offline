@@ -99,7 +99,7 @@ class CapsWriterClient:
         self.tray.stop()
 
         # 3. 关闭监控
-        self.hotword.stop_file_watcher()
+        self.hotword.stop()
         self.llm.stop()
 
         # 4. 关闭 WebSocket 连接
@@ -124,9 +124,6 @@ class CapsWriterClient:
 
         # 注册退出函数
         register_signal(self.stop)
-
-        # 开启托盘图标
-        self.tray.start()
 
         files = [Path(f) for f in sys.argv[1:] if os.path.exists(f)]
 

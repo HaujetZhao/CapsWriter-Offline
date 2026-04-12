@@ -75,7 +75,10 @@ class CapsWriterServer:
         # 1. 终止识别子进程
         self.process_manager.stop()
 
-        # 2. 停止托盘图标
+        # 2. 停止网络服务
+        self.socket_manager.stop()
+
+        # 3. 停止托盘图标
         self.tray_manager.stop()
 
         logger.info("服务端资源清理完成")
@@ -100,10 +103,10 @@ class CapsWriterServer:
         self._print_banner()
 
         # 拉起识别子进程
-        self.process_manager.start_worker()
+        self.process_manager.start()
         
         # 开启网络服务监听 (接管当前线程直至退出)
         try:
-            self.loop.run_until_complete(self.socket_manager.run()) 
+            self.loop.run_until_complete(self.socket_manager.start()) 
         except RuntimeError:
             pass

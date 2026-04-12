@@ -36,7 +36,7 @@ class SocketManager:
                 logger.error(f"端口冲突：{Config.addr}:{Config.port} 已被占用，请检查是否已有服务端正在运行。")
                 return False
 
-    async def run(self):
+    async def start(self):
         """
         启动 WebSocket 网络服务
         """
@@ -49,7 +49,7 @@ class SocketManager:
 
         self._is_running = True
 
-        loop = asyncio.get_running_loop()
+        loop = self.app.loop
         
         # 1. 优化守护线程执行器 (防止阻塞事件循环)
         from ..worker.pipeline import clear_results_by_socket_id
@@ -75,3 +75,7 @@ class SocketManager:
             
         self._is_running = False
         logger.info("SocketManager: WebSocket 服务已退出")
+
+    def stop(self):
+        """停止 WebSocket 网络服务"""
+        self._is_running = False
