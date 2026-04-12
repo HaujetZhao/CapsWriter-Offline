@@ -32,7 +32,6 @@ from .hotword.manager import HotwordManager
 from .llm.llm_handler import LLMHandler
 from .output.text_output import TextOutput
 from .diary.diary_writer import DiaryWriter
-from .ui import stop_tray
 from core.tools.empty_working_set import empty_current_working_set
 from platform import system
 
@@ -97,7 +96,7 @@ class CapsWriterClient:
         self.stream.stop()
 
         # 2. 托盘资源
-        stop_tray()
+        self.tray.stop()
 
         # 3. 关闭监控
         self.hotword.stop_file_watcher()
@@ -125,6 +124,9 @@ class CapsWriterClient:
 
         # 注册退出函数
         register_signal(self.stop)
+
+        # 开启托盘图标
+        self.tray.start()
 
         files = [Path(f) for f in sys.argv[1:] if os.path.exists(f)]
 

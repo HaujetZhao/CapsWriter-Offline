@@ -76,11 +76,7 @@ class CapsWriterServer:
         self.process_manager.stop()
 
         # 2. 停止托盘图标
-        try:
-            from core.ui.tray import stop_tray
-            stop_tray()
-        except:
-            pass
+        self.tray_manager.stop()
 
         logger.info("服务端资源清理完成")
         console.print('[green4]再见！')
@@ -100,7 +96,7 @@ class CapsWriterServer:
         register_signal(self.stop)
 
         # 托盘图标
-        self.tray_manager.setup_tray()
+        self.tray_manager.start()
         self._print_banner()
 
         # 拉起识别子进程

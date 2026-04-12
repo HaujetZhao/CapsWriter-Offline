@@ -16,7 +16,7 @@ class TrayManager:
     def __init__(self, app: CapsWriterServer):
         self.app = app
 
-    def setup_tray(self):
+    def start(self):
         """初始化系统托盘图标"""
         if not Config.enable_tray:
             return
@@ -42,3 +42,15 @@ class TrayManager:
         """托盘图标引用的退出回调"""
         logger.info("托盘退出: 用户点击退出菜单，准备清理资源并退出")
         self.app.stop()
+
+    def stop(self):
+        """停止托盘图标"""
+        if not Config.enable_tray:
+            return
+            
+        try:
+            from core.ui.tray import stop_tray
+            stop_tray()
+            logger.info("TrayManager: 托盘图标已卸载")
+        except Exception as e:
+            logger.debug(f"TrayManager: 卸载托盘时发生错误: {e}")

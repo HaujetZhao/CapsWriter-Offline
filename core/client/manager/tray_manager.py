@@ -15,7 +15,7 @@ class TrayManager:
     def state(self):
         return self.app.state
 
-    def setup_tray(self):
+    def start(self):
         """初始化系统托盘图标"""
         if not Config.enable_tray:
             return
@@ -44,6 +44,18 @@ class TrayManager:
             ]
         )
         logger.info("托盘图标已启用")
+
+    def stop(self):
+        """停止托盘图标"""
+        if not Config.enable_tray:
+            return
+            
+        try:
+            from ..ui.tray import stop_tray
+            stop_tray()
+            logger.info("TrayManager: 托盘图标已卸载")
+        except Exception as e:
+            logger.debug(f"TrayManager: 卸载托盘时发生错误: {e}")
 
     def _restart_audio(self):
         """重启音频流回调"""
