@@ -79,6 +79,10 @@ class TaskHandler:
                 # 5. 返回识别结果给主进程
                 self.queue_out.put(result)
                 
+                # 6. 如果任务已结束，清理会话状态
+                if result.is_final:
+                    self.state.sessions.pop(task.task_id, None)
+                
             except Exception as e:
                 logger.error(f"任务执行出错: {str(e)}", exc_info=True)
                 # 即使单个任务出错，也不退出循环，防止 Worker 进程崩溃

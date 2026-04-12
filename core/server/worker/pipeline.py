@@ -126,7 +126,6 @@ class TaskPipeline:
                     t_per_char = result.duration / len(chars)
                     result.tokens, result.timestamps = chars, [i * t_per_char for i in range(len(chars))]
             
-            self.state.sessions.pop(task.task_id, None)
             result.is_final = True
             
             # 打印统计

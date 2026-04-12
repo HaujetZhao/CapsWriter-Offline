@@ -25,7 +25,7 @@ class MicRunner:
     def tray_manager(self):
         return self.app.tray
 
-    def _setup_resources(self):
+    def start_resources(self):
         """初始化麦克风模式特有资源 (音频硬件、快捷键、UI 托盘)"""
         # 1. 托盘
         self.tray_manager.start()
@@ -34,7 +34,6 @@ class MicRunner:
         TipsDisplay.show_mic_tips()
 
         # 3. 开启运行组件 (音频流、快捷键监听)
-        logger.info("正在开启硬件资源...")
         self.app.stream.start()
         self.app.shortcut.start()
         
@@ -42,27 +41,24 @@ class MicRunner:
         if Config.udp_control:
             self.app.udp.start()
 
-        # 5. 开启后台服务 (热词监视、LLM 监控)
+        # 5. 开启后台服务 (热词、LLM)
         self.app.hotword.start()
         self.app.llm.start()
 
     async def run(self):
-        """麦克风模式主循环"""
-        self._setup_resources()
-
-        from ..output import ResultProcessor
-        self.processor = ResultProcessor(self.app)
+        """麦克风模式主入口"""
         
         logger.info("=" * 50)
-        logger.info("CapsWriter Offline Client 正在启动（麦克风模式）")
-        logger.info(f"版本: {__version__}")
+        logger.info(f"CapsWriter Offline Client {__version__} (麦克风模式)")
         logger.info(f"日志级别: {Config.log_level}")
-
-        while True:
-            # 消息处理任务
-            await self.processor.process_loop()
-
-            # 无法连接，2秒后重试
-            await asyncio.sleep(2)
+        
+        # 1. 资源启动
+        self.start_resources()
+        
+        # 2. 启动核心处理器 (内部处理连接与循环)
+        
+        from ..output import ResultProcessor
+        self.processor = ResultProcessor(self.app)
+        await self.processor.start()
             
 

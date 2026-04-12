@@ -149,27 +149,26 @@ class ResultProcessor:
         except Exception as e:
             logger.debug(f"检测按键状态失败: {e}")
     
-    async def process_loop(self) -> None:
-        """循环处理服务端发来的消息"""
-
-        # 连接服务端
-        if await self.ws.connect():
-            logger.info("WebSocket 连接成功")
-        else:
-            logger.info("WebSocket 连接失败")
-            return
-
-        # 处理消息
+    async def start(self) -> None:
+        """开启工作循环（含自动重联）"""
         while not self._exit_event.is_set():
-            # 接收消息，断联退出
-            try:
-                message = await self.ws.receive()
-            except CommunicationError:
-                break
+            # 1. 尝试连接，失败则重试
+            if not await self.ws.connect():
+                await asyncio.sleep(2)
+                continue
 
-            await self._handle_message(message)
-
-        self._cleanup()
+            # 2. 消息接收循环
+            while not self._exit_event.is_set():
+                try:
+                    message = await self.ws.receive()
+                    if message is None: break
+                    await self._handle_message(message)
+                except Exception as e:
+                    logger.debug(f"连接异常中断: {e}")
+                    break
+            
+            self._cleanup()
+            
 
     async def _handle_message(self, message: Optional[RecognitionMessage]) -> None:
         """处理接收到的消息"""
