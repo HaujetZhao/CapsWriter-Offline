@@ -25,11 +25,28 @@ class SocketManager:
         self.app = app
         self._is_running = False
 
+    def _check_port(self):
+        """检查端口可用性"""
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((Config.addr, Config.port))
+                return True
+            except socket.error:
+                logger.error(f"端口冲突：{Config.addr}:{Config.port} 已被占用，请检查是否已有服务端正在运行。")
+                return False
+
     async def run(self):
         """
         启动 WebSocket 网络服务
         """
         if self._is_running: return
+        
+        # 0. 启动前自检环境
+        if not self._check_port():
+            input("\n按回车键退出...")
+            return 
+
         self._is_running = True
 
         loop = asyncio.get_running_loop()
