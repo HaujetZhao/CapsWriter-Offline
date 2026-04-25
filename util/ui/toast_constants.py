@@ -3,13 +3,65 @@ Toast 常量定义模块
 
 集中管理所有 Toast 窗口相关的常量。
 """
+import platform
 import tkinter as tk
 
 # ============================================================
 # 字体和样式常量
 # ============================================================
 
-DEFAULT_FONT_FAMILY = 'Microsoft YaHei UI'
+LINUX_TK_CJK_FONT_CANDIDATES = (
+    'gothic',
+    'song ti',
+    'fangsong ti',
+    'mincho',
+    'Noto Sans CJK SC',
+    'Noto Sans SC',
+    'WenQuanYi Micro Hei',
+    'Source Han Sans SC',
+    'Droid Sans Fallback',
+)
+
+
+def get_tk_font_family(root=None) -> str:
+    if platform.system() != 'Linux':
+        return 'Microsoft YaHei UI'
+    try:
+        import tkinter.font as tkfont
+        families = set(tkfont.families(root))
+    except Exception:
+        return 'song ti'
+    for family in LINUX_TK_CJK_FONT_CANDIDATES:
+        if family in families:
+            return family
+    return 'song ti'
+
+
+def apply_tk_font_defaults(root=None, family: str = None) -> str:
+    import tkinter.font as tkfont
+
+    selected = family or get_tk_font_family(root)
+    named_fonts = (
+        'TkDefaultFont',
+        'TkTextFont',
+        'TkMenuFont',
+        'TkHeadingFont',
+        'TkCaptionFont',
+        'TkSmallCaptionFont',
+        'TkIconFont',
+        'TkTooltipFont',
+    )
+    for name in named_fonts:
+        try:
+            font = tkfont.nametofont(name, root=root)
+            size = 9 if name in {'TkSmallCaptionFont', 'TkTooltipFont'} else 10
+            font.configure(family=selected, size=size)
+        except Exception:
+            pass
+    return selected
+
+
+DEFAULT_FONT_FAMILY = get_tk_font_family()
 DEFAULT_PADDING_X = 20
 DEFAULT_PADDING_Y = 15
 
