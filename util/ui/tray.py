@@ -186,7 +186,7 @@ def _pil_to_qimage(pil_image):
 # ---------------------------------------------------------------------------
 
 class _WindowsTray:
-    def __init__(self, name, icon_path, more_options):
+    def __init__(self, name, icon_path, more_options, show_title_item=True, show_toggle_item=True):
         import pystray
         from pystray import MenuItem as item
 
@@ -197,10 +197,11 @@ class _WindowsTray:
         if self.hwnd:
             _disable_close_button(self.hwnd)
 
-        menu_items = [
-            item(f"{self.title}", lambda: None, enabled=False),
-            item('显示/隐藏', self.toggle_window, default=True),
-        ]
+        menu_items = []
+        if show_title_item:
+            menu_items.append(item(f"{self.title}", lambda: None, enabled=False))
+        if show_toggle_item:
+            menu_items.append(item('显示/隐藏窗口', self.toggle_window, default=True))
         if more_options:
             for opt_name, opt_func in more_options:
                 menu_items.append(item(opt_name, opt_func))
@@ -263,7 +264,7 @@ class _WindowsTray:
 # ---------------------------------------------------------------------------
 
 class _LinuxTray:
-    def __init__(self, name, icon_path, more_options):
+    def __init__(self, name, icon_path, more_options, show_title_item=True, show_toggle_item=False):
         from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
         from PySide6.QtGui import QIcon, QPixmap, QFont, QFontDatabase
 
@@ -292,15 +293,23 @@ class _LinuxTray:
         self._qt_icon = QIcon(QPixmap.fromImage(qimg))
 
         self._menu = QMenu()
-        title_action = self._menu.addAction(self.title)
-        title_action.setEnabled(False)
-        self._menu.addSeparator()
+        if show_title_item:
+            title_action = self._menu.addAction(self.title)
+            title_action.setEnabled(False)
+
+        if show_toggle_item:
+            toggle_action = self._menu.addAction('显示/隐藏窗口')
+            toggle_action.setEnabled(False)
+
+        if show_title_item or show_toggle_item or more_options:
+            self._menu.addSeparator()
 
         for opt_name, opt_func in (more_options or []):
             action = self._menu.addAction(opt_name)
             action.triggered.connect(lambda checked, f=opt_func: f())
 
-        self._menu.addSeparator()
+        if more_options:
+            self._menu.addSeparator()
         exit_action = self._menu.addAction('退出')
         exit_action.triggered.connect(self._on_exit)
 
@@ -353,11 +362,21 @@ class _LinuxTray:
 # 公共接口
 # ---------------------------------------------------------------------------
 
-def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = None, exit_callback=None, more_options: list = None) -> None:
+def enable_min_to_tray(
+    name: Optional[str] = None,
+    icon_path: Optional[str] = None,
+    exit_callback=None,
+    more_options: list = None,
+    show_title_item: bool = True,
+    show_toggle_item: Optional[bool] = None,
+) -> None:
     global _tray_instance
 
     if exit_callback is not None:
         _set_exit_callback(exit_callback)
+
+    if show_toggle_item is None:
+        show_toggle_item = _IS_WINDOWS
 
     if not _check_tray_available():
         logger.info("托盘功能不可用，跳过启用")
@@ -377,9 +396,9 @@ def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = No
 
         try:
             if _IS_LINUX:
-                _tray_instance = _LinuxTray(name, icon_path, more_options)
+                _tray_instance = _LinuxTray(name, icon_path, more_options, show_title_item=show_title_item, show_toggle_item=show_toggle_item)
             else:
-                _tray_instance = _WindowsTray(name, icon_path, more_options)
+                _tray_instance = _WindowsTray(name, icon_path, more_options, show_title_item=show_title_item, show_toggle_item=show_toggle_item)
             _tray_instance.start()
             logger.info(f"托盘已创建并启动: {_tray_instance}")
         except Exception as e:
