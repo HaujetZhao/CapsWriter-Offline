@@ -166,6 +166,14 @@ logs/
 
 
 
+# AGENTS 知识库（本地参考用）
+AGENTS.md
+**/AGENTS.md
+
+# 本地 llama 动态库（Linux 测试环境）
+util/llama/bin/*.so
+util/llama/bin/*.so.*
+
 # 本地配置文件
 .claude
 .vscode
