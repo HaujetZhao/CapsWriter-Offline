@@ -20,7 +20,6 @@ from util.ui.tray import stop_tray
 
 console = Console(highlight=False)
 
-# 计算项目根目录: util/server/cleanup.py -> util/server -> util -> root
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 

@@ -1,0 +1,19 @@
+# Linux 服务端依赖
+# ASR core
+sherpa-onnx
+numpy
+onnxruntime
+
+# basic
+rich
+websockets
+watchdog
+pypinyin
+
+# tray (Linux uses PySide6, not pystray)
+PySide6-Essentials
+shiboken6
+Pillow
+
+markdown
+tkhtmlview
