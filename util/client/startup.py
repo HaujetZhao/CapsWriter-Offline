@@ -11,7 +11,7 @@ from util.hotword import get_hotword_manager
 from util.llm.llm_handler import init_llm_system
 from util.client.audio import AudioStreamManager
 from util.client.shortcut.shortcut_config import Shortcut
-from util.client.shortcut.shortcut_manager import ShortcutManager
+from util.client.shortcut import ShortcutManager
 from util.tools.empty_working_set import empty_current_working_set
 
 
