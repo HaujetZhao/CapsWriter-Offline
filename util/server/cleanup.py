@@ -6,12 +6,11 @@
 """
 
 import os
-import asyncio
-from rich.console import Console
-
-import subprocess
 import sys
+import subprocess
+import asyncio
 from datetime import datetime
+from rich.console import Console
 
 from config_server import ServerConfig as Config, __version__
 from . import logger
@@ -32,18 +31,14 @@ def request_exit_from_tray(icon=None, item=None):
 
 
 def open_log_file():
-    """用系统默认编辑器打开当天日志"""
     log_dir = os.path.join(BASE_DIR, 'logs')
     log_file = os.path.join(log_dir, f'server_{datetime.now().strftime("%Y%m%d")}.log')
     if not os.path.isfile(log_file):
         logger.info(f"日志文件不存在: {log_file}")
         return
     try:
-        if sys.platform == 'win32':
-            os.startfile(log_file)
-        else:
-            subprocess.Popen(['xdg-open', log_file],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(['xdg-open', log_file],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
         logger.error(f"打开日志文件失败: {e}")
 
@@ -89,17 +84,19 @@ def cleanup_server_resources():
 
 
 def setup_tray():
-    """启用托盘图标"""
     if Config.enable_tray:
         from util.server.ui import enable_min_to_tray
         icon_path = os.path.join(BASE_DIR, 'assets', 'icon.ico')
+        more_options = []
+        if sys.platform != 'win32':
+            more_options.append(('查看日志', open_log_file))
         enable_min_to_tray(
             'CapsWriter Server',
             icon_path,
             exit_callback=request_exit_from_tray,
             show_title_item=False,
             show_toggle_item=True,
-            more_options=[('查看日志', open_log_file)],
+            more_options=more_options or None,
         )
         logger.info("托盘图标已启用")
 
