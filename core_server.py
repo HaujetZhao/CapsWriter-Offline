@@ -41,6 +41,8 @@ async def run_websocket_server():
     from util.concurrency.daemon_executor import SimpleDaemonExecutor
     loop.set_default_executor(SimpleDaemonExecutor())
 
+    setup_tray()
+
     # 清空物理内存工作集
     # if system() == 'Windows':
     #     empty_current_working_set()
@@ -96,7 +98,6 @@ def init():
     logger.info(f"版本: {__version__}")
     logger.info(f"日志级别: {Config.log_level}")
 
-    setup_tray()
     print_banner()
 
     try:
