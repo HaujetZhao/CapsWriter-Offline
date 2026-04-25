@@ -72,9 +72,9 @@ def strip_pyside6(src_root, dst_root):
                 shutil.copy2(src, os.path.join(dst_pyside6, f'{mod}{ext}'))
                 print(f'  + {mod}{ext}')
 
-    # Copy libpyside
+    # Copy libpyside (e.g. libpyside6.abi3.so.6.11)
     for f in os.listdir(pyside6_src):
-        if f.startswith('libpyside6') and f.endswith('.so'):
+        if f.startswith('libpyside6') and '.so' in f:
             shutil.copy2(os.path.join(pyside6_src, f), os.path.join(dst_pyside6, f))
             print(f'  + {f}')
 
