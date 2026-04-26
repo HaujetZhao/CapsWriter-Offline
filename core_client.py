@@ -106,18 +106,19 @@ async def main_mic() -> None:
                 break
             
             # 如果处理任务结束（无论是正常还是异常），继续下一轮
-            # 但 ResultProcessor 应该是一个无限循环，除非出错
             if process_task in done:
+                # 清理未完成的等待任务
+                if not wait_shutdown.done():
+                    wait_shutdown.cancel()
                 # 检查是否有关闭请求（可能是 processor 内部触发）
                 if lifecycle.is_shutting_down:
                     break
-                # 如果没有请求退出但任务结束了，可能是异常
+                # process_loop 正常返回但未请求退出 → 连接失败，等待重试
                 try:
                     await process_task
                 except Exception as e:
                     logger.error(f"处理循环异常: {e}")
-                    # 防止死循环打印日志
-                    await asyncio.sleep(1)
+                await asyncio.sleep(3)
 
     except asyncio.CancelledError:
         logger.info("主任务被取消，正在退出...")
