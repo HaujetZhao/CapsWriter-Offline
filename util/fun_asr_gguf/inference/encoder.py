@@ -76,6 +76,9 @@ class FunASRMelExtractor:
 
 class AudioEncoder:
     """FunASR 音频编码器 (基于 ONNX Runtime)"""
+
+    BUCKETS = [5, 30]
+
     def __init__(self, model_path: str, dml_enable: bool = True, pad_to: int = 30):
         self.model_path = model_path
         self.dml_enable = dml_enable
@@ -115,12 +118,20 @@ class AudioEncoder:
         """执行热身，确保 DML 算子已编译"""
         if self.pad_to <= 0:
             return
-            
-        target_t_lfr = int((self.pad_to * 100 + 5) // 6) + 1
+
+        if self.sess.get_providers()[0] == 'CPUExecutionProvider':
+            target_t_lfr = int((1.0 * 100 + 5) // 6) + 1
+            logger.info(f"[Encoder] 正在预热 (CPU 模式, {target_t_lfr} 帧)...")
+            self._run_warmup(target_t_lfr)
+        else:
+            for bucket in self.BUCKETS:
+                target_t_lfr = int((bucket * 100 + 5) // 6) + 1
+                logger.info(f"[Encoder] 正在预热 (分桶 {bucket}s, {target_t_lfr} 帧)...")
+                self._run_warmup(target_t_lfr)
+
+    def _run_warmup(self, target_t_lfr: int):
         dummy_lfr = np.zeros((1, target_t_lfr, 560), dtype=self.input_dtype)
         dummy_mask = np.ones((1, target_t_lfr), dtype=self.input_dtype)
-        
-        logger.info(f"[Encoder] 正在预热 (固定形状: {self.pad_to}s)...")
         self.sess.run(None, {'lfr_feat': dummy_lfr, 'mask': dummy_mask})
 
     def encode(self, audio: np.ndarray) -> tuple:
@@ -130,10 +141,11 @@ class AudioEncoder:
         actual_t_lfr = lfr_feat.shape[0]
         
         # 2. 确定 Padding 长度
-        # CPU 模式下无需长 Padding
-        padding_secs = self.pad_to
         if self.sess.get_providers()[0] == 'CPUExecutionProvider':
-            padding_secs = min(padding_secs, 1.0)
+            padding_secs = min(self.pad_to, 1.0)
+        else:
+            duration = len(audio) / 16000
+            padding_secs = next((b for b in self.BUCKETS if b >= duration), self.BUCKETS[-1])
             
         target_t_lfr = int((padding_secs * 100 + 5) // 6) + 1
         
