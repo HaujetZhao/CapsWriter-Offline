@@ -1,0 +1,2 @@
+所有模型请前往此处下载：
+https://github.com/HaujetZhao/CapsWriter-Offline/releases/tag/models
