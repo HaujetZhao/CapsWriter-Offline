@@ -9,10 +9,12 @@ LLM 处理引擎
 5. 精确的生成时间统计（从第一个 token 开始）
 """
 import time
+import traceback
 from typing import Callable, Optional, Dict, Any, List, Tuple
 from core.client.llm.llm_role_config import RoleConfig
 from core.client.llm.llm_interfaces import IContextManager
 from core.client.llm.llm_client_pool import ClientPool
+from core.client.llm.llm_constants import estimate_tokens
 from core.client.llm.llm_exceptions import (
     APIException,
     wrap_openai_error, OpenAIErrorWrapper,
@@ -62,13 +64,9 @@ class LLMProcessor:
             api_key=role_config.api_key
         )
 
-        # 构建请求参数
-        request_params = self._build_request_params(role_config, messages)
-        
         try:
             return self._stream_request(
                 client,
-                request_params,
                 callback,
                 should_stop_check,
                 role_config,
@@ -77,11 +75,9 @@ class LLMProcessor:
             )
 
         except OpenAIErrorWrapper:
-            # 已包装的 OpenAI 异常，直接重新抛出
             raise
         except Exception as e:
-            # 处理已包装的 OpenAI 异常
-            if isinstance(e, (OpenAIErrorWrapper, APIException)):
+            if isinstance(e, APIException):
                 raise
 
             # 捕获 Ollama SDK 原生异常
@@ -119,7 +115,6 @@ class LLMProcessor:
                 raise wrapped_error from e
 
             # 其他未预期的异常，包装为 APIException 并抛出
-            import traceback
             error_msg = f"LLM 处理失败: {e}"
             logger.error(f"{error_msg}\n{traceback.format_exc()}")
             raise APIException(error_msg, role_config.provider) from e
@@ -139,9 +134,6 @@ class LLMProcessor:
 
         if role_config.max_tokens > 0:
             params['max_tokens'] = role_config.max_tokens
-            # 为 Ollama 映射 num_predict
-            if role_config.provider == 'ollama':
-                params['num_predict'] = role_config.max_tokens
 
         # 处理停止序列
         if role_config.stop:
@@ -159,7 +151,6 @@ class LLMProcessor:
     def _stream_request(
         self,
         client: Any,
-        request_params: Dict[str, Any],
         callback: Optional[Callable[[str], None]],
         should_stop_check: Optional[Callable[[], bool]],
         role_config: RoleConfig,
@@ -167,21 +158,20 @@ class LLMProcessor:
         messages: List[Dict[str, str]]
     ) -> Tuple[str, int, float]:
         """执行流式请求并协调不同处理引擎"""
-        
+
         if role_config.provider == 'ollama':
             result = self._process_ollama_stream(
                 client, role_config, messages, callback, should_stop_check
             )
         else:
             result = self._process_openai_stream(
-                client, request_params, callback, should_stop_check
+                client, role_config, messages, callback, should_stop_check
             )
 
         full_response, total_tokens, generation_time = result
 
         # Token 估算兜底（针对 Ollama 等不返回 usage 的提供商）
         if total_tokens == 0 and full_response:
-            from core.client.llm.llm_constants import estimate_tokens
             total_tokens = estimate_tokens(full_response)
             result = (full_response, total_tokens, generation_time)
 
@@ -206,9 +196,11 @@ class LLMProcessor:
         # 1. 统一构建参数并提取 Ollama 选项
         params = self._build_request_params(role_config, messages)
         ollama_options = {
-            k: v for k, v in params.items() 
-            if k in ['temperature', 'top_p', 'stop', 'num_predict']
+            k: v for k, v in params.items()
+            if k in ['temperature', 'top_p', 'stop']
         }
+        if role_config.max_tokens > 0:
+            ollama_options['num_predict'] = role_config.max_tokens
         
         # 2. 发起请求
         stream = client.chat(
@@ -243,17 +235,20 @@ class LLMProcessor:
     def _process_openai_stream(
         self,
         client: Any,
-        params: Dict[str, Any],
+        role_config: RoleConfig,
+        messages: List[Dict[str, str]],
         callback: Optional[Callable[[str], None]],
         should_stop_check: Optional[Callable[[], bool]]
     ) -> Tuple[str, int, float]:
         """专门处理 OpenAI 兼容 API 流响应"""
-        
-        # 排除 Ollama 专用的参数
-        openai_params = {k: v for k, v in params.items() if k != 'num_predict'}
-        openai_params['stream'] = True
-        
-        stream = client.chat.completions.create(**openai_params)
+
+        params = self._build_request_params(role_config, messages)
+        params['stream'] = True
+
+        if not role_config.enable_thinking:
+            params['extra_body'] = {"thinking": {"type": "disabled"}}
+
+        stream = client.chat.completions.create(**params)
 
         full_response, total_tokens, generation_start_time = "", 0, None
 
