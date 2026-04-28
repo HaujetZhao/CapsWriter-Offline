@@ -14,7 +14,7 @@ from .dialogs import (
     DialogResult,
     wait_window,
 )
-from .toast_constants import DEFAULT_FONT_FAMILY
+from .toast_constants import apply_tk_font_defaults
 from . import logger
 
 
@@ -76,6 +76,7 @@ class RectifyDialog:
             resizable=True,
             withdraw=True  # 先隐藏窗口，避免闪烁
         )
+        font_family = apply_tk_font_defaults(dialog)
 
         # 创建容器
         main_frame = ttk.Frame(dialog, padding=(20, 15, 20, 25))
@@ -94,13 +95,13 @@ class RectifyDialog:
         info_label = ttk.Label(
             main_frame,
             text=info_text,
-            font=(DEFAULT_FONT_FAMILY, 9),
+            font=(font_family, 9),
             foreground="#666666"
         )
         # info_label.pack(anchor="w", pady=(0, 10))
 
         # 字体设置
-        text_font = (DEFAULT_FONT_FAMILY, 10)
+        text_font = (font_family, 10)
 
         # 动态高度调整函数
         def auto_resize_textbox(text_widget):
@@ -165,7 +166,7 @@ class RectifyDialog:
             widget.bind("<<Modified>>", _on_mod)
             
         # 创建原始文本输入框（初始高度 1）
-        ttk.Label(main_frame, text="原始：", font=(DEFAULT_FONT_FAMILY, 10, "bold")).pack(anchor="w")
+        ttk.Label(main_frame, text="原始：", font=(font_family, 10, "bold")).pack(anchor="w")
 
         original_text_widget = tk.Text(
             main_frame,
@@ -187,7 +188,7 @@ class RectifyDialog:
 
 
         # 创建纠错文本输入框（初始高度 1）
-        ttk.Label(main_frame, text="纠错：", font=(DEFAULT_FONT_FAMILY, 10, "bold")).pack(anchor="w")
+        ttk.Label(main_frame, text="纠错：", font=(font_family, 10, "bold")).pack(anchor="w")
 
         corrected_text_widget = tk.Text(
             main_frame,
@@ -299,7 +300,7 @@ class RectifyDialog:
             command=on_confirm,
             width=15,
             height=1,
-            font=(DEFAULT_FONT_FAMILY, 10),
+            font=(font_family, 10),
             bg="#4CAF50",
             fg="white",
             activebackground="#45a049",
@@ -314,7 +315,7 @@ class RectifyDialog:
             command=on_cancel,
             width=15,
             height=1,
-            font=(DEFAULT_FONT_FAMILY, 10),
+            font=(font_family, 10),
             bg="#f44336",
             fg="white",
             activebackground="#da190b",

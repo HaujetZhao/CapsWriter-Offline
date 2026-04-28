@@ -2,16 +2,8 @@
 """
 托盘图标模块
 
-提供最小化到系统托盘的功能。
-仅在 Windows 平台有效。
-
-功能：
-- 禁用控制台窗口的关闭按钮（防止误关）
-- 最小化时自动隐藏到托盘
-- 双击托盘图标显示/隐藏窗口
-- 托盘菜单退出程序
-
-注意：pystray 在 Linux 无 GUI 环境下无法导入，因此采用延迟导入。
+Windows: pystray + Win32 API（窗口管理）
+Linux:   PySide6 QSystemTrayIcon（原生菜单）
 """
 
 import os
@@ -22,75 +14,79 @@ import platform
 from typing import Optional
 from . import logger, set_ui_logger
 
-# 退出回调函数（由主程序传入）
-_exit_callback = None
+_IS_WINDOWS = platform.system() == 'Windows'
+_IS_LINUX = platform.system() == 'Linux'
 
-# 是否可用（在 enable_min_to_tray 时检测）
+_exit_callback = None
 _tray_available = None
+_tray_instance = None
+_lock = threading.Lock()
+
 
 def _set_exit_callback(callback):
-    """设置退出回调函数"""
     global _exit_callback
     _exit_callback = callback
+
 
 def _get_exit_callback():
     return _exit_callback
 
 
+# ---------------------------------------------------------------------------
+# 可用性检测
+# ---------------------------------------------------------------------------
+
 def _check_tray_available() -> bool:
-    """
-    检查托盘功能是否可用
-    
-    Returns:
-        bool: 是否可用
-    """
     global _tray_available
-    
+
     if _tray_available is not None:
         return _tray_available
-    
-    # 非 Windows 系统不支持
-    if platform.system() != 'Windows':
-        _tray_available = False
-        return False
-    
-    # 尝试导入 pystray
-    try:
-        import pystray
-        from PIL import Image
-        _tray_available = True
-    except ImportError as e:
-        logger.warning(f"托盘功能不可用: {e}")
-        _tray_available = False
-    except Exception as e:
-        logger.warning(f"托盘功能检测失败: {e}")
-        _tray_available = False
-    
+
+    if _IS_LINUX:
+        try:
+            from PySide6.QtWidgets import QSystemTrayIcon
+            _tray_available = True
+        except ImportError as e:
+            logger.warning(f"托盘功能不可用（Linux 需安装 PySide6）: {e}")
+            _tray_available = False
+        except Exception as e:
+            logger.warning(f"托盘功能检测失败: {e}")
+            _tray_available = False
+    else:
+        try:
+            import pystray
+            from PIL import Image
+            _tray_available = True
+        except ImportError as e:
+            logger.warning(f"托盘功能不可用: {e}")
+            _tray_available = False
+        except Exception as e:
+            logger.warning(f"托盘功能检测失败: {e}")
+            _tray_available = False
+
     return _tray_available
 
 
-# Windows API（延迟初始化）
+# ---------------------------------------------------------------------------
+# Windows API（延迟初始化，仅 Windows）
+# ---------------------------------------------------------------------------
+
 _win_api_initialized = False
 user32 = None
 kernel32 = None
 
 SW_HIDE = 0
 SW_RESTORE = 9
-SW_SHOW = 5
 SC_CLOSE = 0xF060
 MF_BYCOMMAND = 0x00000000
 
 
 def _init_win_api():
-    """初始化 Windows API"""
     global _win_api_initialized, user32, kernel32
-    
     if _win_api_initialized:
         return
-    
-    if platform.system() != 'Windows':
+    if not _IS_WINDOWS:
         return
-    
     try:
         import ctypes
         user32 = ctypes.windll.user32
@@ -100,13 +96,7 @@ def _init_win_api():
         logger.warning(f"Windows API 初始化失败: {e}")
 
 
-# 全局变量
-_tray_instance: Optional['_TraySystem'] = None
-_lock = threading.Lock()
-
-
 def _get_console_hwnd() -> int:
-    """获取控制台窗口句柄"""
     _init_win_api()
     if kernel32 is None:
         return 0
@@ -114,7 +104,6 @@ def _get_console_hwnd() -> int:
 
 
 def _disable_close_button(hwnd: int) -> None:
-    """禁用窗口的关闭按钮"""
     if user32 is None:
         return
     h_menu = user32.GetSystemMenu(hwnd, False)
@@ -123,41 +112,30 @@ def _disable_close_button(hwnd: int) -> None:
 
 
 def _enable_close_button(hwnd: int) -> None:
-    """恢复窗口的关闭按钮"""
     if user32 is None:
         return
     user32.GetSystemMenu(hwnd, True)
 
 
 def _is_window_minimized(hwnd: int) -> bool:
-    """检查窗口是否最小化"""
     if user32 is None:
         return False
     return user32.IsIconic(hwnd) != 0
 
 
 def _is_window_visible(hwnd: int) -> bool:
-    """检查窗口是否可见"""
     if user32 is None:
         return False
     return user32.IsWindowVisible(hwnd) != 0
 
 
-def _create_icon(icon_path: Optional[str] = None):
-    """
-    创建托盘图标
-    
-    优先从指定路径加载图标文件，如果不存在则动态生成。
-    
-    Args:
-        icon_path: 图标文件路径
-        
-    Returns:
-        PIL Image 对象
-    """
+# ---------------------------------------------------------------------------
+# 图标生成（PIL，Windows/Linux 共用）
+# ---------------------------------------------------------------------------
+
+def _create_pil_icon(icon_path: Optional[str] = None):
     from PIL import Image, ImageDraw
-    
-    # 如果图标文件存在，直接加载
+
     if icon_path and os.path.exists(icon_path):
         try:
             image = Image.open(icon_path)
@@ -165,9 +143,8 @@ def _create_icon(icon_path: Optional[str] = None):
                 image = image.convert('RGBA')
             return image.resize((64, 64), Image.Resampling.LANCZOS)
         except Exception:
-            pass  # 加载失败则使用动态生成
+            pass
 
-    # 动态生成图标
     size = 64
     scale = 4
     real_size = size * scale
@@ -179,182 +156,261 @@ def _create_icon(icon_path: Optional[str] = None):
     yellow = (255, 211, 67)
     white = (255, 255, 255)
 
-    # 蓝色圆角背景
     m = 2 * scale
     dc.rounded_rectangle(
         [m, m, real_size - m, real_size - m],
         radius=real_size // 4,
         fill=blue
     )
-
-    # 黄色圆圈
     center = real_size // 2
     r = real_size // 3.5
     dc.ellipse([center - r, center - r, center + r, center + r], fill=yellow)
-
-    # 白色圆点
     r2 = r // 2
     dc.ellipse([center - r2, center - r2, center + r2, center + r2], fill=white)
 
     return image.resize((size, size), Image.Resampling.LANCZOS)
 
 
-class _TraySystem:
-    """托盘系统内部类"""
-    
-    def __init__(self, name: Optional[str] = None, icon_path: Optional[str] = None, more_options: list = None):
-        # 延迟导入 pystray
+def _pil_to_qimage(pil_image):
+    from PySide6.QtGui import QImage
+    if pil_image.mode != 'RGBA':
+        pil_image = pil_image.convert('RGBA')
+    data = pil_image.tobytes()
+    w, h = pil_image.size
+    qimg = QImage(data, w, h, w * 4, QImage.Format.Format_RGBA8888).copy()
+    return qimg
+
+
+# ---------------------------------------------------------------------------
+# Windows 托盘（pystray）
+# ---------------------------------------------------------------------------
+
+class _WindowsTray:
+    def __init__(self, name, icon_path, more_options, show_title_item=True, show_toggle_item=True):
         import pystray
         from pystray import MenuItem as item
-        
+
         self.hwnd = _get_console_hwnd()
         self.should_exit = False
-        self.title = name if name else (os.path.basename(sys.argv[0]) or "Console App")
+        self.title = name or os.path.basename(sys.argv[0]) or "CapsWriter"
 
-        # 禁用关闭按钮
         if self.hwnd:
             _disable_close_button(self.hwnd)
 
-        # 定义菜单
-        menu_items = [
-            item(f"{self.title}", lambda: None, enabled=False),
-            item('👁️ 显示/隐藏', self.toggle_window, default=True),
-        ]
-
-        # 添加额外选项
+        menu_items = []
+        if show_title_item:
+            menu_items.append(item(f"{self.title}", lambda: None, enabled=False))
+        if show_toggle_item:
+            menu_items.append(item('显示/隐藏窗口', self.toggle_window, default=True))
         if more_options:
             for opt_name, opt_func in more_options:
                 menu_items.append(item(opt_name, opt_func))
-
-        menu_items.append(item('❌ 退出', self.on_exit))
+        menu_items.append(item('退出', self.on_exit))
 
         self.icon = pystray.Icon(
             "console_tray",
-            _create_icon(icon_path),
-            title=f"{self.title}",
+            _create_pil_icon(icon_path),
+            title=self.title,
             menu=tuple(menu_items)
         )
 
-    def toggle_window(self) -> None:
-        """切换窗口显示状态"""
+    def toggle_window(self):
         if not self.hwnd or user32 is None:
             return
-
         if _is_window_visible(self.hwnd):
             user32.ShowWindow(self.hwnd, SW_HIDE)
         else:
             user32.ShowWindow(self.hwnd, SW_RESTORE)
             user32.SetForegroundWindow(self.hwnd)
 
-    def monitor_loop(self) -> None:
-        """监控线程：检测最小化操作"""
+    def monitor_loop(self):
         while not self.should_exit:
             if self.hwnd and user32:
-                # 窗口可见且最小化 -> 隐藏到托盘
                 if _is_window_visible(self.hwnd) and _is_window_minimized(self.hwnd):
                     user32.ShowWindow(self.hwnd, SW_HIDE)
             time.sleep(0.2)
 
-    def on_exit(self, icon, item) -> None:
-        """托盘退出处理"""
-        exit_callback = _get_exit_callback()
-
-        logger.info("托盘退出: 用户点击退出菜单，准备清理资源并退出")
-
-        # 1. 设置退出标志，停止监控循环
+    def on_exit(self, icon, item):
+        logger.info("托盘退出: 用户点击退出菜单")
         self.should_exit = True
-        logger.debug("已设置托盘退出标志")
-
-        # 2. 恢复窗口关闭按钮并显示窗口
         if self.hwnd and user32:
             _enable_close_button(self.hwnd)
             user32.ShowWindow(self.hwnd, SW_RESTORE)
-            logger.debug("已恢复窗口显示")
-
-        # 3. 调用退出回调函数，请求主程序退出
-        if exit_callback:
+        cb = _get_exit_callback()
+        if cb:
             try:
-                logger.debug("正在调用退出回调函数...")
-                exit_callback()
-                logger.info("退出回调函数已调用")
+                cb()
             except Exception as e:
-                logger.error(f"调用退出回调函数时发生错误: {e}")
-
-
-
-        # 5. 停止托盘图标
+                logger.error(f"退出回调出错: {e}")
         try:
-            logger.debug("正在停止托盘图标线程...")
             self.icon.stop()
-            logger.debug("托盘图标线程已停止")
-        except Exception as e:
-            logger.warning(f"停止托盘图标时发生错误: {e}")
+        except Exception:
+            pass
 
-    def start(self) -> None:
-        """启动托盘系统"""
-        # 托盘图标线程
-        t_tray = threading.Thread(target=self.icon.run, daemon=False)
-        t_tray.start()
-
-        # 状态监控线程
-        t_monitor = threading.Thread(target=self.monitor_loop, daemon=True)
-        t_monitor.start()
-
-        # 启动时隐藏窗口
+    def start(self):
+        threading.Thread(target=self.icon.run, daemon=False).start()
+        threading.Thread(target=self.monitor_loop, daemon=True).start()
         self.toggle_window()
 
+    def stop(self):
+        try:
+            self.icon.stop()
+        except Exception:
+            pass
 
-def enable_min_to_tray(name: Optional[str] = None, icon_path: Optional[str] = None, exit_callback=None, more_options: list = None) -> None:
-    """
-    启用最小化到托盘功能
 
-    如果检测不到控制台窗口（如 .pyw 运行），则不执行任何操作。
-    如果在 Linux 等无 GUI 环境下运行，也会跳过。
+# ---------------------------------------------------------------------------
+# Linux 托盘（PySide6 QSystemTrayIcon）
+# ---------------------------------------------------------------------------
 
-    Args:
-        name: 托盘图标显示的名称，默认使用程序名称
-        icon_path: 图标文件路径，默认动态生成
-        exit_callback: 退出回调函数，当用户点击托盘退出菜单时调用
-        more_options: 额外菜单项列表，格式为 [(名称, 回调函数), ...]
-    """
+class _LinuxTray:
+    def __init__(self, name, icon_path, more_options, show_title_item=True, show_toggle_item=False):
+        from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
+        from PySide6.QtGui import QIcon, QPixmap, QFont, QFontDatabase
+
+        self.title = name or os.path.basename(sys.argv[0]) or "CapsWriter"
+        self._loop = None
+        self._tick_handle = None
+        self._running = False
+        self._app = QApplication.instance()
+        if self._app is None:
+            self._app = QApplication([])
+        self._app.setQuitOnLastWindowClosed(False)
+
+        preferred = [
+            "Noto Sans CJK SC", "Noto Sans SC",
+            "WenQuanYi Micro Hei", "WenQuanYi Zen Hei",
+            "Source Han Sans SC", "Droid Sans Fallback",
+        ]
+        families = QFontDatabase.families()
+        for font_name in preferred:
+            if any(font_name in f for f in families):
+                QApplication.setFont(QFont(font_name, 10))
+                break
+
+        pil_img = _create_pil_icon(icon_path)
+        qimg = _pil_to_qimage(pil_img)
+        self._qt_icon = QIcon(QPixmap.fromImage(qimg))
+
+        self._menu = QMenu()
+        if show_title_item:
+            title_action = self._menu.addAction(self.title)
+            title_action.setEnabled(False)
+
+        if show_toggle_item:
+            toggle_action = self._menu.addAction('显示/隐藏窗口')
+            toggle_action.setEnabled(False)
+
+        if show_title_item or show_toggle_item or more_options:
+            self._menu.addSeparator()
+
+        for opt_name, opt_func in (more_options or []):
+            action = self._menu.addAction(opt_name)
+            action.triggered.connect(lambda checked, f=opt_func: f())
+
+        if more_options:
+            self._menu.addSeparator()
+        exit_action = self._menu.addAction('退出')
+        exit_action.triggered.connect(self._on_exit)
+
+        self._tray_icon = QSystemTrayIcon(self._qt_icon)
+        self._tray_icon.setToolTip(self.title)
+        self._tray_icon.setContextMenu(self._menu)
+        self._tray_icon.show()
+
+    def _on_exit(self):
+        logger.info("托盘退出: 用户点击退出菜单")
+        cb = _get_exit_callback()
+        if cb:
+            try:
+                cb()
+            except Exception as e:
+                logger.error(f"退出回调出错: {e}")
+        if self._tray_icon:
+            self._tray_icon.hide()
+
+    def _tick(self):
+        if not self._running:
+            return
+        if self._app:
+            self._app.processEvents()
+        if self._loop:
+            self._tick_handle = self._loop.call_later(0.05, self._tick)
+
+    def start(self):
+        import asyncio
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            logger.warning("Linux Qt 托盘需要运行中的 asyncio 主循环，跳过事件泵")
+            return
+        self._running = True
+        self._tick()
+
+    def stop(self):
+        self._running = False
+        if self._tick_handle:
+            self._tick_handle.cancel()
+            self._tick_handle = None
+        if self._tray_icon:
+            self._tray_icon.hide()
+        if self._app:
+            self._app.quit()
+
+
+# ---------------------------------------------------------------------------
+# 公共接口
+# ---------------------------------------------------------------------------
+
+def enable_min_to_tray(
+    name: Optional[str] = None,
+    icon_path: Optional[str] = None,
+    exit_callback=None,
+    more_options: list = None,
+    show_title_item: bool = True,
+    show_toggle_item: Optional[bool] = None,
+) -> None:
     global _tray_instance
 
-    global _tray_instance
-
-    # 设置退出回调函数
     if exit_callback is not None:
         _set_exit_callback(exit_callback)
 
-    # 检查托盘功能是否可用
+    if show_toggle_item is None:
+        show_toggle_item = _IS_WINDOWS
+
     if not _check_tray_available():
         logger.info("托盘功能不可用，跳过启用")
         return
 
-    # DPI 感知设置
-    try:
-        import ctypes
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)
-    except Exception:
-        pass
+    if _IS_WINDOWS:
+        try:
+            import ctypes
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            pass
 
     with _lock:
         if _tray_instance is not None:
-            return  # 已启动
+            logger.debug(f"托盘已存在，跳过: {_tray_instance}")
+            return
 
-        if not _get_console_hwnd():
-            return  # 没有控制台窗口
-
-        _tray_instance = _TraySystem(name, icon_path, more_options)
-        _tray_instance.start()
-
+        try:
+            if _IS_LINUX:
+                _tray_instance = _LinuxTray(name, icon_path, more_options, show_title_item=show_title_item, show_toggle_item=show_toggle_item)
+            else:
+                _tray_instance = _WindowsTray(name, icon_path, more_options, show_title_item=show_title_item, show_toggle_item=show_toggle_item)
+            _tray_instance.start()
+            logger.info(f"托盘已创建并启动: {_tray_instance}")
+        except Exception as e:
+            logger.error(f"托盘创建失败: {e}", exc_info=True)
+            _tray_instance = None
 
 
 def stop_tray() -> None:
-    """停止托盘图标"""
     global _tray_instance
-    if _tray_instance and _tray_instance.icon:
+    if _tray_instance:
         try:
-            _tray_instance.icon.stop()
+            _tray_instance.stop()
         except Exception:
             pass
     _tray_instance = None
@@ -362,6 +418,6 @@ def stop_tray() -> None:
 
 if __name__ == "__main__":
     enable_min_to_tray()
-    print("程序运行中... 你可以双击托盘图标隐藏我。")
+    print("程序运行中... 你可以右键托盘图标操作。")
     while True:
         time.sleep(1)

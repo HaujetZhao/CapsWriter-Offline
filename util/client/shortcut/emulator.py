@@ -7,7 +7,6 @@
 
 from pynput import keyboard, mouse
 from . import logger
-from util.client.shortcut.key_mapper import KeyMapper
 
 
 
@@ -39,6 +38,8 @@ class ShortcutEmulator:
         Args:
             key_name: 按键名称（如 'caps_lock', 'f12'）
         """
+        from util.client.shortcut import KeyMapper
+
         self._emulating_keys.add(key_name)
 
         key_obj = KeyMapper.name_to_key(key_name)

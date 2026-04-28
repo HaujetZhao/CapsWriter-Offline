@@ -96,7 +96,7 @@ class Shortcut:
 
         注意：使用 RESTORABLE_KEYS 常量定义可恢复的按键
         """
-        from util.client.shortcut.key_mapper import RESTORABLE_KEYS
+        from util.client.shortcut import RESTORABLE_KEYS
 
         # 检查 key 是否包含可恢复的切换键
         return any(toggle_key in self.key for toggle_key in RESTORABLE_KEYS)

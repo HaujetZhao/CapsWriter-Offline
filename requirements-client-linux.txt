@@ -1,0 +1,31 @@
+# Linux 客户端依赖
+# basic and cli
+rich
+typer
+colorama
+markdown
+
+# system, input, hardware
+pynput
+sounddevice
+watchdog
+
+# network and api
+websockets
+openai
+ollama
+httpx
+
+# data process
+numpy
+pypinyin
+srt
+
+# tray (Linux uses PySide6, not pystray)
+PySide6-Essentials
+shiboken6
+Pillow
+tkhtmlview
+
+# build
+pyinstaller

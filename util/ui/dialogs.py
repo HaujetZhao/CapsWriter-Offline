@@ -10,7 +10,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Optional, Callable
 
-from .toast_constants import DEFAULT_FONT_FAMILY
+from .toast_constants import DEFAULT_FONT_FAMILY, apply_tk_font_defaults
 from . import logger
 
 # DPI 感知设置（与 toast_base.py 保持一致）
@@ -46,6 +46,7 @@ def create_modal_dialog(
     """
     # 创建 Toplevel 窗口
     dialog = tk.Toplevel()
+    apply_tk_font_defaults(dialog)
     dialog.title(title)
 
     # 先隐藏窗口，避免闪烁
