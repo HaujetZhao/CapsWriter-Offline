@@ -101,6 +101,9 @@ class PhonemeIndex:
     def get_candidates(self, input_codes: List[int]) -> List[Tuple[str, List[int], List[int]]]:
         """
         获取候选热词及其在输入中出现的索引位置 (锚点)
+
+        使用 (hw, tuple(codes)) 复合 key 区分同一 hotword 的不同音素序列，
+        支持 Alias 场景：一个目标词对应多条音素序列。
         """
         # 收集输入中音素出现的全部位置 {code: [idx1, idx2, ...]}
         code_positions = defaultdict(list)
@@ -109,17 +112,18 @@ class PhonemeIndex:
             # [性能优化] 同时将相似音素的位置也统计进来，增加召回鲁棒性
             for sim_code in self.encoder.get_similar_codes(code):
                 code_positions[sim_code].append(idx)
-            
-        # 收集候选与其锚点位置
-        candidate_data = {} # {hw: (codes, [positions])}
+
+        # 收集候选与其锚点位置（使用复合 key 避免同一 hw 多条音素序列互相覆盖）
+        candidate_data = {}  # {(hw, tuple(codes)): [hw, codes, [positions]]}
         for code, positions in code_positions.items():
             for hw, codes in self.index.get(code, []):
-                if hw not in candidate_data:
-                    candidate_data[hw] = (codes, [])
-                candidate_data[hw][1].extend(positions)
+                key = (hw, tuple(codes))
+                if key not in candidate_data:
+                    candidate_data[key] = [hw, codes, []]
+                candidate_data[key][2].extend(positions)
 
         # 格式化输出 [(hw, codes, [pos1, ...]), ...]
-        return [(hw, data[0], sorted(list(set(data[1])))) for hw, data in candidate_data.items()]
+        return [(hw, codes, sorted(list(set(pos)))) for hw, codes, pos in candidate_data.values()]
     
     def encode_input(self, phonemes: List[Phoneme]) -> List[int]:
         """编码输入序列"""
@@ -145,17 +149,18 @@ class FastRAG:
         self.index = PhonemeIndex()
         self.hotword_count = 0
         
-    def add_hotwords(self, hotwords: Dict[str, List[Phoneme]]):
+    def add_hotwords(self, hotwords: Dict[str, List[List[Phoneme]]]):
         """
         批量添加热词
         
         Args:
             hotwords: {热词原文: 音素序列} (key: str, value: List[Phoneme])
         """
-        for hw, phonemes in hotwords.items():
-            if phonemes:
-                self.index.add(hw, phonemes)
-                self.hotword_count += 1
+        for hw, phoneme_lists in hotwords.items():
+            for phonemes in phoneme_lists:
+                if phonemes:
+                    self.index.add(hw, phonemes)
+                    self.hotword_count += 1
                 
     def search(self, input_phonemes: List[Phoneme], top_k: int = 10) -> List[Tuple[str, float]]:
         """

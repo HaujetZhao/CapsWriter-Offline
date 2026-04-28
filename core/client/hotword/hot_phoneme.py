@@ -62,7 +62,7 @@ class PhonemeCorrector:
         self.max_diff = 2             # 滑窗匹配中允许的最大音素差异数
         self.top_k_candidates = 100   # 粗筛保留的候选词数
         
-        self.hotwords: Dict[str, List[Phoneme]] = {}
+        self.hotwords: Dict[str, List[List[Phoneme]]] = {}
         self.fast_rag = FastRAG(threshold=min(self.threshold, self.similar_threshold) - 0.1)
         self._lock = threading.Lock()
 
@@ -73,11 +73,17 @@ class PhonemeCorrector:
         # 预析取有效行
         lines = [line.strip() for line in hotword_text.splitlines() if line.strip() and not line.strip().startswith('#')]
         
-        new_hotwords = {}
-        for hw in lines:
-            phons = get_phoneme_info(hw)
-            if phons:
-                new_hotwords[hw] = phons
+        new_hotwords: Dict[str, List[List[Phoneme]]] = {}
+        for line in lines:
+            parts = [p.strip() for p in line.split('|')]
+            target = parts[0]
+            phoneme_lists = []
+            for part in parts:
+                phons = get_phoneme_info(part)
+                if phons:
+                    phoneme_lists.append(phons)
+            if phoneme_lists:
+                new_hotwords[target] = phoneme_lists
         
         with self._lock:
             self.hotwords = new_hotwords
@@ -92,45 +98,49 @@ class PhonemeCorrector:
         matches = []
         similars = []
         
-        # 预先根据相似度阈值过滤 fast_results，减少重复计算
+        # 按 target 去重（同一目标可能因多别名出现在 fast_results 多次）
+        seen_targets = {}
         for hw, fast_score, approx_end_idx in fast_results:
-            hw_phonemes = self.hotwords[hw]
-            hw_compare = [p.info[:5] for p in hw_phonemes]
-            
-            # 使用新算法：在输入序列中一站式搜索所有符合边界的最优区域
-            # 为 Similar 列表使用更宽松的 initial 阈值，确保能抓到压线匹配
-            search_threshold = min(self.threshold, self.similar_threshold) - 0.1
-            
-            # [性能优化] 仅在 FastRAG 预测的结束位置附近进行搜索
-            # 窗口大小：热词长度 + 左右各 5 个音素的缓冲
-            window_size = len(hw_compare) + 10
-            window_start = max(0, approx_end_idx - window_size)
-            window_end = min(len(input_processed), approx_end_idx + 5)
-            
-            local_input = input_processed[window_start:window_end]
-            
-            # 搜索匹配
-            found_segments = fuzzy_substring_search_constrained(hw_compare, local_input, threshold=search_threshold)
-            
-            for score, start_phon_idx, end_phon_idx in found_segments:
-                # 转换回全局索引
-                global_start_idx = window_start + start_phon_idx
-                global_end_idx = window_start + end_phon_idx
-                
-                # 从 input_processed 直接拿 char 索引
-                char_start = input_processed[global_start_idx][5]
-                char_end = input_processed[global_end_idx-1][6]
-                
-                res = MatchResult(char_start, char_end, score, hw)
-                origin_val = text[char_start:char_end]
-                
-                # 分类到 matches 和 similars
-                if score >= self.threshold:
-                    matches.append(res)
-                
-                # 所有超过相似度阈值的都记入 similars（用于提示）
-                if score >= self.similar_threshold:
-                    similars.append((origin_val, hw, score))
+            if hw not in seen_targets:
+                seen_targets[hw] = approx_end_idx
+
+        search_threshold = min(self.threshold, self.similar_threshold) - 0.1
+
+        # 对每个目标遍历其所有音素序列（目标自身 + 别名）进行精细匹配
+        for hw, approx_end_idx in seen_targets.items():
+            for hw_phonemes in self.hotwords[hw]:
+                hw_compare = [p.info[:5] for p in hw_phonemes]
+
+                # [性能优化] 仅在 FastRAG 预测的结束位置附近进行搜索
+                # 窗口大小：热词长度 + 左右各 5 个音素的缓冲
+                window_size = len(hw_compare) + 10
+                window_start = max(0, approx_end_idx - window_size)
+                window_end = min(len(input_processed), approx_end_idx + 5)
+
+                local_input = input_processed[window_start:window_end]
+
+                # 搜索匹配
+                found_segments = fuzzy_substring_search_constrained(hw_compare, local_input, threshold=search_threshold)
+
+                for score, start_phon_idx, end_phon_idx in found_segments:
+                    # 转换回全局索引
+                    global_start_idx = window_start + start_phon_idx
+                    global_end_idx = window_start + end_phon_idx
+
+                    # 从 input_processed 直接拿 char 索引
+                    char_start = input_processed[global_start_idx][5]
+                    char_end = input_processed[global_end_idx-1][6]
+
+                    res = MatchResult(char_start, char_end, score, hw)
+                    origin_val = text[char_start:char_end]
+
+                    # 分类到 matches 和 similars
+                    if score >= self.threshold:
+                        matches.append(res)
+
+                    # 所有超过相似度阈值的都记入 similars（用于提示）
+                    if score >= self.similar_threshold:
+                        similars.append((origin_val, hw, score))
 
         # 潜在热词去重与排序 (不再简单按 seen_hw 排重，而是按分数和覆盖范围排序)
         # 为潜在建议列表保留前 k 个最相关的不同热词
@@ -234,9 +244,9 @@ class PhonemeCorrector:
 
 
 if __name__ == "__main__":
-    from .. import setup_logging
-    setup_logging(level=logging.DEBUG)
-    
+    from core.logger import setup_logger
+    setup_logger('test', level='DEBUG')
+
     print("\n--- PhonemeCorrector 测试 ---")
     corrector = PhonemeCorrector(threshold=0.7)
     
@@ -257,7 +267,7 @@ iPhone
 7-Zip
 
 # 杂项
-Claude
+Claude | Cloud
 Bilibili
 Microsoft
 麦当劳
@@ -317,20 +327,28 @@ VsCode
     from .rag_accu import AccuRAG
     from .algo_phoneme import get_phoneme_info
 
-    # 构建热词映射
-    hotword_map = {}
-    for word in [line.strip() for line in hotwords.splitlines()
+    # 构建热词映射（旧格式，平铺用于 AccuRAG 兼容）
+    hotword_nested = {}
+    for line in [line.strip() for line in hotwords.splitlines()
                     if line.strip() and not line.strip().startswith('#')]:
-        phonemes = get_phoneme_info(word)
-        if phonemes:
-            hotword_map[word] = phonemes
+        parts = [p.strip() for p in line.split('|')]
+        target = parts[0]
+        phoneme_lists = []
+        for part in parts:
+            phons = get_phoneme_info(part)
+            if phons:
+                phoneme_lists.append(phons)
+        if phoneme_lists:
+            hotword_nested[target] = phoneme_lists
 
     # 创建检索器
     fast_rag = FastRAG(threshold=0.6)  # FastRAG 阈值稍低
-    fast_rag.add_hotwords(hotword_map)
-    
+    # FastRAG 需要嵌套格式：{词: [[音素序列]]}
+    fast_rag.add_hotwords(hotword_nested)
+
+    hotword_flat = {k: v[0] for k, v in hotword_nested.items()}
     accu_rag = AccuRAG(threshold=0.6)
-    accu_rag.update_hotwords(hotword_map)
+    accu_rag.update_hotwords(hotword_flat)
 
     print(f"\n测试用例:")
     comparison_tests = test_cases_zh + test_cases_en
@@ -345,7 +363,7 @@ VsCode
         # 1. FastRAG 检索
         fast_results = fast_rag.search(input_phonemes, top_k=5)
         # 格式化列表: [(词, 分数), ...]
-        fast_str = str([(h, f"{s:.2f}") for h, s in fast_results])
+        fast_str = str([(h, f"{s:.2f}") for h, s, _ in fast_results])
         
         # 2. AccuRAG 检索
         accu_results = accu_rag.search(input_phonemes, top_k=5)
