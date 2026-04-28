@@ -6,7 +6,7 @@
 避免循环导入：此模块不依赖 config.py。
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal, Optional
 
 
@@ -34,16 +34,10 @@ class Shortcut:
     threshold: Optional[float] = None  # None 表示使用 Config.threshold
     enabled: bool = True
 
-    # 鼠标特定配置
-    mouse_button: Literal['x1', 'x2'] = 'x2'  # 仅当 type='mouse' 时有效
-
     def __post_init__(self):
         """初始化后验证配置"""
         # 规范化键名
-        if self.type == 'keyboard':
-            self.key = self._normalize_key(self.key)
-        elif self.type == 'mouse':
-            self.key = self.mouse_button
+        self.key = self._normalize_key(self.key)
 
     def get_threshold(self, default_threshold: float = 0.3) -> float:
         """
@@ -127,7 +121,6 @@ class CommonShortcuts:
             suppress=True,
             hold_mode=True,
             threshold=0.3,
-            mouse_button='x2'
         )
 
     @staticmethod
