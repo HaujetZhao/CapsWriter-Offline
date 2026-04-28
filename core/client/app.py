@@ -67,7 +67,7 @@ class CapsWriterClient:
         self.llm = LLMHandler(app=self)
         
         self.output = TextOutput()
-        self.diary = DiaryWriter(base_path=self.base_dir / '日记')
+        self.diary = DiaryWriter(base_path=self.base_dir)
 
         # 初始化各管理器
         self.ws = WebSocketManager(self)
