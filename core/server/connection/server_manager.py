@@ -30,7 +30,7 @@ class SocketManager:
         import socket
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.bind((Config.addr, Config.port))
+                s.bind((Config.addr, int(Config.port)))
                 return True
             except socket.error:
                 logger.error(f"端口冲突：{Config.addr}:{Config.port} 已被占用，请检查是否已有服务端正在运行。")
