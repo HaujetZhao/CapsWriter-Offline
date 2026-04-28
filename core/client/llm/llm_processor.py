@@ -11,11 +11,11 @@ LLM 处理引擎
 import time
 import traceback
 from typing import Callable, Optional, Dict, Any, List, Tuple
-from core.client.llm.llm_role_config import RoleConfig
-from core.client.llm.llm_interfaces import IContextManager
-from core.client.llm.llm_client_pool import ClientPool
-from core.client.llm.llm_constants import estimate_tokens
-from core.client.llm.llm_exceptions import (
+from .llm_role_config import RoleConfig
+from .llm_interfaces import IContextManager
+from .llm_client_pool import ClientPool
+from .llm_constants import estimate_tokens
+from .llm_exceptions import (
     APIException,
     wrap_openai_error, OpenAIErrorWrapper,
     TimeoutErrorWrapper

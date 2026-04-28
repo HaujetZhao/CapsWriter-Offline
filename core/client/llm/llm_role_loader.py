@@ -10,7 +10,7 @@ LLM 角色加载器
 import sys
 from pathlib import Path
 from typing import Dict
-from core.client.llm.llm_role_config import RoleConfig
+from .llm_role_config import RoleConfig
 
 
 class RoleLoader:

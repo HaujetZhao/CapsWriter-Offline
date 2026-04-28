@@ -10,7 +10,7 @@ LLM 上下文管理器
 import time
 from typing import Dict, List
 from threading import Lock
-from core.client.llm.llm_constants import ContextConstants, estimate_tokens
+from .llm_constants import ContextConstants, estimate_tokens
 from . import logger
 
 

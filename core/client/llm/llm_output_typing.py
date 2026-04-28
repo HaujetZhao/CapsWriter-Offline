@@ -17,7 +17,7 @@ from . import logger
 
 async def handle_typing_mode(handler, text: str, paste: bool = None, matched_hotwords=None, role_config=None, content=None) -> tuple:
     """打字输出模式"""
-    from core.client.llm.llm_error_handler import handle_llm_error
+    from .llm_error_handler import handle_llm_error
     # 如果没传，则现场检测一次（兼容性）
     if not role_config or content is None:
         role_config, content = handler.detect_role(text)

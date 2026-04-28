@@ -75,18 +75,18 @@ async def handle_toast_mode(handler, text: str, role_config=None, matched_hotwor
     except Exception as e:
         if msg_id: toast_manager.close_toast(msg_id)
         
-        from core.client.llm.llm_error_handler import handle_llm_error, should_fallback_to_original
+        from .llm_error_handler import handle_llm_error, should_fallback_to_original
         role_name = role_config.name or RoleConfig.DEFAULT_ROLE_NAME
 
         if should_fallback_to_original(e):
             result_text, _ = handle_llm_error(e, content, role_name)
             result_text = TextOutput.strip_punc(result_text)
             
-            from core.client.llm.llm_output_typing import output_text
+            from .llm_output_typing import output_text
             from config_client import ClientConfig as Config
             await output_text(result_text, Config.paste)
             return (result_text, 0, 0.0)
         else:
-            from core.client.llm.llm_error_handler import show_error_notification
+            from .llm_error_handler import show_error_notification
             show_error_notification(e, role_name)
             return ("", 0, 0.0)

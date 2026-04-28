@@ -8,7 +8,7 @@ LLM 角色信息格式化器
 import unicodedata
 from rich.text import Text
 from rich.console import Console
-from core.client.llm.llm_role_config import RoleConfig
+from .llm_role_config import RoleConfig
 
 
 class RoleFormatter:

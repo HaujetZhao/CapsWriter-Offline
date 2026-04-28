@@ -203,8 +203,8 @@ class LLMHandler:
             matched_hotwords: 潜在热词列表
         """
         import time
-        from core.client.llm.llm_output_typing import handle_typing_mode, output_text
-        from core.client.llm.llm_output_toast import handle_toast_mode
+        from .llm_output_typing import handle_typing_mode, output_text
+        from .llm_output_toast import handle_toast_mode
         from core.client.output.text_output import TextOutput
 
         start_time = time.time()

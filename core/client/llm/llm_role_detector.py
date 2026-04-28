@@ -6,8 +6,8 @@ LLM 角色检测器
 2. 返回对应的角色配置和去除前缀后的文本
 """
 from typing import Tuple, Optional
-from core.client.llm.llm_role_config import RoleConfig
-from core.client.llm.llm_interfaces import IRoleLoader
+from .llm_role_config import RoleConfig
+from .llm_interfaces import IRoleLoader
 from . import logger
 
 
