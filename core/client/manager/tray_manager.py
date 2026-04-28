@@ -51,7 +51,7 @@ class TrayManager:
             return
             
         try:
-            from ..ui.tray import stop_tray
+            from ..ui import stop_tray
             stop_tray()
             logger.info("TrayManager: 托盘图标已卸载")
         except Exception as e:
