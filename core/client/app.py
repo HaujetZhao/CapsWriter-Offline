@@ -16,7 +16,7 @@ from . import logger
 from config_client import ClientConfig as Config, __version__
 from core.tools.signal_handler import register_signal
 from .state import console
-from .websocket_manager import WebSocketManager
+from .connection import WebSocketManager
 from typing import TYPE_CHECKING, Optional
 from .manager import (
     TrayManager,

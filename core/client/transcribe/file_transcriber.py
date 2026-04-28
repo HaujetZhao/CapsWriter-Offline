@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Optional
 
 from config_client import ClientConfig as Config
 from core.client.state import console
-from core.client.websocket_manager import WebSocketManager
+from core.client.connection import WebSocketManager
 from core.protocol import AudioMessage, RecognitionMessage
 from .media_tool import MediaTool
 from .result_handler import ResultHandler

@@ -20,7 +20,7 @@ import websockets
 from config_client import ClientConfig as Config
 from core.client.state import console
 from core.client.audio.file_manager import AudioFileManager
-from core.client.websocket_manager import WebSocketManager
+from core.client.connection import WebSocketManager
 from core.protocol import AudioMessage
 from . import logger
 

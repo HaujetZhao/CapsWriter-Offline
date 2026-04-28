@@ -16,13 +16,13 @@ from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
 from config_client import ClientConfig as Config
 from core.protocol import AudioMessage, RecognitionMessage
-from . import logger
+from .. import logger
 import asyncio
 
 
 if TYPE_CHECKING:
     from core.client.state import ClientState
-    from .app import CapsWriterClient
+    from ..app import CapsWriterClient
 
 
 class CommunicationError(Exception):

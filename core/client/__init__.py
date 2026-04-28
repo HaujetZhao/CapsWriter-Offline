@@ -6,7 +6,7 @@
 
 模块架构：
 - state: 客户端状态管理
-- websocket_manager: WebSocket 连接管理
+- connection/: WebSocket 连接管理
 - audio/: 音频相关（录制、流、文件管理）
 - shortcut/: 快捷键处理（原 input/）
 - output/: 结果处理和输出（原 processing/）

@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Optional
 from config_client import ClientConfig as Config
 from core.client.state import console
 from core.protocol import RecognitionMessage
-from core.client.websocket_manager import CommunicationError
 
 from core.client.output.text_output import TextOutput
 from core.tools.window_detector import get_active_window_info

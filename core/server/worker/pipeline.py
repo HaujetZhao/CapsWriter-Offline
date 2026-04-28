@@ -12,8 +12,8 @@ import time
 from core.server.state import WorkerState, console
 from core.server.schema import Task, Result
 from core.server.formatter import TextFormatter
-from core.server.audio import process_audio_task
 from core.server.engines.base import EngineCapabilities
+from .audio import process_audio_task
 from . import logger
 
 # 导入拆分后的算法子包
