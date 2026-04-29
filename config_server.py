@@ -14,7 +14,7 @@ class ServerConfig:
     port = '6023'
 
     # 语音模型选择：'qwen_asr', 'fun_asr_nano', 'sensevoice', 'paraformer'
-    model_type = 'qwen_asr'
+    model_type = 'fun_asr_nano'
 
     format_num = True       # 输出时是否将中文数字转为阿拉伯数字
     format_spell = True     # 输出时是否调整中英之间的空格
@@ -52,15 +52,15 @@ class ModelPaths:
 
     # SenseVoice 模型路径，自带标点
     sensevoice_dir = model_dir / 'SenseVoice-Small' / 'Sensevoice-Small-ONNX'
-    sensevoice_encoder = sensevoice_dir / 'SenseVoice-Encoder.int8.onnx'
-    sensevoice_decoder = sensevoice_dir / 'SenseVoice-CTC.int8.onnx'
+    sensevoice_encoder = sensevoice_dir / 'SenseVoice-Encoder.fp16.onnx'
+    sensevoice_decoder = sensevoice_dir / 'SenseVoice-CTC.fp16.onnx'
     sensevoice_tokenizer = sensevoice_dir / 'tokenizer.bpe.model'
 
 
     # Fun-ASR-Nano 模型路径，自带标点
     fun_asr_nano_gguf_dir = model_dir / 'Fun-ASR-Nano' / 'Fun-ASR-Nano-GGUF'
-    fun_asr_nano_gguf_encoder_adaptor = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Encoder-Adaptor.int4.onnx'
-    fun_asr_nano_gguf_ctc = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-CTC.int4.onnx'
+    fun_asr_nano_gguf_encoder_adaptor = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Encoder-Adaptor.fp16.onnx'
+    fun_asr_nano_gguf_ctc = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-CTC.fp16.onnx'
     fun_asr_nano_gguf_llm_decode = fun_asr_nano_gguf_dir / 'Fun-ASR-Nano-Decoder.q5_k.gguf'
     fun_asr_nano_gguf_token = fun_asr_nano_gguf_dir / 'tokens.txt'
     fun_asr_nano_gguf_hotwords = Path() / 'hot-server.txt'
@@ -69,13 +69,13 @@ class ModelPaths:
     qwen3_asr_gguf_dir = model_dir / 'Qwen3-ASR' / 'Qwen3-ASR-1.7B'
     qwen3_asr_gguf_encoder_frontend = qwen3_asr_gguf_dir / 'qwen3_asr_encoder_frontend.fp16.onnx'
     qwen3_asr_gguf_encoder_backend = qwen3_asr_gguf_dir / 'qwen3_asr_encoder_backend.fp16.onnx'
-    qwen3_asr_gguf_llm_decode = qwen3_asr_gguf_dir / 'qwen3_asr_llm.q4_k.gguf'
+    qwen3_asr_gguf_llm_decode = qwen3_asr_gguf_dir / 'qwen3_asr_llm.q5_k.gguf'
 
     # Force-Aligner 模型路径
-    force_aligner_gguf_dir = model_dir / 'Force-Aligner' / 'Force-Aligner-GGUF'
+    force_aligner_gguf_dir = model_dir / 'Qwen3-ForcedAligner' / 'Qwen3-ForcedAligner-0.6B'
     force_aligner_gguf_encoder_frontend = force_aligner_gguf_dir / 'qwen3_aligner_encoder_frontend.int4.onnx'
     force_aligner_gguf_encoder_backend = force_aligner_gguf_dir / 'qwen3_aligner_encoder_backend.int4.onnx'
-    force_aligner_gguf_llm_decode = force_aligner_gguf_dir / 'qwen3_aligner_llm.q4_k.gguf'
+    force_aligner_gguf_llm_decode = force_aligner_gguf_dir / 'qwen3_aligner_llm.q5_k.gguf'
 
 
 
