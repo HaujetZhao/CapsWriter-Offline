@@ -56,7 +56,6 @@ class LLMFileWatcher(FileSystemEventHandler):
 
         self._is_started = False
         # 需要监控的配置文件及其处理函数
-        # 注意：hot-rectify.txt 由热词 watchdog 统一管理，不在 LLM watcher 中处理
         self._watched_files = {}
 
         logger.debug("LLMFileWatcher 初始化完成")

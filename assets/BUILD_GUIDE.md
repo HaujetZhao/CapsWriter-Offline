@@ -47,7 +47,6 @@ dist/CapsWriter-Offline/
 │
 ├── hot.txt                   # 热词 - 基于 RAG 音素匹配（中英统一）
 ├── hot-rule.txt              # 正则表达式规则
-├── hot-rectify.txt           # 修改记录 - 音素 RAG 检索历史纠错
 └── readme.md
 ```
 

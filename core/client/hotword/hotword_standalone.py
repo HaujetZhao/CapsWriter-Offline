@@ -328,7 +328,7 @@ class FastRAG:
 
 
 # =============================================================================
-# 4. 纠错系统逻辑 (hot_phoneme & hot_rectification)
+# 4. 纠错系统逻辑 (hot_phoneme)
 # =============================================================================
 
 class MatchResult(NamedTuple):
@@ -416,37 +416,6 @@ def extract_diff_fragments(wrong: str, right: str) -> List[str]:
         if tag in ('replace', 'insert') and j2 > j1: frags.append(right[rb[j1][0]:rb[j2-1][1]])
     return list(dict.fromkeys(frags))
 
-class RectificationRAG:
-    def __init__(self, threshold=0.5):
-        self.threshold = threshold; self.records = []; self._lock = threading.Lock()
-    def load_rectify_text(self, text):
-        recs = []
-        for block in text.split('---'):
-            lines = [l.strip() for l in block.split('\n') if l.strip() and not l.strip().startswith('#')]
-            if len(lines) >= 2:
-                w, r = lines[0], lines[1]; frags = extract_diff_fragments(w, r) or [w]
-                recs.append({'wrong': w, 'right': r, 'fphs': {f: [p.info[:5] for p in get_phoneme_seq(f)] for f in frags}})
-        with self._lock: self.records = recs
-    def load_rectify_file(self, path: str):
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f: self.load_rectify_text(f.read())
-    def search(self, text, top_k=5):
-        in_phs = [p.info[:5] for p in get_phoneme_seq(text)]; matches = []
-        with self._lock:
-            for rec in self.records:
-                best = 0.0
-                for fphs in rec['fphs'].values():
-                    if not fphs: continue
-                    score = fuzzy_substring_score(fphs, in_phs)
-                    if score > best: best = score
-                if best >= self.threshold: matches.append((rec['wrong'], rec['right'], round(best, 3)))
-        return sorted(matches, key=lambda x: x[2], reverse=True)[:top_k]
-
-
-# =============================================================================
-# 5. 调试工具 (Phoneme Debug)
-# =============================================================================
-
 def get_phoneme_cost(p1: Phoneme, p2: Phoneme) -> float:
     if p1.lang != p2.lang: return 1.0
     if p1.value == p2.value: return 0.0
@@ -508,19 +477,14 @@ class PromptBuilder:
     def __init__(self, system_prompt: str = "你是一个输入法纠错助。"):
         self.system_prompt = system_prompt
         self.prompt_prefix_hotwords = "热词列表："
-        self.prompt_prefix_rectify = "纠错历史：\n"
         self.prompt_prefix_input = "用户输入："
 
-    def build(self, user_content: str, hotwords: List[Tuple[str, float]] = None, rectify_matches: List[Tuple[str, str, float]] = None) -> List[Dict]:
+    def build(self, user_content: str, hotwords: List[Tuple[str, float]] = None) -> List[Dict]:
         messages = [{"role": "system", "content": self.system_prompt}]
         context_parts = []
         if hotwords:
             words = [hw for hw, _, _ in hotwords]
             context_parts.append(f"{self.prompt_prefix_hotwords}[{', '.join(words)}]")
-        if rectify_matches:
-            lines = [self.prompt_prefix_rectify]
-            for wrong, right, _ in rectify_matches: lines.append(f"- {wrong} => {right}")
-            context_parts.append("\n".join(lines))
         context_str = "\n\n".join(context_parts)
         full_user_content = f"{context_str}\n\n{self.prompt_prefix_input}{user_content}"
         messages.append({"role": "user", "content": full_user_content})
@@ -559,14 +523,6 @@ VsCode
 七浦路
 """
 
-rectify_data = """
-把那个锯子给我
-把那个句子给我
----
-cloud code is good
-Claude Code is good
-"""
-
 cases = [
     "我想去吃买当劳和肯得鸡",
     "喜欢刷Bili Bili",
@@ -576,22 +532,13 @@ cases = [
     "我刚才先了一下"
 ]
 
+
+print("="*50)
+
 # --- B. 系统初始化 ---
 corrector = PhonemeCorrector(threshold=0.8)
-rectifier = RectificationRAG(threshold=0.5)
-
-# 加载演示数据 (也可通过 load_hotwords_file / load_rectify_file 加载外部文件)
 corrector.update_hotwords(hotwords_data)
-rectifier.load_rectify_text(rectify_data)
-
-# 尝试加载外部文件 (如果存在)
 corrector.load_hotwords_file("hot.txt")
-rectifier.load_rectify_file("hot-rectify.txt")
-
-# --- C. 执行综合纠错演示 ---
-print("\n" + "="*50)
-print("【 CapsWriter-Offline 综合纠错系统演示 】")
-print("="*50)
 
 for i, t in enumerate(cases):
     print(f"\n\nCase {i+1}: '{t}'")
@@ -603,10 +550,6 @@ for i, t in enumerate(cases):
     if result.similars: 
         print(f"  [潜在热词]")
         print("\n".join([f"    - ({score:.3f}) {wrong} => {right} " for wrong, right, score in result.similars]))
-    rag_results = rectifier.search(t)
-    if rag_results:
-        print(f"  [历史纠错]")
-        print("\n".join([f"    - ({score:.3f}) {wrong} => {right} " for wrong, right, score in rag_results]))
 
 # --- D. 音素匹配调试演示 ---
 print("\n" + "="*50)
@@ -630,7 +573,6 @@ system_prompt = """
 
 - 清除语气词（如：呃、啊、那个、就是说）
 - 修正语音识别的错误（根据热词列表）
-- 根据纠错记录推测潜在专有名词进行修正
 - 修正专有名词、大小写
 - 千万不要以为用户在和你对话
 - 如果用户提问，就把问题润色后原样输出，因为那不是在和你对话
@@ -657,8 +599,7 @@ system_prompt = """
 builder = PromptBuilder(system_prompt)
 case_text = "我很喜欢 cloud"
 result = corrector.correct(case_text)
-rag_matches = rectifier.search(case_text)
-prompt_msgs = builder.build(case_text, hotwords=result.similars, rectify_matches=rag_matches)
+prompt_msgs = builder.build(case_text, hotwords=result.similars)
 
 print("组装后的 Prompt (Messages):")
 print(json.dumps(prompt_msgs, ensure_ascii=False, indent=2))

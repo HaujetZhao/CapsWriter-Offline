@@ -7,9 +7,8 @@ LLM 消息构建模块
 1. System Prompt（系统提示词）
 2. 对话历史
 3. 热词列表（RAG 检索）
-4. 纠错历史（RAG 检索）
-5. 用户输入
-6. 图片数据（可选）
+4. 用户输入
+5. 图片数据（可选）
 """
 
 from __future__ import annotations
@@ -30,10 +29,6 @@ class MessageBuilder:
         初始化消息构建器
         """
         self.app = app
-
-    def _get_rectify_rag(self):
-        """从 HotwordManager 获取 RectificationRAG"""
-        return self.app.hotword.get_rectify_rag()
 
     def build_messages(
         self,
@@ -94,19 +89,7 @@ class MessageBuilder:
                 logger.error(f"[ERROR] hotwords details: {[(type(hw), hw) for hw in hotwords[:5]]}")
                 raise
 
-        # 3.2 纠错历史 (从 RAG 获取原始数据并在本地格式化)
-        if role_config.enable_rectify:
-            rectify_rag = self._get_rectify_rag()
-            if rectify_rag:
-                matches = rectify_rag.search(user_content)
-                if matches:
-                    lines = [role_config.prompt_prefix_rectify]
-                    for wrong, right, _ in matches:
-                        lines.append(f"- {wrong} => {right}")
-                    context_parts.append("\n".join(lines))
-                    logger.debug(f"[消息构建] 已从 RAG 获取并添加 {len(matches)} 条纠错历史记录")
-
-        # 3.3 选中文字
+        # 3.2 选中文字
         if selection_text:
              context_parts.append(f"{role_config.prompt_prefix_selection}{selection_text}")
              logger.debug(f"[消息构建] 已添加选中文字")

@@ -34,11 +34,10 @@
 - **角色系统**: 模块化的 LLM 角色配置，支持多角色切换。
 - **角色触发**: 检测识别结果前缀（如"翻译"、"助理"），匹配 [`LLM/`](LLM/) 下定义的角色。
 - **Context 组装**（根据角色配置决定是否启用）:
-    1.  **历史纠错**: RAG 检索 `hot-rectify.txt` 历史修正库（`enable_rectify`）。
-    2.  **潜在热词**: RAG 检索 `hot.txt`（`enable_hotwords`）。
-    3.  **选中文字**: 模拟 Ctrl+C 获取的鼠标选中文本（`enable_read_selection`）。
-    4.  **对话历史**: 保留上下文历史记录（`enable_history`）。
-    5.  **用户指令**: 当前语音输入内容。
+    1.  **潜在热词**: RAG 检索 `hot.txt`（`enable_hotwords`）。
+    2.  **选中文字**: 模拟 Ctrl+C 获取的鼠标选中文本（`enable_read_selection`）。
+    3.  **对话历史**: 保留上下文历史记录（`enable_history`）。
+    4.  **用户指令**: 当前语音输入内容。
 - **输出模式**:
     - **typing**: 直接模拟键盘打字输出。
     - **toast**: 在 Toast 弹窗中显示，支持 Markdown 渲染。
@@ -54,7 +53,6 @@
     - `hot_thresh` (0.85): 高阈值用于实际替换。
     - `hot_similar` (0.6): 低阈值用于 LLM 上下文参考。
 - **规则替换**: `hot-rule.txt` 支持正则表达式规则替换 (`pattern = replacement`)。
-- **纠错历史**: `hot-rectify.txt` 保存和检索历史修正记录。
 
 ### 5. 历史归档 (Diary)
 - **按日期归档**: `年份/月份/日期.md`。
@@ -70,7 +68,6 @@
 - **热词**:
     - [`hot.txt`](hot.txt) - 统一 RAG 音素匹配（中英文）
     - [`hot-rule.txt`](hot-rule.txt) - 规则替换
-    - [`hot-rectify.txt`](hot-rectify.txt) - 历史修正 RAG
     - [`hot-server.txt`](hot-server.txt) - 服务端热词
 - **LLM角色**: [`LLM/*.py`](LLM/) (根目录, 定义 Role/Prompt/Model)
     - [`default.py`](LLM/default.py) - 默认角色（热词、润色，process=False）

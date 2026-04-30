@@ -35,7 +35,6 @@ class RoleConfig:
     enable_thinking: bool = False                 # 是否启用思考（仅 Ollama 支持）
     enable_history: bool = False                  # 是否保留对话历史
     enable_hotwords: bool = False                 # 是否读取潜在热词列表
-    enable_rectify: bool = False                  # 是否读取潜在纠错记录
     enable_read_selection: bool = False           # 是否读取鼠标所选文字（通过 Ctrl+C）
     selection_max_length: int = 1000              # 选中文字最大长度
 
@@ -63,7 +62,6 @@ class RoleConfig:
 
     # 提示词前缀
     prompt_prefix_hotwords: str = '热词列表：'      # 热词列表前缀
-    prompt_prefix_rectify: str = '纠错历史：'       # 纠错历史前缀
     prompt_prefix_selection: str = '选中文字：'     # 选中文字前缀
     prompt_prefix_input: str = '用户输入：'         # 用户输入前缀
 

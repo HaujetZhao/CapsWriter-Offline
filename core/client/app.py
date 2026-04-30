@@ -59,8 +59,7 @@ class CapsWriterClient:
         self.hotword = HotwordManager(
             hotword_files=None,
             threshold=Config.hot_thresh,
-            similar_threshold=Config.hot_similar,
-            rectify_threshold=Config.hot_rectify
+            similar_threshold=Config.hot_similar
         )
 
         # 4. 初始化 LLM 润色系统

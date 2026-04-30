@@ -182,7 +182,6 @@ my_files = [
     'hot.txt',
     'hot-server.txt',
     'hot-rule.txt',
-    'hot-rectify.txt',
     'readme.md'
 ]
 my_folders = []     # 使用软链接，不再复制

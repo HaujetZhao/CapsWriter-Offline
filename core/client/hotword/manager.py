@@ -19,18 +19,15 @@ from rich.console import Console
 
 from .hot_rule import RuleCorrector
 from .hot_phoneme import PhonemeCorrector
-from .hot_rectification import RectificationRAG
 
 # 尝试导入主项目的统一组件，失败则使用本地默认值（独立运行模式）
 try:
     from config_client import ClientConfig
     HOT_THRESH = ClientConfig.hot_thresh
     HOT_SIMILAR = ClientConfig.hot_similar
-    RECTIFY_THRESH = ClientConfig.hot_rectify
 except ImportError:
     HOT_THRESH = 0.8
     HOT_SIMILAR = 0.6
-    RECTIFY_THRESH = 0.5
 
 from . import logger
 
@@ -54,35 +51,28 @@ except ImportError:
 class HotwordManager:
     """热词管理器：负责资源协调、热词文件加载与动态监控"""
 
-    def __init__(self, 
+    def __init__(self,
                  hotword_files: Optional[Dict[str, Path]] = None,
                  threshold: float = 0.7,
-                 similar_threshold: Optional[float] = None,
-                 rectify_threshold: float = 0.5):
+                 similar_threshold: Optional[float] = None):
         """
         初始化
         Args:
-            hotword_files: 文件映射 {'hot': Path, 'rule': Path, 'rectify': Path}
+            hotword_files: 文件映射 {'hot': Path, 'rule': Path}
             threshold: 纠错阈值
             similar_threshold: 相似度阈值
         """
         self.files = hotword_files or {
             'hot': Path('hot.txt'),
             'rule': Path('hot-rule.txt'),
-            'rectify': Path('hot-rectify.txt'),
         }
-        
+
         self.threshold = threshold
         self.similar_threshold = similar_threshold
-        self.rectify_threshold = rectify_threshold
-        
+
         # 初始化各个组件
         self.phoneme_corrector = PhonemeCorrector(threshold=threshold, similar_threshold=similar_threshold)
         self.rule_corrector = RuleCorrector()
-        self.rectify_rag = RectificationRAG(
-            str(self.files.get('rectify', 'hot-rectify.txt')),
-            threshold=rectify_threshold
-        )
         
         self._observer: Optional[Observer] = None
         self._is_watcher_started = False
@@ -112,7 +102,6 @@ class HotwordManager:
         logger.info("正在加载热词资源...")
         self._load_hot()
         self._load_rule()
-        self._load_rectify()
         logger.info("热词资源加载完成")
 
     def _read_file(self, key: str) -> str:
@@ -140,20 +129,11 @@ class HotwordManager:
         num = self.rule_corrector.update_rules(content)
         console.print(self._format_msg("规则库", "hot-rule.txt", num))
 
-    def _load_rectify(self) -> None:
-        # RectificationRAG 目前是自己加载的，保持其接口一致性
-        self.rectify_rag.load_history()
-        count = len(self.rectify_rag.records) if hasattr(self.rectify_rag, 'records') else 0
-        console.print(self._format_msg("纠错历史", "hot-rectify.txt", count))
-
     def get_phoneme_corrector(self) -> PhonemeCorrector:
         return self.phoneme_corrector
 
     def get_rule_corrector(self) -> RuleCorrector:
         return self.rule_corrector
-
-    def get_rectify_rag(self) -> RectificationRAG:
-        return self.rectify_rag
 
     def start(self) -> None:
         """开启热词服务：加载资源并启动文件监视"""
@@ -212,7 +192,6 @@ class _HotwordFileHandler(FileSystemEventHandler):
         self._file_mapping = {
             m.files['hot'].name: m._load_hot,
             m.files['rule'].name: m._load_rule,
-            m.files['rectify'].name: m._load_rectify,
         }
 
     def on_modified(self, event):

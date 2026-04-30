@@ -38,7 +38,6 @@ class TrayManager:
                 ('📋 复制结果', self._copy_last_result),
                 ('📝 上下文', self._add_context),
                 ('✨ 添加热词', self._add_hotword),
-                ('🛠️ 添加纠错', self._add_rectify),
                 ('🧹 清除记忆', self._clear_memory),
                 ('🔄 重启音频', self._restart_audio),
             ]
@@ -77,14 +76,6 @@ class TrayManager:
             on_add_hotword()
         except ImportError as e:
             logger.warning(f"无法导入热词菜单处理器: {e}")
-
-    def _add_rectify(self):
-        """打开添加纠错界面回调"""
-        try:
-            from ..ui import on_add_rectify_record
-            on_add_rectify_record(self.app)
-        except ImportError as e:
-            logger.warning(f"无法导入纠错菜单处理器: {e}")
 
     def _add_context(self):
         """打开编辑上下文界面回调"""

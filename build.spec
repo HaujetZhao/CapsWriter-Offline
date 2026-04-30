@@ -250,7 +250,6 @@ my_files = [
     'core_client.py',
     'hot.txt',
     'hot-server.txt',
-    'hot-rectify.txt',
     'hot-rule.txt',
     'readme.md'
 ]

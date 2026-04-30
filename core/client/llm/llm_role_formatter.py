@@ -73,10 +73,6 @@ class RoleFormatter:
         hotwords = role_config.enable_hotwords
         text.append("热词 " if hotwords else "热词 ", style="green" if hotwords else "dim")
 
-        # 纠错
-        rectify = role_config.enable_rectify
-        text.append("纠错 " if rectify else "纠错 ", style="green" if rectify else "dim")
-
         # 读取选中文字
         read_selection = role_config.enable_read_selection
         text.append("读选区 " if read_selection else "读选区 ", style="green" if read_selection else "dim")

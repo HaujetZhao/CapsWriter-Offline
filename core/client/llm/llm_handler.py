@@ -267,11 +267,10 @@ if __name__ == "__main__":
         # 创建一个模拟的 app 实例
         mock_app = SimpleNamespace()
         mock_app.base_dir = Path(".").resolve()
-        
+
         # 模拟 hotword manager
         mock_app.hotword = SimpleNamespace()
-        mock_app.hotword.get_rectify_rag = lambda: None
-        
+
         # 模拟 state
         mock_app.state = ClientState(mock_app)
         
