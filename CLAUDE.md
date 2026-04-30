@@ -175,8 +175,6 @@
 
 ## 用户偏好 (User Preferences)
 - **语言**: 中文 (Chinese)，总结、Plan、WalkThrough、注释都要用中文。
-- **路径链接**: 总结时文件必须显示为相对路径链接（精确到行，便于点击跳转）。
-- **系统**: Windows 10, PowerShell (命令行分隔符 `;`).
-- **环境**: 运行前确保 `conda activate c`，或用 `D:\anaconda3\envs\c\python.exe` 执行，新建测试脚本要手动指定 console utf-8 输出。
+- **环境**: 运行环境是 `conda activate c`，或用 `D:\anaconda3\envs\c\python.exe` 执行，新建测试脚本要手动指定 console utf-8 输出。
 
 

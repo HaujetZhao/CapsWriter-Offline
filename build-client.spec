@@ -75,6 +75,7 @@ hiddenimports += [
     'PIL',           # Pillow 用于托盘图标
     'PIL.Image',
     'pystray',       # 托盘图标库
+    'rich._unicode_data.unicode17-0-0',
 ]
 
 a_2 = Analysis(
@@ -90,7 +91,7 @@ a_2 = Analysis(
               'PySide6', 'PySide2', 'PyQt5',
               'matplotlib', 'wx',
               ],
-    noarchive=False,
+    noarchive=True,
 )
 
 # 客户端过滤从系统 CUDA 目录收集的 DLL（保持一致性）
@@ -116,17 +117,26 @@ a_2.binaries = filtered_binaries
 
 
 # 排除不要打包的模块（这些将作为源文件复制）
-private_module = ['core', 'config_client', 'config_server', 'LLM', 
-                  ]
+private_module = ['core', 'config_client', 'config_server', 'LLM', ]
 
-pure = a_2.pure.copy()
-a_2.pure.clear()
-for name, src, type in pure:
-    condition = [name == m or name.startswith(m + '.') for m in private_module]
-    if condition and any(condition):
-        ...
-    else:
-        a_2.pure.append((name, src, type))
+for which in (a_2,):
+    filtered = []
+    for name, src, type in which.pure:
+        if not any(name == m or name.startswith(m + '.') for m in private_module):
+            filtered.append((name, src, type))
+    which.pure = filtered
+
+# noarchive 会将私有模块也编译成 .pyc 放进 datas，排除掉以保持源码运行
+for which in (a_2,):
+    filtered = []
+    for name, src, type in which.datas:
+        is_private = any(
+            name.startswith(m + '/') or name.startswith(m + '\\') or name in (m + '.py', m + '.pyc')
+            for m in private_module
+        )
+        if not is_private:
+            filtered.append((name, src, type))
+    which.datas = filtered
 
 
 pyz_2 = PYZ(a_2.pure)

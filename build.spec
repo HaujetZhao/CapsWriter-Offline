@@ -66,7 +66,6 @@ hiddenimports += [
     'keyboard',
     'pyclip', 
     'numpy',
-    'numba', 
     'sounddevice',
     'pypinyin',
     'watchdog',
@@ -77,6 +76,10 @@ hiddenimports += [
     'PIL.Image',
     'pystray',       # 托盘图标库
 ]
+
+# # 对所有模块用 .py 源码而非 .pyc（猴子补丁 _get_module_collection_mode）
+# import PyInstaller.building.build_main as _bm
+# _bm._get_module_collection_mode = lambda md, n, na=False: _bm._ModuleCollectionMode.PY
 
 a_1 = Analysis(
     ['start_server.py'],
@@ -92,7 +95,7 @@ a_1 = Analysis(
               'matplotlib', 'wx',
               'funasr', 'pydantic', 'torch',
               ],
-    noarchive=False,
+    noarchive=True,
 )
 
 # 过滤掉从二进制依赖分析中收集的 DLL
@@ -130,7 +133,7 @@ a_2 = Analysis(
               'PySide6', 'PySide2', 'PyQt5',
               'matplotlib', 'wx',
               ],
-    noarchive=False,
+    noarchive=True,
 )
 
 # 客户端也过滤从系统 CUDA 目录收集的 DLL（保持一致性）
@@ -156,26 +159,26 @@ a_2.binaries = filtered_binaries
 
 
 # 排除不要打包的模块（这些将作为源文件复制）
-private_module = ['core', 'config_client', 'config_server', 'LLM', 
-                  ]
+private_module = ['core', 'config_client', 'config_server', 'LLM', ]
 
-pure = a_1.pure.copy()
-a_1.pure.clear()
-for name, src, type in pure:
-    condition = [name == m or name.startswith(m + '.') for m in private_module]
-    if condition and any(condition):
-        ...
-    else:
-        a_1.pure.append((name, src, type))
+for which in (a_1, a_2):
+    filtered = []
+    for name, src, type in which.pure:
+        if not any(name == m or name.startswith(m + '.') for m in private_module):
+            filtered.append((name, src, type))
+    which.pure = filtered
 
-pure = a_2.pure.copy()
-a_2.pure.clear()
-for name, src, type in pure:
-    condition = [name == m or name.startswith(m + '.') for m in private_module]
-    if condition and any(condition):
-        ...
-    else:
-        a_2.pure.append((name, src, type))
+# noarchive 会将私有模块也编译成 .pyc 放进 datas，排除掉以保持源码运行
+for which in (a_1, a_2):
+    filtered = []
+    for name, src, type in which.datas:
+        is_private = any(
+            name.startswith(m + '/') or name.startswith(m + '\\') or name in (m + '.py', m + '.pyc')
+            for m in private_module
+        )
+        if not is_private:
+            filtered.append((name, src, type))
+    which.datas = filtered
 
 
 pyz_1 = PYZ(a_1.pure)
