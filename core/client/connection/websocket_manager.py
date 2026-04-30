@@ -88,7 +88,8 @@ class WebSocketManager:
             self.state.websocket = await websockets.connect(
                 url,
                 subprotocols=["binary"],
-                max_size=None
+                max_size=None,
+                proxy=None,  # websockets>=16.0 默认走代理，本地连接需显式禁用
             )
 
             logger.info(f"WebSocket 建立成功: {url}")
