@@ -249,14 +249,10 @@ class ResultProcessor:
 
         # 窗口兼容性检测
         paste = Config.paste
-        window_info = get_active_window_info()
-
-        if window_info:
-            window_title = window_info.get('title', '')
-            compatibility_apps = ['weixin', '微信', 'wechat', 'WeChat']
-            if window_title in compatibility_apps:
-                paste = True
-                logger.debug(f"检测到兼容性应用: {window_title}，使用粘贴模式")
+        process_name = get_active_window_info().get('process_name', '').lower()
+        if any(app.lower() == process_name for app in Config.paste_apps):
+            paste = True
+            logger.debug(f"检测到兼容性应用: {process_name}，使用粘贴模式")
 
         # LLM 处理和输出
         llm_result = None
