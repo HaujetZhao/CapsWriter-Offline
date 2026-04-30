@@ -115,8 +115,10 @@ class TaskPipeline:
                 return result
 
             # 任务结束清理与最终格式化
+            raw_text = result.text
             result.text = self.formatter.format(result.text)
             result.text_accu = self.formatter.format(result.text_accu)
+            logger.debug(f'格式调整：{raw_text} --> {result.text}')
             
             # 如果依然没有 tokens (麦克风跳过了对齐)，则用 text 回退
             if not result.tokens and result.text:

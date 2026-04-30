@@ -23,78 +23,88 @@ _EN_IN_ZH_PATTERN = re.compile(r"""(?ix)
 """)
 
 
-def _replacer(match: Match) -> str:
-    """
-    替换匹配的中英混排文本，调整空格
-    """
-    left: str = match.group(1) or ''
-    center: str = match.group(2) or ''
-    right: str = match.group(3) or ''
-    
-    # 1. 预处理：去除前后空格
-    final = center.strip()
-    
-    # 2. 合并拼读序列（如 "F P 32" -> "FP32", "C O M F Y" -> "COMFY"）
-    # 规则：如果拆分后每一部分都是单字符 OR 纯数字，则合并
-    parts = final.split()
-    if len(parts) > 1 and all(len(p) == 1 or p.isdigit() for p in parts):
-        final = "".join(parts)
-    
-    # 3. 判断是否包含英文字母，决定是否加空格（仅纯数字不加空格）
-    has_alpha = bool(re.search(r'[a-zA-Z]', final))
-    
-    # 处理左侧：中文 + 英文/英数 -> 中文 + 空格 + 英文/英数
-    if left and has_alpha:
-        final = left + ' ' + final
-    else:
-        final = left + final
-        
-    # 处理右侧：英文/英数 + 中文 -> 英文/英数 + 空格 + 中文
-    if right and has_alpha:
-        final = final + ' ' + right
-    else:
-        final = final + right
+def _merge_parts(words: list[str]) -> str:
+    """合并 ASR 输出的碎片化字母/数字序列
 
-    return final
+    处理两种典型碎片：
+    - 全是单字符/数字 → 拼接："C O M F Y" → "COMFY"
+    - 单字母 + 字母开头的词 → 融合："F P16" → "FP16"
+    """
+    if len(words) <= 1:
+        return words[0] if words else ''
+    if all(len(w) == 1 or w.isdigit() for w in words):
+        return ''.join(words)
+    if len(words) == 2 and len(words[0]) == 1 and words[0].isalpha() and words[1][0].isalpha():
+        return words[0] + words[1]
+    return ' '.join(words)
+
+
+def _replacer(match: Match) -> str:
+    left, raw, right = (match.group(i) or '' for i in (1, 2, 3))
+    center = _merge_parts(raw.strip().split())
+    has_alpha = bool(re.search(r'[a-zA-Z]', center))
+
+    if left and has_alpha:
+        left += ' '
+    if right and has_alpha:
+        right = ' ' + right
+
+    return f'{left}{center}{right}'
 
 
 
 def adjust_space(text: str) -> str:
     """
     调整中英文/数字之间的空格
-    
+
     1. 在中文和英文、数字之间插入空格。
     2. 将连续的单个英文字母（如 "A B C"）合并为 "ABC"。
     3. 支持常用技术符号如 C++, TCP/IP, 100%。
-    
+
+    因为正则匹配不重叠，同一中文字符只能当一个边界。
+    迭代替换可解决 "C盘Windows" 这种链式场景：
+      第1轮 → "C 盘Windows 目" (盘被 C 用掉了)
+      第2轮 → "C 盘 Windows 目" (盘现在可作 Windows 的左边界)
+
     Args:
         text: 输入文本
-        
+
     Returns:
         优化后的文本
     """
-    return _EN_IN_ZH_PATTERN.sub(_replacer, text)
+    for _ in range(3):
+        new_text = _EN_IN_ZH_PATTERN.sub(_replacer, text)
+        if new_text == text:
+            break
+        text = new_text
+    return text
 
 
 if __name__ == "__main__":
     # 测试用例
     test_cases = [
+        # 基础中英空格
         "这是hello世界",
         "hello世界",
-        "这是hello",
-        "这是   hello   ",
         "这是一个iPhone手机",
         "这是一个iPhone15手机",
-        "尝试一下 C O M F Y U I",
+        "Mixed中文English测试",
+        # 链式边界（同一中文字符需作左右两个边界）
+        "文件在C盘Windows目录下",
+        # 拼读合并
         "尝试一下 C O M F Y U I怎么样",
         "你可以试一下 F P 32 和 F P 16 如何",
+        "试一下F P16的效果",
+        # 英文句子嵌中文
+        "他说I love you这句话很浪漫",
+        "请执行git commit操作",
+        # 纯英文/符号不变
         "I have a phone",
         "C++是非常强的语言",
-        "数字123也会测试",
-        "Mixed中文English测试",
         "TCP/IP协议",
         "100%的安全",
         "C# 也是一门语言",
+        "数字123也会测试",
     ]
 
     print(f"{'Original Text':<25} | {'Adjusted Text'}")

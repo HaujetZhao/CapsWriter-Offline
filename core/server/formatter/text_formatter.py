@@ -29,26 +29,22 @@ class TextFormatter:
     def format(self, text: str) -> str:
         """
         对输入文本应用一组格式化规则
-        
+
         流程：
-        1. 调整中英文/数字间的空格 (adjust_space)
-        2. 自动补全标点符号 (punc_model.punctuate)
-        3. 处理 ITN (中文数字转阿拉伯数字)
+        1. 自动补全标点符号 (punc_model.punctuate)
+        2. 处理 ITN (中文数字转阿拉伯数字)
+        3. 调整中英文/数字间的空格 (adjust_space)
         
         Args:
             text: 原始待处理文本
-            
+
         Returns:
             处理完成的格式化文本
         """
         if not text:
             return ""
 
-        # 1. 调整中英文空格
-        if Config.format_spell:
-            text = adjust_space(text)
-
-        # 2. 增加标点
+        # 1. 增加标点
         if self.punc_model:
             try:
                 # 调用标准化 PuncEngine 接口
@@ -56,11 +52,15 @@ class TextFormatter:
             except Exception as e:
                 logger.warning(f"标点补全失败: {e}")
 
-        # 3. 中文数字转阿拉伯数字
+        # 2. 中文数字转阿拉伯数字
         if Config.format_num:
             try:
                 text = chinese_to_num(text)
             except Exception as e:
                 logger.warning(f"ITN 转换失败: {e}")
+        
+        # 3. 调整中英文空格（ITN 之后，中英边界清晰，一次调整到位）
+        if Config.format_spell:
+            text = adjust_space(text)
 
         return text

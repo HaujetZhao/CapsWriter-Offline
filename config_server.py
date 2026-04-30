@@ -23,7 +23,7 @@ class ServerConfig:
     hotwords_path = Path() / 'hot-server.txt' # 全局热词配置文件路径
 
     # 日志配置
-    log_level = 'INFO'        # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+    log_level = 'DEBUG'        # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
     aligner_idle_timeout = 10  # 对齐引擎空闲多少秒后自动释放显存 (0 表示不释放)
 
 
