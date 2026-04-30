@@ -33,23 +33,24 @@ class CommunicationError(Exception):
 class WebSocketManager:
     """
     WebSocket 连接管理器
-    
+
     负责管理与识别服务端的 WebSocket 连接，提供自动重连和
     错误处理功能。
-    
+
     Attributes:
         app: 客户端 App 实例
         max_retries: 最大重试次数
     """
-    
+
     def __init__(self, app: CapsWriterClient):
         """
         初始化 WebSocket 管理器
-        
+
         Args:
             app: 客户端 App 实例
         """
         self.app = app
+        self._connect_fail_logged = False  # 断联后只记一次失败日志
 
     @property
     def state(self) -> ClientState:
@@ -64,38 +65,43 @@ class WebSocketManager:
     async def connect(self) -> bool:
         """
         建立 WebSocket 连接
-        
+
         尝试连接到配置的服务端地址，如果失败会自动重试。
-        
+
         Returns:
             连接是否成功
         """
         # 如果已连接，直接返回
         if self.is_connected:
             return True
-        
+
         # 清理旧连接
         if self.state.websocket is not None:
             self.state.websocket = None
-        
+
         url = f"ws://{Config.addr}:{Config.port}"
-        
+
         try:
             logger.debug(f"正在连接服务端 {url}")
-            
+
             self.state.websocket = await websockets.connect(
                 url,
                 subprotocols=["binary"],
                 max_size=None
             )
-            
+
             logger.info(f"WebSocket 建立成功: {url}")
+            self._connect_fail_logged = False
             return True
-            
+
         except (ConnectionRefusedError, TimeoutError):
-            logger.debug(f"连接服务端 {url} 被拒绝或超时")
+            if not self._connect_fail_logged:
+                logger.debug(f"连接服务端 {url} 被拒绝或超时")
+                self._connect_fail_logged = True
         except Exception as e:
-            logger.debug(f"连接服务端 {url} 失败: {e}")
+            if not self._connect_fail_logged:
+                logger.debug(f"连接服务端 {url} 失败: {e}")
+                self._connect_fail_logged = True
         
         return False
     
