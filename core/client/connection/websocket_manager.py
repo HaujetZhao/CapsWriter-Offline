@@ -82,7 +82,8 @@ class WebSocketManager:
         url = f"ws://{Config.addr}:{Config.port}"
 
         try:
-            logger.debug(f"正在连接服务端 {url}")
+            if not self._connect_fail_logged:
+                logger.debug(f"正在连接服务端 {url}")
 
             self.state.websocket = await websockets.connect(
                 url,
