@@ -67,3 +67,15 @@ class RoleConfig:
 
     # System Prompt
     system_prompt: str = ''                       # 系统提示词
+
+    @property
+    def display_name(self) -> str:
+        """显示名称：name 按 | 分割的第一部分"""
+        parts = [p.strip() for p in self.name.split('|')] if self.name else ['']
+        return parts[0]
+
+    @property
+    def names(self) -> list:
+        """所有名称列表：name 按 | 分割的所有非空部分"""
+        parts = [p.strip() for p in self.name.split('|')] if self.name else ['']
+        return [p for p in parts if p]

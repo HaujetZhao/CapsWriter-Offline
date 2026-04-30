@@ -42,12 +42,14 @@ class RoleDetector:
             if not role_config.match:
                 continue
 
-            if role_name and text.startswith(role_name):
-                remaining_text = text[len(role_name):]
-                remaining_text = remaining_text.lstrip('：，。,. ')
-
-                # logger.debug(f"匹配到角色: {role_name}, 去除前缀后: {remaining_text[:50]}...")
-                return role_config, remaining_text
+            # 遍历显示名和所有别名
+            for name in role_config.names:
+                if not name:
+                    continue
+                if text.startswith(name):
+                    remaining_text = text[len(name):]
+                    remaining_text = remaining_text.lstrip('：，。,. ')
+                    return role_config, remaining_text
 
         # 未匹配，使用默认角色
         default_role = self.role_loader.get_default_role()

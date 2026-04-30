@@ -44,7 +44,7 @@ class RoleLoader:
         role_config = RoleConfig(**config)
 
         # 空字符串和「默认」都表示默认角色
-        role_name = role_config.name or RoleConfig.DEFAULT_ROLE_NAME
+        role_name = role_config.display_name or RoleConfig.DEFAULT_ROLE_NAME
 
         self.roles_registry[role_name] = role_config
 

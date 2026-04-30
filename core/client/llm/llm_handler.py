@@ -161,7 +161,7 @@ class LLMHandler:
         # 获取中断检查函数
         should_stop_check = lambda: self.monitor.should_stop()
         # 获取处理后的角色名称（空字符串 -> '默认'）
-        role_name = role_config.name or RoleConfig.DEFAULT_ROLE_NAME
+        role_name = role_config.display_name or RoleConfig.DEFAULT_ROLE_NAME
         logger.debug(f"开始 LLM 核心处理 [角色: {role_name}] [内容长度: {len(content)}]")
 
         # 获取上下文管理器（如果启用历史）
@@ -242,7 +242,7 @@ class LLMHandler:
 
         return LLMResult(
             result=result,
-            role_name=role_config.name or RoleConfig.DEFAULT_ROLE_NAME,
+            role_name=role_config.display_name or RoleConfig.DEFAULT_ROLE_NAME,
             processed=True,
             token_count=token_count,
             polish_time=time.time() - start_time,
