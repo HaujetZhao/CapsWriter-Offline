@@ -86,9 +86,6 @@ class CapsWriterClient:
         """
         logger.info("正在执行 CapsWriterClient 资源释放...")
 
-        # 0. 停止协程
-        self.loop.stop()
-        
         # 1. 停止核心运行组件
         self.udp.stop()
         self.shortcut.stop()
@@ -109,6 +106,9 @@ class CapsWriterClient:
             self.state.reset()
         except Exception as e:
             logger.warning(f"重置状态时发生错误: {e}")
+
+        # 6. 停止事件循环（最后一步，确保前面的异步操作已调度）
+        self.loop.stop()
 
         logger.info("资源释放完成")
         console.print('[green4]再见！')

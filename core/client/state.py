@@ -81,10 +81,11 @@ class ClientState:
         logger.debug("正在重置客户端状态...")
         
         # 关闭 WebSocket 连接
-        if self.websocket is not None:
+        ws = self.websocket
+        if ws is not None:
             try:
-                if not self.websocket.closed:
-                    logger.debug("WebSocket 连接将被关闭")
+                if not ws.closed and self.app and self.app.loop and self.app.loop.is_running():
+                    asyncio.run_coroutine_threadsafe(ws.close(), self.app.loop)
             except Exception:
                 pass
             self.websocket = None
