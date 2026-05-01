@@ -8,7 +8,6 @@ from __future__ import annotations
 import sys
 import os
 import queue
-import errno
 from multiprocessing import Process, Manager
 from typing import TYPE_CHECKING
 from ..state import console
@@ -83,13 +82,11 @@ class ProcessManager:
                 if status is True:
                     # 收到 True 说明模型加载成功
                     break
-            except queue.Empty:
+            except (queue.Empty, OSError):
+                if self._process and not self._process.is_alive():
+                    self._handle_unexpected_exit()
+                    return
                 continue
-            except (InterruptedError, OSError) as e:
-                # 处理被核心信号中断的情况 (Errno 4)
-                if isinstance(e, InterruptedError) or (hasattr(e, 'errno') and e.errno == errno.EINTR):
-                    continue
-                raise e
             
         if not self.is_alive: return
         logger.info("模型加载完成，ASR 服务就绪")
