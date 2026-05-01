@@ -64,6 +64,8 @@ class TaskHandler:
                     if hasattr(self.pipeline.aligner, 'check_idle'):
                         self.pipeline.aligner.check_idle()
                 continue
+            except InterruptedError:
+                continue
 
             if task is None:
                 logger.info("TaskHandler 收到退出信号 (None)")
