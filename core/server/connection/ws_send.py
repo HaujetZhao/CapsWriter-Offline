@@ -1,5 +1,4 @@
 import json
-import base64
 import asyncio
 from multiprocessing import Queue
 
@@ -8,7 +7,6 @@ from ..schema import Result
 from core.protocol import RecognitionMessage
 from core.tools.asyncio_to_thread import to_thread
 from .. import logger
-from rich import inspect
 
 
 

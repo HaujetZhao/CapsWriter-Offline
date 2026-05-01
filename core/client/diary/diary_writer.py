@@ -100,9 +100,7 @@ class DiaryWriter:
                 f.write(f'{time_hms} {text}\n\n')
         
         logger.debug(f"写入日记: {file_md.name}")
-        return [file_md]
-        
-        return written_files
+        return file_md
     
     def _create_md(self, file_md: Path) -> None:
         """创建新的 MD 文件"""

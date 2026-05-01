@@ -8,7 +8,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from multiprocessing import Queue, Process
-from typing import TYPE_CHECKING, Dict, List, Optional, Any
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import websockets
 from rich.console import Console

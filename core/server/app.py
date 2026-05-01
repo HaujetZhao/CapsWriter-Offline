@@ -9,7 +9,6 @@ CapsWriter Offline 服务端主程序门面类 (Facade)
 
 import os
 import asyncio
-import logging
 from pathlib import Path
 from config_server import ServerConfig as Config, __version__
 from .state import ServerState, console
@@ -18,7 +17,6 @@ from .worker.process_manager import ProcessManager
 from .connection.server_manager import SocketManager
 from .ui.tray_manager import TrayManager
 from . import logger
-import colorama 
 
 class CapsWriterServer:
     """

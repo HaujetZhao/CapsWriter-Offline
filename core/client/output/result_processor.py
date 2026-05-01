@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import TYPE_CHECKING, Optional
 
 from config_client import ClientConfig as Config
