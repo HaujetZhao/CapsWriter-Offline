@@ -52,7 +52,6 @@ class SocketManager:
         loop = self.app.loop
         
         # 1. 优化守护线程执行器 (防止阻塞事件循环)
-        from ..worker.pipeline import clear_results_by_socket_id
         from core.tools.daemon_executor import SimpleDaemonExecutor
         loop.set_default_executor(SimpleDaemonExecutor())
 

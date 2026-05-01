@@ -6,6 +6,7 @@
 """
 
 from multiprocessing import Queue
+import queue
 from .pipeline import TaskPipeline
 from ..state import WorkerState
 from . import logger
@@ -52,12 +53,13 @@ class TaskHandler:
         核心任务循环
         """
         logger.info("TaskHandler 开始工作循环")
-        
+
         while True:
             try:
                 task = self.queue_in.get(timeout=1)
-            except:
-                # 空闲时间：检查托管代理是否需要卸载以释放显存
+            except queue.Empty:
+                # 空闲时：清理已断开连接的 session + 检查对齐器是否需要卸载
+                self.state.cleanup_stale_sessions(self.sockets_id)
                 if self.pipeline and self.pipeline.aligner:
                     if hasattr(self.pipeline.aligner, 'check_idle'):
                         self.pipeline.aligner.check_idle()

@@ -193,8 +193,6 @@ async def ws_recv(websocket, app) -> None:
         if socket_id in sockets_id:
             sockets_id.remove(socket_id)
         
-        # 清理识别结果缓存，防止内存泄漏
-        from ..worker.pipeline import clear_results_by_socket_id
-        clear_results_by_socket_id(socket_id)
-        
+        # 注意：session 清理由 TaskHandler 在子进程中定期执行
+        # （通过检查 sockets_id 判断客户端是否已断开）
         logger.debug(f"客户端资源已清理: {socket_id}")

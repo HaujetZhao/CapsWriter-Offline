@@ -69,12 +69,16 @@ class WorkerState:
             self.sessions[task_id] = RecognitionSession(task_id=task_id, result=result)
         return self.sessions[task_id]
     
-    def clear_sessions_by_socket_id(self, socket_id: str) -> int:
-        """清理指定 socket_id 关联的所有任务结果缓存"""
-        tasks_to_remove = [
-            task_id for task_id, session in self.sessions.items() 
-            if session.result.socket_id == socket_id
+    def cleanup_stale_sessions(self, sockets_id) -> int:
+        """清理已断开连接的客户端 session"""
+        stale_ids = [
+            sid for sid, session in list(self.sessions.items())
+            if session.result.socket_id not in sockets_id
         ]
-        for task_id in tasks_to_remove:
-            self.sessions.pop(task_id, None)
-        return len(tasks_to_remove)
+        for sid in stale_ids:
+            self.sessions.pop(sid, None)
+        if stale_ids:
+            from . import logger
+            logger.debug(f"清理了 {len(stale_ids)} 个已断开连接的 session")
+        return len(stale_ids)
+

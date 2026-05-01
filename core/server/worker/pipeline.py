@@ -142,7 +142,4 @@ class TaskPipeline:
             raise
 
 
-def clear_results_by_socket_id(socket_id: str) -> None:
-    """该方法已弃用，因为 sessions 现在存储在子进程的 WorkerState 中"""
-    pass
 
