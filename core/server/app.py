@@ -66,18 +66,18 @@ class CapsWriterServer:
         logger.info("开始清理服务端资源...")
 
         self.state.queue_out.put(None)
-        
-        # 0. 停止协程
-        self.loop.stop()
 
-        # 1. 终止识别子进程
-        self.process_manager.stop()
-
-        # 2. 停止网络服务
+        # 1. 关闭 WebSocket 服务（立即释放端口）
         self.socket_manager.stop()
+
+        # 2. 终止识别子进程
+        self.process_manager.stop()
 
         # 3. 停止托盘图标
         self.tray_manager.stop()
+
+        # 4. 最后停止协程（需在其他资源释放之后）
+        self.loop.stop()
 
         logger.info("服务端资源清理完成")
         console.print('[green4]再见！')

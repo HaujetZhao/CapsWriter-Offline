@@ -24,6 +24,7 @@ class SocketManager:
     def __init__(self, app):
         self.app = app
         self._is_running = False
+        self._server = None  # websockets.serve 返回的 server 对象
 
     def _check_port(self):
         """检查端口可用性"""
@@ -67,7 +68,9 @@ class SocketManager:
             Config.port,
             subprotocols=["binary"],
             max_size=None
-        ):
+        ) as server:
+            self._server = server  # 保存 server 引用，用于外部关闭
+
             # 4. 进入识别结果发送循环 (作为主阻塞任务)
             logger.info("WebSocket 发送协程已就绪")
             await ws_send(self.app)
@@ -77,4 +80,7 @@ class SocketManager:
 
     def stop(self):
         """停止 WebSocket 网络服务"""
+        # 主动关闭 WebSocket 服务器，让 ws_send 的 await 尽快返回
+        if self._server:
+            self._server.close()
         self._is_running = False
