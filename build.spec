@@ -251,7 +251,8 @@ my_files = [
     'hot.txt',
     'hot-server.txt',
     'hot-rule.txt',
-    'readme.md'
+    'readme.md',
+    'LICENSE'
 ]
 my_folders = []     # 这里是要复制的文件夹
 dest_root = join('dist', basename(coll.name))
