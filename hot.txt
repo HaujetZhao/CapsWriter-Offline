@@ -3,8 +3,29 @@
 # 具备强制性，相似度高于阈值的一定会被替换
 # 井号开头的行为注释，会被忽略
 # 每行一个热词，可以用 | 分割添加多个别名
+#
+# 详细说明见 docs/热词功能如何使用.md
 
-
+# ====== 纠正示例 ======
+CapsWriter | Caps Rider
+Paraformer | performer 
+SenseVoice-small
+Fun-ASR-Nano | 放 ASR Nano
+Qwen3-ASR | 千问ASR | 千问3ASR
+Qwen3-TTS | 千问TTS | 千问3TTS
+Claude | 克劳德 | 克劳得
+Claude Code | cloud cold | cloud code
 我家鸽鸽
-Claude | Cloud | 克劳德 | 克劳得
-Claude Code | cloud cold
+
+# ====== 专业术语 ======
+CUDA | 酷的 | kuda 
+PyTorch
+TensorRT
+DirectML
+TensorFlow
+Transformer
+
+# ====== 自定义短语示例 ======
+18200006666 | 我的手机号 | input my phone
+上海市浦东新区张江高科技园区 | input my address
+hello@example.com | 我的邮箱 | input my email
