@@ -214,7 +214,7 @@ from platform import system
 from subprocess import run
 
 if system() == 'Windows':
-    link_folders = ['assets', 'core', 'LLM', 'log']
+    link_folders = ['assets', 'core', 'LLM', 'docs', 'log']
     for folder in link_folders:
         if not exists(folder):
             continue

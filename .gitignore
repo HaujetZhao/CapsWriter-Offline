@@ -188,3 +188,5 @@ file_*.txt
 release
 *.dll 
 *.exe
+
+models/**/*.cfg

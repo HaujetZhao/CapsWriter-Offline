@@ -63,6 +63,10 @@ def should_include_file(file_path, is_client_only=False):
     except ValueError:
         return True
 
+    # 排除 models 目录下的所有 .zip 文件（原始压缩包不打包）
+    if 'models' in parts and path.suffix.lower() == '.zip' or  path.suffix.lower() == '.cfg':
+        return False
+
     # models/模型名/子目录/... 的深度 >= 3 不打包
     depth = len(parts) - models_index
 
