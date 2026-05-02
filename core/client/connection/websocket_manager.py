@@ -89,6 +89,7 @@ class WebSocketManager:
                 url,
                 subprotocols=["binary"],
                 max_size=None,
+                max_queue=None,  # 防止文件过大时，只发送，来不及消费结果，接收队列填满导致 pause_reading
                 proxy=None,  # websockets>=16.0 默认走代理，本地连接需显式禁用
             )
 
