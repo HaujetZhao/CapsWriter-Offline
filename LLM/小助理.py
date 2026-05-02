@@ -8,10 +8,10 @@ match = True                            # 是否启用前缀匹配
 process = True                          # 是否启用 LLM 处理
 
 # ==================== API 配置 ====================
-provider = 'lmstudio'                     # API 提供商：'ollama', 'openai', 'deepseek', 'moonshot', 'zhipu', 'claude', 'gemini'
+provider = 'lmstudio'                   # API 提供商：'ollama', 'openai', 'deepseek', 'moonshot', 'zhipu', 'claude', 'gemini'
 api_url = ''                            # 留空则自动使用 provider 对应的默认值
 api_key = ''                            # API Key
-model = 'local-model'                     # 模型名称
+model = 'local-model'                   # 模型名称
 
 # ==================== 上下文管理 ====================
 max_context_length = 4096               # 最大上下文长度（token 数）
