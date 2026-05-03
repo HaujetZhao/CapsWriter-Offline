@@ -180,39 +180,36 @@ class FastRAG:
         return results[:top_k]
 
     def _score_candidates(self, input_list: List[int], candidates: List[Tuple[str, List[int], List[int]]]) -> List[Tuple[str, float, int]]:
-        """对候选列表进行局部扫描打分"""
+        """对候选列表进行局部扫描打分，返回所有匹配位置"""
         results = []
         input_len = len(input_list)
-        
+
         for hw, hw_list, anchors in candidates:
             hw_len = len(hw_list)
-            
-            best_score = -1.0
-            best_end_pos = -1
-            
-            # [深度优化] 锚点扫描：不再全量扫描，只在索引命中的位置附近开窗
-            # 每个热词可能在多个位置命中索引（例如“的”出现多次）
+
+            # [深度优化] 锚点扫描：只在索引命中的位置附近开窗
             for anchor in anchors:
-                # 窗口范围：锚点是第一个音素匹配的位置
-                # 扫描范围：[anchor, anchor + hw_len + buffer]
-                # 加一个小的 buffer (如 3) 以容纳轻微的插入错误
                 scan_start = max(0, anchor - 2)
                 scan_end = min(input_len, anchor + hw_len + 3)
-                
+
                 local_input = input_list[scan_start:scan_end]
                 if not local_input: continue
-                
-                # 计算局部距离
+
                 dist, local_end = self._python_distance_simple(local_input, hw_list)
-                
+
                 score = 1.0 - (dist / hw_len)
-                if score > best_score:
-                    best_score = score
-                    best_end_pos = scan_start + local_end
-            
-            if best_score >= self.threshold:
-                results.append((hw, round(best_score, 3), best_end_pos))
-        return results
+                if score >= self.threshold:
+                    end_pos = scan_start + local_end
+                    results.append((hw, round(score, 3), end_pos))
+
+        # 对 (hw, end_pos) 去重，保留最高分（不同别名/锚点可能指向同一位置）
+        final = {}
+        for hw, score, end_pos in results:
+            key = (hw, end_pos)
+            if key not in final or score > final[key][0]:
+                final[key] = (score, end_pos)
+
+        return [(hw, score, end_pos) for (hw, _), (score, end_pos) in final.items()]
 
     def _python_distance_simple(self, main_list: List[int], sub_list: List[int]) -> Tuple[float, int]:
         """局部扫描专用的简化版编辑距离，不需要 curr[0]=0 的逻辑"""

@@ -98,29 +98,33 @@ class PhonemeCorrector:
         matches = []
         similars = []
         
-        # 按 target 去重（同一目标可能因多别名出现在 fast_results 多次）
-        seen_targets = {}
+        # 按 target 收集所有出现位置（同一热词可能在多个位置匹配）
+        seen_targets = {}  # {hw: [pos1, pos2, ...]}
         for hw, fast_score, approx_end_idx in fast_results:
             if hw not in seen_targets:
-                seen_targets[hw] = approx_end_idx
+                seen_targets[hw] = []
+            # 去重相近位置（距离 < 5 视为同一处，避免同一窗口被搜索多次）
+            if not any(abs(approx_end_idx - p) < 5 for p in seen_targets[hw]):
+                seen_targets[hw].append(approx_end_idx)
 
         search_threshold = min(self.threshold, self.similar_threshold) - 0.1
 
-        # 对每个目标遍历其所有音素序列（目标自身 + 别名）进行精细匹配
-        for hw, approx_end_idx in seen_targets.items():
-            for hw_phonemes in self.hotwords[hw]:
-                hw_compare = [p.info[:5] for p in hw_phonemes]
+        # 对每个目标遍历其所有出现位置
+        for hw, approx_end_indices in seen_targets.items():
+            for approx_end_idx in approx_end_indices:
+                for hw_phonemes in self.hotwords[hw]:
+                    hw_compare = [p.info[:5] for p in hw_phonemes]
 
-                # [性能优化] 仅在 FastRAG 预测的结束位置附近进行搜索
-                # 窗口大小：热词长度 + 左右各 5 个音素的缓冲
-                window_size = len(hw_compare) + 10
-                window_start = max(0, approx_end_idx - window_size)
-                window_end = min(len(input_processed), approx_end_idx + 5)
+                    # [性能优化] 仅在 FastRAG 预测的结束位置附近进行搜索
+                    # 窗口大小：热词长度 + 左右各 5 个音素的缓冲
+                    window_size = len(hw_compare) + 10
+                    window_start = max(0, approx_end_idx - window_size)
+                    window_end = min(len(input_processed), approx_end_idx + 5)
 
-                local_input = input_processed[window_start:window_end]
+                    local_input = input_processed[window_start:window_end]
 
-                # 搜索匹配
-                found_segments = fuzzy_substring_search_constrained(hw_compare, local_input, threshold=search_threshold)
+                    # 搜索匹配
+                    found_segments = fuzzy_substring_search_constrained(hw_compare, local_input, threshold=search_threshold)
 
                 for score, start_phon_idx, end_phon_idx in found_segments:
                     # 转换回全局索引
