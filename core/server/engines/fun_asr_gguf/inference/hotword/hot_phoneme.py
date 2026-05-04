@@ -201,27 +201,16 @@ class PhonemeCorrector:
         if not input_phonemes:
             return CorrectionResult(text=text, matchs=[], similars=[])
 
-        # DEBUG: 检查 input_phonemes 的类型和内容
-        logger.debug(f"[DEBUG] input_phonemes type: {type(input_phonemes)}")
-        if input_phonemes:
-            logger.debug(f"[DEBUG] input_phonemes[0] type: {type(input_phonemes[0])}, value: {input_phonemes[0]}")
-            logger.debug(f"[DEBUG] input_phonemes[0].info type: {type(input_phonemes[0].info)}, value: {input_phonemes[0].info}")
-
         # 2. 检索与匹配
         with self._lock:
             # 粗筛
             fast_results = self.fast_rag.search(input_phonemes, top_k=100)
-            logger.debug(f"[DEBUG] fast_results type: {type(fast_results)}, count: {len(fast_results)}")
 
             # 预处理输入 (转换为全能七元组：值, 语言, 字始, 字终, 是调, 始位, 终位)
             try:
                 input_processed = [p.info for p in input_phonemes]
-                logger.debug(f"[DEBUG] input_processed type: {type(input_processed)}, count: {len(input_processed)}")
-                if input_processed:
-                    logger.debug(f"[DEBUG] input_processed[0] type: {type(input_processed[0])}, value: {input_processed[0]}")
             except Exception as e:
                 logger.error(f"[ERROR] Failed to build input_processed: {e}")
-                logger.error(f"[ERROR] input_phonemes details: {[(type(p), p) for p in input_phonemes[:5]]}")
                 raise
 
             # 精筛

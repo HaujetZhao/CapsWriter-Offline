@@ -74,9 +74,6 @@ class MessageBuilder:
 
         # 3.1 热词列表
         if role_config.enable_hotwords and hotwords:
-            logger.debug(f"[DEBUG] hotwords type={type(hotwords)}, len={len(hotwords)}")
-            if hotwords:
-                logger.debug(f"[DEBUG] hotwords[0] type={type(hotwords[0])}, value={hotwords[0]}")
             try:
                 # hotwords 结构为 [(source, match, score), ...]
                 words = [item[1] for item in hotwords]
