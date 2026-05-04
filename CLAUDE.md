@@ -172,6 +172,11 @@
 
 ## 用户偏好 (User Preferences)
 - **语言**: 中文 (Chinese)，总结、Plan、WalkThrough、注释都要用中文。
-- **环境**: 运行环境是 `conda activate c`，或用 `D:/anaconda3/envs/c/python.exe` 或 `conda run -n c` 执行，新建测试脚本或临时运行 python 代码要手动指定 console utf-8 输出。
+- **环境**: 运行环境是 `conda activate c`，或用 `D:/anaconda3/envs/c/python.exe` 或 `conda run -n c` 执行。**临时运行 python 代码加 `-X utf8`** 否则中文 print 乱码：
+  ```bash
+  D:/anaconda3/envs/c/python.exe -X utf8 -c "print('你好')"
+  # 或
+  PYTHONUTF8=1 D:/anaconda3/envs/c/python.exe -c "print('你好')"
+  ```
 
 
