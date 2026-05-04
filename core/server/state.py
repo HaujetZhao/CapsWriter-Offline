@@ -8,7 +8,8 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from multiprocessing import Queue, Process
-from typing import TYPE_CHECKING, Dict, List, Optional
+from multiprocessing.managers import ListProxy
+from typing import TYPE_CHECKING, Dict, Optional
 
 import websockets
 from rich.console import Console
@@ -40,7 +41,7 @@ class ServerState:
     sockets: Dict[str, websockets.WebSocketServerProtocol] = field(default_factory=dict)
     
     # 跨进程共享的 socket ID 列表（需要用 Manager().list() 初始化）
-    sockets_id: Optional[List] = None
+    sockets_id: Optional[ListProxy] = None
     
     # 消息队列
     queue_in: Queue = field(default_factory=Queue)
@@ -69,7 +70,7 @@ class WorkerState:
             self.sessions[task_id] = RecognitionSession(task_id=task_id, result=result)
         return self.sessions[task_id]
     
-    def cleanup_stale_sessions(self, sockets_id) -> int:
+    def cleanup_sessions(self, sockets_id: ListProxy) -> int:
         """清理已断开连接的客户端 session"""
         stale_ids = [
             sid for sid, session in list(self.sessions.items())

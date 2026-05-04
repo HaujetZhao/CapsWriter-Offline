@@ -11,6 +11,7 @@ import sys
 import signal
 import atexit
 from multiprocessing import Queue
+from multiprocessing.managers import ListProxy
 from platform import system
 
 from .model_loader import ModelLoader
@@ -25,7 +26,7 @@ class RecognizerWorker:
     
     统一调度模型加载器与任务处理器，负责识别进程的完整运行。
     """
-    def __init__(self, queue_in: Queue, queue_out: Queue, sockets_id: list, stdin_fn: int = None):
+    def __init__(self, queue_in: Queue, queue_out: Queue, sockets_id: ListProxy, stdin_fn: int = None):
         # 1. 初始化核心状态
         self.state = WorkerState()
         
