@@ -30,6 +30,9 @@ class FileRunner:
         logger.info(f"待处理文件: {[str(f) for f in self.files]}")
         
         
+        # 加载热词资源
+        self.app.hotword.start()
+
         try:
             for file in self.files:
 
@@ -57,3 +60,5 @@ class FileRunner:
         except Exception as e:
             logger.error(f"文件模式运行异常: {e}", exc_info=True)
             raise
+        finally:
+            self.app.hotword.stop()
