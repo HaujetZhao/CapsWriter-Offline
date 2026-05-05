@@ -218,6 +218,25 @@ class SenseVoiceInference:
                     new_start_idx = len(new_res)
                 merged_results.extend(new_res[new_start_idx:])
         
+        # 对合并结果做空格切分，让空格本身成为独立 token
+        expanded_results = []
+        for r in merged_results:
+            parts = r.text.split(" ")
+            for i, part in enumerate(parts):
+                if i > 0:
+                    expanded_results.append(RecognitionResult(
+                        text=" ",
+                        start=r.start,
+                        is_hotword=False
+                    ))
+                if part:
+                    expanded_results.append(RecognitionResult(
+                        text=part,
+                        start=r.start,
+                        is_hotword=r.is_hotword
+                    ))
+        merged_results = expanded_results
+
         # 汇聚所有分段中发现的热词并去重
         all_hotwords = []
         for r in results_list:
