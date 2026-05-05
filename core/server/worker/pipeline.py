@@ -12,6 +12,7 @@ import time
 from core.server.state import WorkerState, console
 from core.server.schema import Task, Result
 from core.server.formatter import TextFormatter
+from core.tools.token_sync import sync_tokens_from_text
 from core.server.engines.base import EngineCapabilities
 from .audio import process_audio_task
 from . import logger
@@ -119,6 +120,12 @@ class TaskPipeline:
             result.text = self.formatter.format(result.text)
             result.text_accu = self.formatter.format(result.text_accu)
             logger.debug(f'格式调整：{raw_text} --> {result.text}')
+
+            # 将格式化引入的标点同步回 token 序列
+            if result.tokens and result.text_accu:
+                result.tokens, result.timestamps = sync_tokens_from_text(
+                    result.tokens, result.timestamps, result.text_accu
+                )
             
             # 如果依然没有 tokens (麦克风跳过了对齐)，则用 text 回退
             if not result.tokens and result.text:
