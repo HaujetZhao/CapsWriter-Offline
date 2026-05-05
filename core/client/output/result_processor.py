@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING, Optional
 
 from config_client import ClientConfig as Config
@@ -199,6 +200,7 @@ class ResultProcessor:
                 logger.warning(f"繁体转换失败: {e}")
 
         # 1. 音素检索，热词替换
+        hotword_start = time.monotonic()
         correction_result = self.hotword.get_phoneme_corrector().correct(text, k=10)
         if Config.hot:
             text = correction_result.text
@@ -208,12 +210,14 @@ class ResultProcessor:
 
         # 3. 正则替换
         text = self.hotword.get_rule_corrector().substitute(text)
+        hotword_elapsed = time.monotonic() - hotword_start
 
         # 保存最近一次识别结果
         self.state.last_recognition_text = text
 
-        # 控制台输出
-        console.print(f'    转录时延：{delay:.2f}s')
+        # 控制台输出：时延 + 热词时延合并到一行
+        hotword_label = f'  热词时延: {hotword_elapsed*1000:.1f}ms' if Config.hot else ''
+        console.print(f'    转录时延：{delay:.2f}s{hotword_label}')
 
         # 先显示原始识别结果
         original_text_stripped = TextOutput.strip_punc(original_text)
@@ -234,17 +238,13 @@ class ResultProcessor:
             replaced_info = [f"{origin}->[green4]{hw}[/]" for origin, hw, score in matched_hotwords]
             console.print(f'    完全匹配：{", ".join(replaced_info)}')
 
-        # 2. 显示潜在热词（从上下文热词中排除已替换的）
+        # 2. 潜在热词记录到 log
         if potential_hotwords and Config.hot:
             replaced_set = {hw for origin, hw, score in matched_hotwords}
             potential_matches = [(origin, hw, score) for origin, hw, score in potential_hotwords if hw not in replaced_set]
-            
             if potential_matches:
-                # 格式化潜在匹配列表，显示分数
-                potential_str = ", ".join([f"{origin}->{hw}({score:.2f})" for origin, hw, score in potential_matches[:5]])
-                if len(potential_matches) > 5:
-                    potential_str += f" ... (共{len(potential_matches)}个)"
-                console.print(f'    潜在热词：[yellow]{potential_str}')
+                log_str = "; ".join([f"{origin}->{hw}({score:.2f})" for origin, hw, score in potential_matches])
+                logger.debug(f"潜在热词: {log_str}")
 
         # 窗口兼容性检测
         paste = Config.paste
