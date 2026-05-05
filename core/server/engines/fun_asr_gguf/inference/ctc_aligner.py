@@ -1,15 +1,36 @@
 import numpy as np
+import re
 from typing import List, Dict, Any
 
 class CTCAligner:
     """组件：负责将 CTC 时间戳与 LLM 输出文本进行对齐"""
-    
+
+    @staticmethod
+    def _merge_english_words(chars: List[List[Any]]) -> List[List[Any]]:
+        """后处理：将连续的英文字符合并为单词，空格作为独立 token"""
+        merged = []
+        buf = []  # 当前累积的英文 token
+        for item in chars:
+            ch = item[0]
+            if re.match(r'[a-zA-Z]', ch):
+                buf.append(item)
+            else:
+                if buf:
+                    word = "".join(b[0] for b in buf)
+                    merged.append([word, buf[0][1]])
+                    buf = []
+                merged.append(item)
+        if buf:
+            word = "".join(b[0] for b in buf)
+            merged.append([word, buf[0][1]])
+        return merged
+
     @staticmethod
     def align(ctc_results, llm_text: str, timestamp_offset: float = 0.0) -> List[List[Any]]:
         """
         使用 Needleman-Wunsch 算法对齐 CTC 结果和 LLM 文本
         只使用起始位置进行匹配
-        返回格式: [[char, timestamp], ...]
+        返回格式: [[token, timestamp], ...]，连续英文字母已合并为单词
         """
         if not ctc_results or not llm_text:
             return []
@@ -123,4 +144,4 @@ class CTCAligner:
             s = max(s + timestamp_offset, 0.0)
             final_chars.append([char, s])
 
-        return final_chars
+        return CTCAligner._merge_english_words(final_chars)
