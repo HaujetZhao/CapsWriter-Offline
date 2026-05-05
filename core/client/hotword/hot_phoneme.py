@@ -14,7 +14,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from .algo_phoneme import get_phoneme_info, Phoneme
-from .rag_fast import FastRAG
+from .rag_fast_rf import FastRAG
 from .algo_calc import fast_substring_score, fuzzy_substring_score, fuzzy_substring_search_constrained
 
 # 使用统一的 logger（从 __init__.py 导入）
@@ -217,7 +217,7 @@ class PhonemeCorrector:
         # 2. 检索与匹配
         with self._lock:
             # 粗筛
-            fast_results = self.fast_rag.search(input_phonemes, top_k=100)
+            fast_results = self.fast_rag.search(input_phonemes, top_k=0)
 
             # 预处理输入 (转换为全能七元组：值, 语言, 字始, 字终, 是调, 始位, 终位)
             try:
@@ -317,7 +317,7 @@ VsCode
     print("="*70)
 
     # 导入
-    from .rag_fast import FastRAG
+    from .rag_fast_rf import FastRAG
     from .rag_accu import AccuRAG
     from .algo_phoneme import get_phoneme_info
 
