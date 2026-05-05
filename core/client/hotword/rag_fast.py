@@ -154,7 +154,7 @@ class FastRAG:
         批量添加热词
         
         Args:
-            hotwords: {热词原文: 音素序列} (key: str, value: List[Phoneme])
+            hotwords: {热词原文: 音素序列列表} (key: str, value: List[List[Phoneme]])
         """
         for hw, phoneme_lists in hotwords.items():
             for phonemes in phoneme_lists:
@@ -275,6 +275,7 @@ class FastRAG:
 if __name__ == "__main__":
     import random
     from .algo_phoneme import get_phoneme_seq
+    import logging
     
     logging.basicConfig(level=logging.INFO)
     
@@ -290,7 +291,7 @@ if __name__ == "__main__":
         length = random.randint(2, 4)
         word = ''.join(random.choice(chinese_chars) for _ in range(length))
         phonemes = get_phoneme_seq(word)
-        hotwords[word] = phonemes
+        hotwords[word] = [phonemes]
     
     # 创建 FastRAG
     print("构建索引...")
@@ -317,5 +318,5 @@ if __name__ == "__main__":
     
     print(f"  检索耗时: {elapsed:.3f}s")
     print(f"  热词总数: {rag.hotword_count}")
-    print(f"  候选数量: {len(rag.index.get_candidates(input_phonemes))}")
+    print(f"  候选数量: {len(rag.index.get_candidates(rag.index.encode_input(input_phonemes)))}")
     print(f"  结果: {results[:5]}")
