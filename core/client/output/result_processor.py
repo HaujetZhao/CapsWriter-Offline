@@ -216,7 +216,7 @@ class ResultProcessor:
         self.state.last_recognition_text = text
 
         # 控制台输出：时延 + 热词时延合并到一行
-        hotword_label = f'  热词时延: {hotword_elapsed*1000:.1f}ms' if Config.hot else ''
+        hotword_label = f'  热词时延: {hotword_elapsed:.2f}s' if Config.hot else ''
         console.print(f'    转录时延：{delay:.2f}s{hotword_label}')
 
         # 先显示原始识别结果
