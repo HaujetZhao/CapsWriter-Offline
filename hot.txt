@@ -16,6 +16,10 @@ Qwen3-TTS | 千问TTS | 千问3TTS
 Claude | 克劳德 | 克劳得
 Claude Code | cloud cold | cloud code
 我家鸽鸽
+config_client.py | config_client 点 py | config_client
+config_server.py | config_server 点 py | config_server
+Llama.cpp | 拉马点 CPP
+
 
 # ====== 专业术语 ======
 CUDA | 酷的 | kuda 

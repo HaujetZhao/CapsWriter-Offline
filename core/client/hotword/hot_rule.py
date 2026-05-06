@@ -51,7 +51,7 @@ class RuleCorrector:
             parts = line.split(' = ')
             if len(parts) == 2:
                 pattern = parts[0].strip()
-                replacement = parts[1].strip()
+                replacement = parts[1].strip().replace(r'\s', ' ')
                 new_patterns[pattern] = replacement
 
         with self._lock:
