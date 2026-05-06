@@ -146,7 +146,8 @@ class AudioRecorder:
                         time_start=self._start_time,
                         seg_duration=Config.mic_seg_duration,
                         seg_overlap=Config.mic_seg_overlap,
-                        context=Config.context
+                        context=Config.context,
+                        language=Config.language,
                     )
                     asyncio.create_task(self._send_message(message))
                     
@@ -192,7 +193,8 @@ class AudioRecorder:
                         time_start=self._start_time,
                         seg_duration=Config.mic_seg_duration,
                         seg_overlap=Config.mic_seg_overlap,
-                        context=Config.context
+                        context=Config.context,
+                        language=Config.language,
                     )
                     asyncio.create_task(self._send_message(message))
                     break

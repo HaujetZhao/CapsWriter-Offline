@@ -52,14 +52,15 @@ class FunASREngine(BaseASREngine):
         return FunASRStream(self.pipeline, sample_rate=self.config.sample_rate, hotwords=hotwords)
 
     def decode_stream(
-        self, 
-        stream: FunASRStream, 
+        self,
+        stream: FunASRStream,
         context: Optional[str] = None,
+        language: Optional[str] = None,
         **kwargs
     ):
         """解码识别流并同步结果"""
         # 1. 调用内部管线解码
-        self.pipeline.decode_stream(stream.internal_stream, context=context)
+        self.pipeline.decode_stream(stream.internal_stream, context=context, language=language)
         
         # 2. 同步结果到标准 RecognitionResult
         res = stream.internal_stream.result

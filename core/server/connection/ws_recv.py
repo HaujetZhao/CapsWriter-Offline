@@ -98,7 +98,8 @@ async def message_handler(websocket, msg: AudioMessage, cache: AudioCache, app) 
                     is_final=False,
                     time_start=msg.time_start,
                     time_submit=time.time(),
-                    context=msg.context
+                    context=msg.context,
+                    language=msg.language,
                 )
                 cache.offset += msg.seg_duration
                 queue_in.put(task)

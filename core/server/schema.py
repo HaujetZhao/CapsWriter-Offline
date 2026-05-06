@@ -39,6 +39,7 @@ class Task:
     time_start: float
     time_submit: float
     context: str = ''
+    language: str = 'auto'
     samplerate: int = 16000
 
 

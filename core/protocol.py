@@ -34,7 +34,8 @@ class AudioMessage:
     seg_duration: float = 15.0
     seg_overlap: float = 2.0
     context: str = ''
-    
+    language: str = 'auto'
+
     def to_json(self) -> str:
         """序列化为 JSON 字符串"""
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -51,6 +52,7 @@ class AudioMessage:
             seg_duration=data.get('seg_duration', 15.0),
             seg_overlap=data.get('seg_overlap', 2.0),
             context=data.get('context', ''),
+            language=data.get('language', 'auto'),
         )
 
 

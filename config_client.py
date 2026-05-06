@@ -42,6 +42,7 @@ class ClientConfig:
     audio_name_len = 20         # 将录音识别结果的前多少个字存储到录音文件名中，建议不要超过200
     
     context = ''                # 提示词上下文，用于辅助 Fun-ASR-Nano 模型识别（例如输入人名、地名、专业术语等）
+    language = 'auto'           # 识别语言：'auto', 'chinese', 'english', 'japanese' 等（各引擎支持范围不同）
 
     trash_punc = '，。,.'       # 识别结果要消除的末尾标点
 
@@ -98,20 +99,17 @@ r"""
 
 可用按键名称：
 
-  字母数字：a - z, 0 - 9（大键盘）, numpad0 - numpad9（小键盘）
+  字母数字：a - z, 0 - 9（大键盘）
 
   符号键：, . / \ ` ' - = [ ] ; '
 
-  小键盘：
-      decimal(小数点), numpad_add(+), numpad_subtract(-),
-      numpad_multiply(*), numpad_divide(/), numpad_enter
 
   功能键：f1 - f24
 
   控制键:
-      ctrl,   ctrl_r,
+      ctrl_l,   ctrl_r,
       shift,  shift_r,
-      alt,    alt_r,
+      alt_l,    alt_gr,
       cmd,    cmd_r
 
   特殊键：

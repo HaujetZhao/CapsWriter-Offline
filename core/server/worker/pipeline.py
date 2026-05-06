@@ -60,6 +60,7 @@ class TaskPipeline:
         处理单个音频任务片段并返回识别结果
         """
         try:
+            logger.info(f"任务 {task.task_id[:8]}, 语言={task.language}, 来源={task.source}")
             is_first_segment = task.task_id not in self.state.sessions
             session = self.state.get_session(task.task_id, task.socket_id, task.source)
             result = session.result
@@ -70,7 +71,7 @@ class TaskPipeline:
             # 3. 执行识别推理
             stream = self.recognizer.create_stream()
             stream.accept_waveform(task.samplerate, samples)
-            self.recognizer.decode_stream(stream, context=task.context)
+            self.recognizer.decode_stream(stream, context=task.context, language=task.language)
 
             # 更新基础时序
             result.time_start, result.time_submit = task.time_start, task.time_submit
