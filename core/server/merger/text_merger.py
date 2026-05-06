@@ -3,136 +3,103 @@
 基于文本重叠的拼接算法
 
 提供鲁棒的文本层级合并功能，不依赖时间戳。
+使用 difflib 自动寻找最佳对齐点，无需固定窗口大小。
 """
 
-import re
-from core.constants import TextMerge, Punctuation
+import difflib
+from core.constants import Punctuation
 from . import logger
 
 
-def _fuzzy_match(s1: str, s2: str, max_errors: int) -> bool:
-    """
-    模糊匹配：允许最多 max_errors 个字符不同
-    
-    使用简单的字符比较，允许一定数量的错误。
-    
-    Args:
-        s1: 字符串1
-        s2: 字符串2  
-        max_errors: 允许的最大错误数
-        
-    Returns:
-        是否匹配（错误数 <= max_errors）
-    """
-    if len(s1) != len(s2):
-        return False
-    
-    errors = sum(1 for c1, c2 in zip(s1, s2) if c1 != c2)
-    return errors <= max_errors
-
-
 def merge_by_text(
-    prev_text: str, 
-    new_text: str, 
-    overlap_chars: int = TextMerge.OVERLAP_CHARS,
-    error_tolerance: int = TextMerge.ERROR_TOLERANCE
+    prev_text: str,
+    new_text: str,
+    *_args,
+    **_kwargs,
 ) -> str:
     """
     基于文本重叠进行鲁棒拼接
-    
-    算法优化：
-    不再要求重叠必须在 prev_text 的绝对末尾。
-    而是在 prev_text 的末尾窗口内寻找 new_text 的最长匹配前缀。
-    如果发现匹配，则以匹配点为界进行拼接，丢弃 prev_text 匹配点之后的“尾部噪音”。
-    
-    Args:
-        prev_text: 之前累积的文本
-        new_text: 新识别的文本
-        overlap_chars: 查找重叠的后端窗口大小
-        error_tolerance: 容错字符数
+
+    算法：在 prev_text 尾部和 new_text 头部寻找最佳对齐点。
+    使用多尺度匹配策略：先尝试长精确匹配，再逐步放宽。
+    约束匹配必须在 prev 尾部（匹配点越靠后越好）。
     """
     if not prev_text:
         return new_text
     if not new_text:
         return prev_text
-    
-    # 1. 预处理：提取用于匹配的纯文本（去掉两端标点）
+
+    # 1. 预处理：去掉两端标点，避免标点差异干扰匹配
     prev_clean = prev_text.rstrip(Punctuation.ALL)
-    
-    # 记录 new_text 开头被去掉的标点数量，用于最终拼接
-    new_match_start = 0
-    while new_match_start < len(new_text) and new_text[new_match_start] in Punctuation.ALL:
-        new_match_start += 1
-    new_clean = new_text[new_match_start:]
-    
+
+    new_start = 0
+    while new_start < len(new_text) and new_text[new_start] in Punctuation.ALL:
+        new_start += 1
+    new_clean = new_text[new_start:]
+
     if not prev_clean or not new_clean:
         return prev_text + new_text
 
-    # 2. 确定搜索窗口（prev_text 的末尾部分）
-    search_window = prev_clean[-overlap_chars:]
-    window_offset = len(prev_clean) - len(search_window)
+    # 2. 在 prev 尾部和 new 头部寻找对齐
+    #    搜索范围：prev 最后 100 字 + new 前 100 字
+    tail = prev_clean[-100:]
+    head = new_clean[:100]
 
-    # 3. 寻找最长匹配重叠
-    # 策略：不仅搜 new_clean 的绝对开头，还允许跳过 new_clean 开头的几个字（处理开头截断不准）
-    max_skip_new = 10  # 允许跳过新片段开头的字数
-    max_to_check = min(len(search_window), len(new_clean))
-    min_exact_len = 2
-    min_fuzzy_len = error_tolerance + 2
+    best = _find_best_overlap(tail, head)
 
-    best_match_skip_new = -1
-    best_match_pos_in_window = -1
-    best_match_len = 0
+    # 最短匹配长度要求
+    if best is None:
+        logger.debug("文本拼接: 未找到重叠，直接拼接")
+        return prev_text + new_text
 
-    # 3.1 尝试【精确匹配】
-    # 优先级：匹配越长越好 > 跳过越少越好 > 越靠近 prev 尾部越好
-    for match_len in range(max_to_check, min_exact_len - 1, -1):
-        for skip_new in range(min(max_skip_new, len(new_clean) - match_len + 1)):
-            target_prefix = new_clean[skip_new : skip_new + match_len]
-            idx = search_window.rfind(target_prefix)
-            if idx != -1:
-                best_match_skip_new = skip_new
-                best_match_pos_in_window = idx
-                best_match_len = match_len
-                break
-        if best_match_len > 0:
-            break
-            
-    # 3.2 如果没找到精确匹配，且开启了容错，则尝试【模糊匹配】
-    if best_match_len == 0 and error_tolerance > 0:
-        for match_len in range(max_to_check, min_fuzzy_len - 1, -1):
-            for skip_new in range(min(max_skip_new, len(new_clean) - match_len + 1)):
-                target_prefix = new_clean[skip_new : skip_new + match_len]
-                found_idx = -1
-                for i in range(len(search_window) - match_len, -1, -1):
-                    if _fuzzy_match(search_window[i:i+match_len], target_prefix, error_tolerance):
-                        found_idx = i
-                        break
-                if found_idx != -1:
-                    best_match_skip_new = skip_new
-                    best_match_pos_in_window = found_idx
-                    best_match_len = match_len
-                    break
-            if best_match_len > 0:
-                break
+    match_pos_in_tail, match_pos_in_head, match_len = best
 
-    # 4. 执行拼接
-    if best_match_len > 0:
-        # prev_text 保留到匹配开始的地方
-        keep_prev_len = window_offset + best_match_pos_in_window
-        
-        # 衔接点：跳过 new_text 开头的标点以及我们认为多余的 skip_new 个噪音字
-        res_prev = prev_clean[:keep_prev_len]
-        res_new = new_text[new_match_start + best_match_skip_new:]
-        
-        discard_prev = len(prev_clean) - keep_prev_len - best_match_len
-        logger.debug(
-            f"文本拼接成功: 匹配长度 {best_match_len}, "
-            f"丢弃 prev 尾部噪音 {discard_prev} 字, "
-            f"跳过 new 开头噪音 {best_match_skip_new} 字"
-        )
-        return res_prev + res_new
-    
-    # 5. 未找到匹配，兜底逻辑
-    logger.debug("文本拼接: 未找到重叠，直接拼接")
-    return prev_text + new_text
+    # 3. 在匹配点处拼接
+    #    prev 保留到匹配起点 + 匹配长度（含重叠部分），new 从匹配终点之后续接
+    keep_prev_len = len(prev_clean) - len(tail) + match_pos_in_tail + match_len
+    skip_new_len = match_pos_in_head + match_len
 
+    res_prev = prev_clean[:keep_prev_len]
+    res_new = new_text[new_start + skip_new_len:]
+
+    discarded_prev = len(prev_clean) - keep_prev_len - match_len
+    logger.debug(
+        f"文本拼接成功: 匹配长度 {match_len}, "
+        f"丢弃 prev 尾部 {discarded_prev} 字, "
+        f"跳过 new 开头 {skip_new_len} 字"
+    )
+    return res_prev + res_new
+
+
+def _find_best_overlap(tail: str, head: str) -> tuple[int, int, int] | None:
+    """
+    在 tail（prev 尾部）和 head（new 头部）之间找最佳对齐。
+
+    核心约束：合法的重叠必须出现在 tail 的后半段 + head 的前半段。
+    匹配越靠近 tail 末尾和 head 开头越好。
+    """
+    min_match = 2
+
+    sm = difflib.SequenceMatcher(None, tail, head, autojunk=False)
+    matches = sm.get_matching_blocks()
+
+    # 位置约束：
+    #   匹配在 tail 中的终点 (a+size) 必须在后半段（重叠在 prev 尾部）
+    #   匹配在 head 中的起点 (b) 必须在前半段（重叠在 new 头部）
+    tail_end_threshold = len(tail) // 4 * 3
+    head_start_threshold = len(head) // 4
+
+    candidates = [
+        (a, b, size) for a, b, size in matches
+        if size >= min_match and a + size > tail_end_threshold and b <= head_start_threshold
+    ]
+    if not candidates:
+        return None
+
+    # 评分：长度主导，位置辅助
+    # length² 让长匹配碾压短匹配；+a 靠近尾部加分，-b 靠近头部加分
+    def score(item):
+        a, b, size = item
+        return size * size + a - b
+
+    return max(candidates, key=score)

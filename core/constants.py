@@ -31,9 +31,3 @@ class Punctuation:
     """标点符号集合"""
     # 常见的中文和英文标点符号
     ALL = '，。！？；：、「」『』（）《》【】[]{},.!?;:"\''
-
-
-class TextMerge:
-    """文本拼接配置（服务端内部使用）"""
-    OVERLAP_CHARS: int = 5             # 文本拼接时查找重叠的字符数
-    ERROR_TOLERANCE: int = 1            # 容错字符数（允许匹配中有N个错字）
