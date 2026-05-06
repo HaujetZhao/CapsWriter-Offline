@@ -78,7 +78,10 @@ class TaskPipeline:
             result.time_complete = time.time()
 
             # 4. 路径 A: 简单文本拼接 (主要用于实时回显)
-            self._process_simple_merge(result, stream.result.text)
+            asr_raw_text = stream.result.text
+            logger.info(f'模型输出：{asr_raw_text}')
+            console.print(f'\033[0G  模型输出：[cyan]{asr_raw_text}', soft_wrap=True)
+            self._process_simple_merge(result, asr_raw_text)
 
             # 5. 路径 B: 对齐增强 (仅针对文件任务)
             # 门控：仅在“文件任务”且“引擎不支持时间戳”时，才调用外部 Aligner
@@ -120,6 +123,9 @@ class TaskPipeline:
             raw_text = result.text
             result.text = self.formatter.format(result.text)
             result.text_accu = self.formatter.format(result.text_accu)
+            console.print(f'  片段拼接：[purple]{raw_text}', soft_wrap=True)
+            console.print(f'  格式化后：[green]{result.text}\n', soft_wrap=True)
+
             logger.debug(f'格式调整：{raw_text} --> {result.text}')
 
             # 将格式化引入的标点同步回 token 序列
