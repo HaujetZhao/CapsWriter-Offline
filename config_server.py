@@ -11,10 +11,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 服务端配置
 class ServerConfig:
     addr = '0.0.0.0'
-    port = '6023'
+    port = '6016'
 
     # 语音模型选择：'qwen_asr', 'fun_asr_nano', 'sensevoice', 'paraformer'
-    model_type = 'fun_asr_nano'
+    model_type = 'qwen_asr'
 
     format_num = True       # 输出时是否将中文数字转为阿拉伯数字
     format_spell = True     # 输出时是否调整中英之间的空格
@@ -159,7 +159,7 @@ class ForceAlignerGGUFArgs:
 
     # 显卡加速
     onnx_provider = 'CPU'       # ONNX 推理后端 (CPU, DML)
-    llm_use_gpu = True          # 是否启用 GPU 加速 GGUF 模型
+    llm_use_gpu = False          # 是否启用 GPU 加速 GGUF 模型
     
     # 对齐细节
     n_ctx = 3072                # 上下文窗口大小
