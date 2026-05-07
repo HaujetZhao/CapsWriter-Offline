@@ -99,7 +99,7 @@ class TaskPipeline:
                 and stream.result.text.strip()):
                 
                 logger.debug(f"🚩 [Pipeline] 正在对文件分片执行对齐补齐...")
-                align_res = self.aligner.align(audio=samples, text=stream.result.text, offset_sec=0.0)
+                align_res = self.aligner.align(audio=samples, text=stream.result.text, language=task.language, offset_sec=0.0)
                 if align_res and align_res.items:
                     stream.result.tokens = [it.text for it in align_res.items]
                     stream.result.timestamps = [it.start_time for it in align_res.items]

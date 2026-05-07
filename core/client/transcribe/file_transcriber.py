@@ -146,7 +146,8 @@ class FileTranscriber:
                 time_start=time.time(),
                 seg_duration=Config.file_seg_duration,
                 seg_overlap=Config.file_seg_overlap,
-                context=Config.context
+                context=Config.context,
+                language=Config.language,
             )
             if not await self._ws_manager.send(final_message):
                 raise ConnectionError("结束标志发送失败")

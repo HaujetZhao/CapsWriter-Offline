@@ -154,14 +154,17 @@ class ParaformerEngine(BaseASREngine):
         return ParaformerStream(self.recognizer, sample_rate=self.config.sample_rate, hotwords=hotwords)
 
     def decode_stream(
-        self, 
-        stream: ParaformerStream, 
+        self,
+        stream: ParaformerStream,
         context: Optional[str] = None,
+        language: Optional[str] = None,
         **kwargs
     ):
         """解码识别流并同步结果"""
         if context:
             logger.debug(f"ParaformerEngine 不支持解码 context，已忽略")
+        if language and language != 'auto':
+            logger.debug(f"ParaformerEngine 是中文专用模型，语言设置 '{language}' 已忽略")
         
         # 1. 调用内核解码
         self.recognizer.decode_stream(stream.internal_stream)

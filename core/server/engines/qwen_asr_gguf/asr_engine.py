@@ -5,6 +5,7 @@ from typing import Optional, List
 from .inference.asr import QwenASREngine as QwenInternalEngine
 from .inference.schema import ASREngineConfig, MsgType, StreamingMessage
 from ..base import BaseASREngine, RecognitionStream, EngineCapabilities, RecognitionResult
+from ..language import get_language, ENGINE_QWEN_ASR
 
 
 class QwenASRStream(RecognitionStream):
@@ -62,12 +63,13 @@ class QwenASREngine(BaseASREngine):
         # 1. 提交编码任务（同步调用）
         audio_embd, enc_time = self.engine.encoder.encode(audio_data)
         
-        # 3. 构造 Prompt 并解码
+        # 3. 构造 Prompt 并解码（语言映射：统一代码 → Qwen3 英文明称）
+        mapped_lang = get_language(ENGINE_QWEN_ASR, language) if language else None
         full_embd = self.engine._build_prompt_embd(
             audio_embd=audio_embd,
             prefix_text="", # 这里的 prefix_text 是 Assistant 已说的内容，流式分段时通常为空或使用 context
             context=context,
-            language=language
+            language=mapped_lang
         )
 
         # 4. 执行解码

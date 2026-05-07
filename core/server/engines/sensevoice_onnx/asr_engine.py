@@ -4,6 +4,7 @@ from typing import Optional, List
 from .inference.engine import SenseVoiceInference
 from .inference.schema import ASREngineConfig as SenseVoiceConfig
 from ..base import BaseASREngine, RecognitionStream, EngineCapabilities, RecognitionResult
+from ..language import get_language, ENGINE_SENSEVOICE
 
 
 class SenseVoiceStream(RecognitionStream):
@@ -52,11 +53,11 @@ class SenseVoiceEngine(BaseASREngine):
         if stream.audio_data is None:
             return
 
-        # 执行识别
-        # lid 参数映射：'auto', 'zh', 'en', 'ja', 'ko', 'yue'
+        # 语言映射：统一代码 → SenseVoice lid ('auto', 'zh', 'en', 'ja', 'ko', 'yue')
+        lid = get_language(ENGINE_SENSEVOICE, language) if language else None
         res = self.engine.recognize(
-            stream.audio_data, 
-            lid=language or "auto", 
+            stream.audio_data,
+            lid=lid or "auto",
             itn=itn
         )
 

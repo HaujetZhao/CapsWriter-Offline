@@ -8,6 +8,7 @@ from .inference.models import Models
 from .inference.pipeline import InferencePipeline
 from .inference.transcriber import AudioTranscriber
 from ..base import BaseASREngine, RecognitionStream, EngineCapabilities, RecognitionResult
+from ..language import get_language, ENGINE_FUN_ASR_NANO
 
 
 class FunASRStream(RecognitionStream):
@@ -59,8 +60,9 @@ class FunASREngine(BaseASREngine):
         **kwargs
     ):
         """解码识别流并同步结果"""
-        # 1. 调用内部管线解码
-        self.pipeline.decode_stream(stream.internal_stream, context=context, language=language)
+        # 语言映射：统一代码 → FunASR 中文文本
+        mapped_lang = get_language(ENGINE_FUN_ASR_NANO, language) if language else None
+        self.pipeline.decode_stream(stream.internal_stream, context=context, language=mapped_lang)
         
         # 2. 同步结果到标准 RecognitionResult
         res = stream.internal_stream.result

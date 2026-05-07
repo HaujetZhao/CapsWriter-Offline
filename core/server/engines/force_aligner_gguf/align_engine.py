@@ -5,6 +5,7 @@ from typing import List, Optional
 from .inference.aligner import QwenForcedAligner as InternalAligner
 from .inference.schema import AlignerConfig, ForcedAlignResult
 from ..base import BaseAlignEngine
+from ..language import get_language, ENGINE_ALIGNER
 
 
 class QwenForceAligner(BaseAlignEngine):
@@ -20,10 +21,10 @@ class QwenForceAligner(BaseAlignEngine):
         self.engine = InternalAligner(config)
 
     def align(
-        self, 
-        audio: np.ndarray, 
-        text: str, 
-        language: str = "Chinese",
+        self,
+        audio: np.ndarray,
+        text: str,
+        language: Optional[str] = None,
         offset_sec: float = 0.0,
         **kwargs
     ) -> ForcedAlignResult:
@@ -32,11 +33,14 @@ class QwenForceAligner(BaseAlignEngine):
         """
         if not text:
             return None
-            
+
+        # 语言映射：统一代码 → Aligner 英文明称，默认中文
+        mapped = get_language(ENGINE_ALIGNER, language) if language else None
+
         return self.engine.align(
-            audio=audio, 
-            text=text, 
-            language=language, 
+            audio=audio,
+            text=text,
+            language=mapped or "Chinese",
             offset_sec=offset_sec
         )
 

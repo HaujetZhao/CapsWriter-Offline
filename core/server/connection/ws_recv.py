@@ -127,7 +127,8 @@ async def message_handler(websocket, msg: AudioMessage, cache: AudioCache, app) 
                 is_final=True,
                 time_start=msg.time_start,
                 time_submit=time.time(),
-                context=msg.context
+                context=msg.context,
+                language=msg.language,
             )
             queue_in.put(task)
             logger.debug(f"提交最终片段，任务ID: {msg.task_id}, 数据大小: {len(cache.chunks)} bytes")
