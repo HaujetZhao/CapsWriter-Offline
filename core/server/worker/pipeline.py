@@ -68,6 +68,13 @@ class TaskPipeline:
             # 2. 预处理音频并获取采样点
             samples = process_audio_task(task, result)
 
+            # 空音频或极短音频，跳过推理直接返回
+            if samples is None:
+                result.time_start, result.time_submit = task.time_start, task.time_submit
+                result.time_complete = time.time()
+                result.is_final = task.is_final
+                return result
+
             # 3. 执行识别推理
             stream = self.recognizer.create_stream()
             stream.accept_waveform(task.samplerate, samples)
