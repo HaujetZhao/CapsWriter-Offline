@@ -156,7 +156,8 @@ async def ws_recv(websocket, app) -> None:
     socket_id = str(websocket.id)
     sockets[socket_id] = websocket
     sockets_id.append(socket_id)
-    console.print(f'接客了：{websocket}\n', style='yellow')
+    remote = websocket.remote_address
+    console.print(f'[bold green]客户端已连接: {remote[0]}:{remote[1]}[/bold green]\n')
     logger.info(f"新客户端连接: {websocket}, ID: {socket_id}")
 
     # 创建音频缓冲区
@@ -175,7 +176,6 @@ async def ws_recv(websocket, app) -> None:
                 logger.error(f"消息解析失败: {str(e)}")
                 continue
 
-        console.print("ConnectionClosed...")
         logger.info(f"客户端正常关闭连接: {socket_id}")
 
     except websockets.ConnectionClosed:
@@ -194,6 +194,8 @@ async def ws_recv(websocket, app) -> None:
         sockets.pop(socket_id, None)
         if socket_id in sockets_id:
             sockets_id.remove(socket_id)
+
+        console.print(f'[bold red]客户端已断开: {remote[0]}:{remote[1]}[/bold red]\n')
 
         # 注意：session 清理由 TaskHandler 在子进程中定期执行
         # （通过检查 sockets_id 判断客户端是否已断开）

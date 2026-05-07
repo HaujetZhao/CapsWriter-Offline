@@ -165,7 +165,8 @@ class ResultProcessor:
                 except Exception as e:
                     logger.debug(f"连接异常中断: {e}")
                     break
-            
+
+            console.print(f'[bold red]已断开服务端连接[/bold red]\n')
             self._cleanup()
             
 

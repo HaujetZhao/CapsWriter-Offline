@@ -16,6 +16,7 @@ from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
 from config_client import ClientConfig as Config
 from core.protocol import AudioMessage, RecognitionMessage
+from ..state import console
 from .. import logger
 import asyncio
 
@@ -93,6 +94,7 @@ class WebSocketManager:
                 proxy=None,  # websockets>=16.0 默认走代理，本地连接需显式禁用
             )
 
+            console.print(f'[bold green]已连接服务端: {url}[/bold green]\n')
             logger.info(f"WebSocket 建立成功: {url}")
             self._connect_fail_logged = False
             return True
