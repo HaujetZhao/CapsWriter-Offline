@@ -87,19 +87,31 @@ class TaskHandler:
     def drain_queue(self) -> bool:
         """Drain 队列中所有任务到缓冲区。Returns: False = 退出信号。"""
         while True:
+            # 获取任务
             try:
-                task = self.queue_in.get_nowait() if not self.buffer.is_empty else self.queue_in.get(timeout=1)
+                if self.buffer.is_empty:
+                    task = self.queue_in.get(timeout=1)
+                else:
+                    task = self.queue_in.get(timeout=0.02)
             except queue.Empty:
-                if not self.buffer.is_empty:
+                if self.buffer.is_empty:
+                    self.cleanup_engines()
+                    continue
+                else:
                     return True
-                self.cleanup_engines()
-                continue
             except InterruptedError:
                 continue
-
+            
+            # 判断退出信号
             if task is None:
                 return False
 
+            # 跳过已断开连接客户端的任务
+            if task.socket_id not in self.sockets_id:
+                logger.debug(f"跳过断连客户端任务: {task.task_id[:8]}")
+                continue
+            
+            # 任务进入缓冲区
             self.buffer.enqueue(task)
 
     def cleanup(self):
@@ -124,6 +136,12 @@ class TaskHandler:
                 task = self.buffer.pop()
                 if task is None:
                     continue
+
+                # 安全网：在 pipeline 处理前再次检查（任务可能在 drain→pop 之间成为孤儿）
+                # if task.socket_id not in self.sockets_id:
+                #     logger.debug(f"跳过断连客户端任务(安全网): {task.task_id[:8]}")
+                #     self.cleanup()
+                #     continue
 
                 result = self.pipeline.process(task)
                 self.queue_out.put(result)
