@@ -28,10 +28,10 @@
 
 | 引擎名 | 准确性 | 速度 | 格式 | 显卡加速 |
 |------|-------|------|------|---------|
-| Paraformer | ★★★☆☆ | ★★★★★ | ONNX | 不支持 |
-| SenseVoice-Small | ★★★☆☆ | ★★★★★ | ONNX | 可加速 |
-| Fun-ASR-Nano | ★★★★☆ | ★★★★☆ | ONNX + GGUF | 可加速 |
-| Qwen3-ASR | ★★★★★ | ★★★☆☆ | ONNX + GGUF | 可加速 |
+| Paraformer | ★★★☆☆ | ★★★★★ | ONNX | ❌ |
+| SenseVoice-Small | ★★★☆☆ | ★★★★★ | ONNX | ✅ |
+| Fun-ASR-Nano | ★★★★☆ | ★★★★☆ | ONNX + GGUF | ✅ |
+| Qwen3-ASR | ★★★★★ | ★★★☆☆ | ONNX + GGUF | ✅ |
 
 详细功能说明请参考 [`docs/`](docs/) 目录：
 - [环境依赖安装说明](docs/环境依赖安装说明.md) — VC++ 运行库、FFmpeg 安装
