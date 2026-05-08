@@ -8,13 +8,39 @@ from logging.handlers import RotatingFileHandler
 from rich.logging import RichHandler
 
 
+class TruncatingFileHandler(RotatingFileHandler):
+    """超过 maxBytes 后 truncate 文件，不保留任何备份文件"""
+
+    _TAIL_LINES = 10  # truncate 前保留的末尾行数
+
+    def doRollover(self):
+        # truncate 前先读旧文件末尾几行
+        tail = ''
+        try:
+            with open(self.baseFilename, 'r', encoding=self.encoding) as f:
+                lines = f.readlines()
+                tail = ''.join(lines[-self._TAIL_LINES:]).rstrip()
+        except Exception:
+            pass
+
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+        # 用 'w' 模式重开，直接清空文件从头写
+        self.stream = open(self.baseFilename, 'w', encoding=self.encoding)
+        self.stream.write(f'--- Log truncated at {datetime.now()}\n')
+        if tail:
+            self.stream.write(f'--- Last {self._TAIL_LINES} lines of previous entries:\n{tail}\n\n')
+        self.stream.flush()
+
+
 class Logger:
     """日志系统管理器"""
 
     _loggers = {}
 
     @classmethod
-    def setup(cls, name: str, log_dir: str = None, level: str = 'INFO', max_bytes: int = 10 * 1024 * 1024, backup_count: int = 0, log_filename: str = None):
+    def setup(cls, name: str, log_dir: str = None, level: str = 'INFO', max_bytes: int = 10 * 1024 * 1024, log_filename: str = None):
         """
         设置并返回一个日志记录器
 
@@ -68,10 +94,9 @@ class Logger:
             fmt='%(asctime)s.%(msecs)03d %(levelname)-5s [%(filename)20s:%(lineno)-3d] %(message)s',
             datefmt='%H:%M:%S'
         )
-        file_handler = RotatingFileHandler(
+        file_handler = TruncatingFileHandler(
             log_file,
             maxBytes=max_bytes,
-            backupCount=backup_count,
             encoding='utf-8'
         )
         file_handler.setLevel(file_log_level)
