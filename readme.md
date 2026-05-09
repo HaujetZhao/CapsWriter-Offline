@@ -6,9 +6,6 @@
 
 **CapsWriter-Offline** 是一个专为 Windows 打造的**完全离线**语音输入工具。
 
-**全新 V2.5 已打包，处于内测阶段，可到 [#361](https://github.com/HaujetZhao/CapsWriter-Offline/issues/361) 下载体验，待反馈与改进完善后，才会发布正式 Release。**
-
-
 ## ✨ 核心特性
 
 -   **语音输入**：按住 `CapsLock键` 或 `鼠标侧键X2` 说话，松开即输入，超低延迟，默认去除末尾逗句号。支持对讲机模式和单击录音模式。
