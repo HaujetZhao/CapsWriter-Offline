@@ -126,25 +126,25 @@ class PhonemeCorrector:
                     # 搜索匹配
                     found_segments = fuzzy_substring_search_constrained(hw_compare, local_input, threshold=search_threshold)
 
-                for score, start_phon_idx, end_phon_idx in found_segments:
-                    # 转换回全局索引
-                    global_start_idx = window_start + start_phon_idx
-                    global_end_idx = window_start + end_phon_idx
+                    for score, start_phon_idx, end_phon_idx in found_segments:
+                        # 转换回全局索引
+                        global_start_idx = window_start + start_phon_idx
+                        global_end_idx = window_start + end_phon_idx
 
-                    # 从 input_processed 直接拿 char 索引
-                    char_start = input_processed[global_start_idx][5]
-                    char_end = input_processed[global_end_idx-1][6]
+                        # 从 input_processed 直接拿 char 索引
+                        char_start = input_processed[global_start_idx][5]
+                        char_end = input_processed[global_end_idx-1][6]
 
-                    res = MatchResult(char_start, char_end, score, hw)
-                    origin_val = text[char_start:char_end]
+                        res = MatchResult(char_start, char_end, score, hw)
+                        origin_val = text[char_start:char_end]
 
-                    # 分类到 matches 和 similars
-                    if score >= self.threshold:
-                        matches.append(res)
+                        # 分类到 matches 和 similars
+                        if score >= self.threshold:
+                            matches.append(res)
 
-                    # 所有超过相似度阈值的都记入 similars（用于提示）
-                    if score >= self.similar_threshold:
-                        similars.append((origin_val, hw, score))
+                        # 所有超过相似度阈值的都记入 similars（用于提示）
+                        if score >= self.similar_threshold:
+                            similars.append((origin_val, hw, score))
 
         # 潜在热词去重与排序 (不再简单按 seen_hw 排重，而是按分数和覆盖范围排序)
         # 为潜在建议列表保留前 k 个最相关的不同热词
