@@ -45,3 +45,77 @@
 - **纠错检索**：可记录纠错历史，辅助LLM润色。
 - **托盘化运行**：新增托盘图标，可以完全隐藏前台窗口。
 - **完善的日志**：全链路日志记录，排查问题不再抓瞎。
+
+
+## v1.0 
+
+- 通过分段识别和去重，实现了支持无限时长语音的转写
+- 客户端支持转写音视频文件为 srt 字幕，只需将音视频文件拖动到客户端 exe 上打开即可
+
+## v0.6 
+
+
+- 新增日记功能，将每日的录音结果保存在一个 Markdown 文件中
+- 新增关键词日记功能，每日的以关键词开头的录音结果会保存在特别的 Markdown 文件中
+- 新建录音文件夹的时候，会复制一个 Python 辅助脚本，用于清理没有被 Markdown 文件引用的附件，这样一来，通过编辑 Markdown 日记就可以清理不需要保存的录音
+- 新增定义录音文件保存目录
+- 默认保存48000采样率高品质录音录音，如果用户安装了 FFmpeg 则保存为 mp3 格式，否则保存为 wav 格式
+- 输入方式改为模拟 Ctrl + V 粘贴，粘贴完后恢复剪贴板内容
+- 使用 rich 库输出彩色文字，尽量在各种终端达到一致的显示效果
+
+## v0.5 
+
+- 修改热词文件后，不用重启客户端，就可以动态更新热词了。
+
+## v0.4
+
+- 为客户端加入了三种热词功能：中文、英文、自定义
+- 改进了对中文数字的搜索，当数字的左侧或者右侧有英文时，就一定会被选中。
+- 改进了中英空格排版，能够正常输出 iPhone 4s 这样的词语。
+
+
+## v0.3 
+
+- 客户端当音频设备名不可 utf-8 解码时，不再闪退
+- 客户端添加配置可以编辑修改，要消除识别结果末尾哪些标点
+- 客户端添加配置可以修改快捷键
+- 客户端添加配置可以修改快捷键触发的时间阈值
+- 客户端连接中断会自动进行重试
+- 客户端提示当前所用的快捷键
+- 服务端对识别结果，中英文混排进行空格校正
+- 当地址无法被绑定时提示问题，而不是直接闪退
+
+
+## 起源
+
+**2020年10月**，因手机上的语音输入法很好用，但电脑上却没有足够好用的语音输入法，我手写了一个工具 **[CapsWriter](https://github.com/HaujetZhao/CapsWriter)**，通过长按大写锁定键录音，松开后，调用阿里云的一句话识别 API，识别后上屏。12月的时候，还加入图形化界面。但当时大学宿舍的校园网经常抽风，没有稳定的网络环境，转录延迟飘忽不定。有时候说完话了，等了好几秒，才发现 WiFi 没有连接，毁心态。但是当时并没有识别率能满足要求的离线中文 ASR 模型。
+
+后来 Whisper 发布，中文识别率确实不错，但是模型延迟很高，无法满足本地语音输入。
+
+到了**2023年5月**，在B站看到了 [极客湾](https://space.bilibili.com/25876945) 的视频 [我们做了个能对话的AI派蒙，免费给大家玩！](https://www.bilibili.com/video/BV1bm4y117ba/) ，他们实现的效果非常好，其中提到 ASR 模型用了阿里 [FunASR](https://github.com/modelscope/FunASR) 团队发布的开源 [Paraformer](https://www.modelscope.cn/models/iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8358-tensorflow1) 模型，于是就拿来测试了下，果然识别准确率很棒、延迟超低，于是弃坑 **[CapsWriter](https://github.com/HaujetZhao/CapsWriter)** ，立马新开了 **[CapsWriter-Offline](https://github.com/HaujetZhao/CapsWriter-Offline)** ，用 [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 调用 Paraformer 进行转录，效果非常好。
+
+**2025年12月09日**，我看到阿里 [FunASR](https://github.com/modelscope/FunASR) 团队开源了 [Fun-ASR-Nano](https://www.modelscope.cn/models/FunAudioLLM/Fun-ASR-Nano-2512) 模型，拿来一测，果然准确率又上一个台阶，在 sherpa_onnx 支持后，我赶紧更新了 CapsWriter-Offline v2.1，一次性加入了 SenseVoice-Small 和 Fun-ASR-Nano 模型的支持。但问题是当时 sherpa_onnx 是用 ONNX 实现的 Fun-ASR-Nano，速度有些慢。
+
+我研究了 Fun-ASR-Nano 的架构，发现它的 Decoder 是 LLM 架构，而推理 LLM 最快的是 [LLama.cpp](https://github.com/ggml-org/llama.cpp) 。虽然我编程能力差，但刚好此时，Google 推出了 Antigravity AI 编程 IDE，里面有 Gemini 和 Claude 模型，在他们的帮助下，我成功写出了 [Fun-ASR-GGUF](https://github.com/HaujetZhao/Fun-ASR-GGUF)，用 onnx 和 gguf 格式混合运行 Fun-ASR-Nano，用 [LLama.cpp](https://github.com/ggml-org/llama.cpp) 加速它的 LLM Decoder 部分，在我的笔记本上实现了最快的推理速度：
+
+| 设备 | RTF |
+|------|-----|
+| GPU RTX5050  | 0.025 |
+| CPU U9-285H  | 0.1 |
+
+**2026年01月21日**，[Qwen3-TTS](https://www.modelscope.cn/collections/Qwen/Qwen3-TTS) 开源发布了，生成效果极其优异，让我特别想要，但官方版本推理速度很慢，于是基于 [Fun-ASR-GGUF](https://github.com/HaujetZhao/Fun-ASR-GGUF) 的加速推理经验，在 Antigravity 的帮助下，我又实现了 [Qwen3-TTS-GGUF](https://github.com/HaujetZhao/Qwen3-TTS-GGUF) ，也是用 [LLama.cpp](https://github.com/ggml-org/llama.cpp) 加速它的 LLM Decoder 部分。
+
+**2026年01月28日**，间隔没几天，[Qwen3-ASR](https://www.modelscope.cn/collections/Qwen/Qwen3-ASR) 开源发布了，本来没抱太大预期的，但下载 1.7B 一测后，又给我震惊了，准确率竟比 Fun-ASR-Nano 还上一个台阶，能吊打闭源模型！于是在 [Qwen3-TTS-GGUF](https://github.com/HaujetZhao/Qwen3-TTS-GGUF) 经验的帮助下，我马不停蹄地实现了 [Qwen3-ASR-GGUF](https://github.com/HaujetZhao/Qwen3-ASR-GGUF) 加速推理，实现了最快的推理速度：
+
+| 设备 | RTF |
+|------|-----|
+| GPU RTX5050  | 0.05 |
+| CPU U9-285H  | 0.2 |
+
+这就是 CapsWriter-Offline 大致的来路。总体就是这几个组件：
+
+- 模型推理
+- 热词替换
+- 按键监听与录音
+
+当前只有 Windows 的打包，是因为我只有 Windows 电脑，没有 Linux 与 MacOS 的需求。在 Vibe Coding 时代，我相信需求的小伙伴在 Claude Code 的帮助下，也能在其系统上做出类似功能的实现。
