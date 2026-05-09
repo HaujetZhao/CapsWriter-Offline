@@ -33,6 +33,16 @@
 | Fun-ASR-Nano | ★★★★☆ | ★★★★☆ | ONNX + GGUF | ✅ |
 | Qwen3-ASR | ★★★★★ | ★★★☆☆ | ONNX + GGUF | ✅ |
 
+
+性能参考（20s 音频转录延迟）：
+
+| 模型 | CPU U9-285H | GPU RTX5050 |
+|------|------------|------------|
+| Paraformer | 0.6s | - |
+| SenseVoice-Small | 0.6s | 0.15s |
+| Fun-ASR-Nano | 2.0s | 0.5s |
+| Qwen3-ASR-1.7B | 4.0s | 1.0s |
+
 详细功能说明请参考 [`docs/`](docs/) 目录：
 - [环境依赖安装说明](docs/环境依赖安装说明.md) — VC++ 运行库、FFmpeg 安装
 - [热词功能如何使用](docs/热词功能如何使用.md) — 热词替换、规则替换、自定义短语
