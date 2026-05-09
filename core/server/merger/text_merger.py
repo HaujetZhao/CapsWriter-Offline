@@ -6,6 +6,7 @@
 使用 difflib 自动寻找最佳对齐点，无需固定窗口大小。
 """
 
+from __future__ import annotations
 import difflib
 from core.constants import Punctuation
 from . import logger

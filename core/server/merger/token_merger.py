@@ -5,6 +5,7 @@
 使用 SequenceMatcher 进行精确的字级对齐，适用于字幕生成等对时间戳要求高的场景。
 """
 
+from __future__ import annotations
 import difflib
 from typing import List, Tuple
 from core.constants import Punctuation

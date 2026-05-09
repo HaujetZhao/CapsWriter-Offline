@@ -6,6 +6,7 @@
 主要用于调整识别结果中中英文之间的空格。
 """
 
+from __future__ import annotations
 import re
 from typing import Match
 

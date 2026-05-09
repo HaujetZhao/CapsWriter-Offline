@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import annotations
 from pathlib import Path
 from . import logger
 from config_client import ClientConfig as Config, __version__
