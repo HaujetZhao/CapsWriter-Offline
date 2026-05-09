@@ -79,6 +79,7 @@ SW_RESTORE = 9
 SW_SHOW = 5
 SC_CLOSE = 0xF060
 MF_BYCOMMAND = 0x00000000
+GA_ROOT = 3
 
 
 def _init_win_api():
@@ -105,12 +106,17 @@ _tray_instance: Optional['_TraySystem'] = None
 _lock = threading.Lock()
 
 
-def _get_console_hwnd() -> int:
-    """获取控制台窗口句柄"""
+def _get_console_hwnd():
     _init_win_api()
-    if kernel32 is None:
-        return 0
-    return kernel32.GetConsoleWindow()
+    hwnd = kernel32.GetConsoleWindow()
+    if hwnd:
+        # 在 Windows Terminal 中，GetConsoleWindow 返回的是内部窗口句柄。
+        # 为了能让“退出按钮不可用”以及“从任务栏消失”生效，我们需要操作最外层的顶层窗口。
+        # 对于普通 CMD，GetAncestor(hwnd, GA_ROOT) 依然返回 hwnd 本身。
+        root_hwnd = user32.GetAncestor(hwnd, GA_ROOT)
+        if root_hwnd:
+            return root_hwnd
+    return hwnd
 
 
 def _disable_close_button(hwnd: int) -> None:
