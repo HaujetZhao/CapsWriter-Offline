@@ -86,13 +86,18 @@ class WebSocketManager:
             if not self._connect_fail_logged:
                 logger.debug(f"正在连接服务端 {url}")
 
-            self.state.websocket = await websockets.connect(
-                url,
+            kwargs = dict(
+                uri=url,
                 subprotocols=["binary"],
                 max_size=None,
                 max_queue=None,  # 防止文件过大时，只发送，来不及消费结果，接收队列填满导致 pause_reading
-                proxy=None,  # websockets>=16.0 默认走代理，本地连接需显式禁用
             )
+
+            # websockets>=16.0 默认走代理，本地连接需显式禁用，但 14 才引入这个参数
+            if tuple(int(v) for v in websockets.__version__.split(".")) >= (14,):
+                kwargs["proxy"] = None  
+            
+            self.state.websocket = await websockets.connect(**kwargs)
 
             console.print(f'[bold green]已连接服务端: {url}[/bold green]\n')
             logger.info(f"WebSocket 建立成功: {url}")
