@@ -59,8 +59,8 @@ class TipsDisplay:
         """显示麦克风模式的启动提示"""
         shortcuts_display = _get_shortcuts_display()
 
-        console.rule('[bold #d55252]CapsWriter Offline Client')
-        console.print(f'\n版本：[bold green]{__version__}')
+        console.rule('[bold #d55252]CapsWriter Offline Client[/]')
+        console.print(f'\n版本：[bold green]{__version__}[/]')
 
         markdown = f'''
 
@@ -96,9 +96,9 @@ class TipsDisplay:
 
         console.print(Markdown(markdown), highlight=True)
         console.rule()
-        console.print(f'\n当前基文件夹：[cyan underline]{os.getcwd()}')
-        console.print(f'\n服务端地址： [cyan underline]{Config.addr}:{Config.port}')
-        console.print(f'\n当前所用快捷键：[green4]{shortcuts_display}')
+        console.print(f'\n当前基文件夹：[cyan underline]{os.getcwd()}[/]')
+        console.print(f'\n服务端地址： [cyan underline]{Config.addr}:{Config.port}[/]')
+        console.print(f'\n当前所用快捷键：[green4]{shortcuts_display}[/]')
         console.line()
 
         logger.debug("已显示麦克风模式启动提示")
@@ -106,11 +106,11 @@ class TipsDisplay:
     @staticmethod
     def show_file_tips() -> None:
         """显示文件转录模式的启动提示"""
-        console.print(f'\n版本：[bold green]{__version__}')
-        
+        console.print(f'\n版本：[bold green]{__version__}[/]')
+
         markdown = '\n项目地址：https://github.com/HaujetZhao/CapsWriter-Offline'
         console.print(Markdown(markdown), highlight=True)
-        console.print(f'当前基文件夹：[cyan underline]{os.getcwd()}')
-        console.print(f'服务端地址： [cyan underline]{Config.addr}:{Config.port}')
+        console.print(f'当前基文件夹：[cyan underline]{os.getcwd()}[/]')
+        console.print(f'服务端地址： [cyan underline]{Config.addr}:{Config.port}[/]')
         
         logger.debug("已显示文件转录模式启动提示")
