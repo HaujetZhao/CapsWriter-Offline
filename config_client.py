@@ -73,7 +73,7 @@ class ClientConfig:
     file_save_json = True       # 转录文件时是否保存 json 结果（含原始时间戳）
     file_save_merge = False      # 转录文件时是否保存 merge.txt（未切分的段落长文本）
 
-    udp_broadcast = True                # 是否启用 UDP 广播输出结果
+    udp_broadcast = False               # 是否启用 UDP 广播输出结果
     udp_broadcast_targets = [           # UDP 广播目标地址列表，格式: (地址, 端口)
         ('127.255.255.255', 6017),      # 本地回环广播
         # ('192.168.1.255', 6017),      # 局域网广播（示例，按需启用）
