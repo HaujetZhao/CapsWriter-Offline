@@ -19,8 +19,7 @@ class RoleConfig:
     # 基本信息
     name: str = ''                               # 角色显示名称
     module_name: str = ""                         # 模块名称（如 "LLM.翻译"）
-    match: bool = True                            # 是否启用前缀匹配
-    process: bool = True                          # 是否启用 LLM 处理
+    enabled: bool = True                          # 是否启用此角色
 
     # API 配置
     provider: str = 'ollama'                      # API 提供商

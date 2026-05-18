@@ -35,11 +35,11 @@ class RoleDetector:
         # logger.debug(f"检测角色，输入文本: {text[:50]}...")
 
         for role_name, role_config in self.role_loader.get_roles().items():
-            if role_name == '默认' or role_name == '':
+            if role_name in ['默认', 'default', '']:
                 continue
 
-            # 检查是否启用前缀匹配
-            if not role_config.match:
+            # 检查角色是否启用
+            if not role_config.enabled:
                 continue
 
             # 遍历显示名和所有别名
@@ -53,9 +53,9 @@ class RoleDetector:
 
         # 未匹配，使用默认角色
         default_role = self.role_loader.get_default_role()
-        if default_role.process:
-            # logger.debug(f"未匹配到角色前缀，使用默认角色，处理: {default_role.process}")
+        if default_role.enabled:
+            # logger.debug(f"未匹配到角色前缀，使用默认角色")
             return default_role, text
 
-        # logger.debug("未匹配到角色且默认角色不处理，返回原始文本")
+        # logger.debug("未匹配到角色且默认角色未启用，返回原始文本")
         return None, text

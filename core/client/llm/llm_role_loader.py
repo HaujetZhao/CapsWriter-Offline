@@ -125,8 +125,8 @@ class RoleLoader:
 
     def get_default_role(self) -> RoleConfig:
         """获取默认角色"""
-        return self.roles_registry.get(RoleConfig.DEFAULT_ROLE_NAME, RoleConfig(name=RoleConfig.DEFAULT_ROLE_NAME, module_name='', process=False))
+        return self.roles_registry.get(RoleConfig.DEFAULT_ROLE_NAME, RoleConfig(name=RoleConfig.DEFAULT_ROLE_NAME, module_name='', enabled=False))
 
     def get_role_by_name(self, name: str) -> RoleConfig:
         """根据名字获取角色"""
-        return self.roles_registry.get(name, RoleConfig(name=RoleConfig.DEFAULT_ROLE_NAME, module_name='', process=False))
+        return self.roles_registry.get(name, RoleConfig(name=RoleConfig.DEFAULT_ROLE_NAME, module_name='', enabled=False))

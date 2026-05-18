@@ -44,13 +44,9 @@ class RoleFormatter:
         padding = " " * max(0, 8 - display_width)
         text.append(f"{role_name}{padding}：", style="bold cyan")
 
-        # 匹配
-        match = role_config.match
-        text.append("匹配 " if match else "匹配 ", style="green" if match else "dim")
-
-        # 处理
-        process = role_config.process
-        text.append("处理 " if process else "处理 ", style="green" if process else "dim")
+        # 启用状态
+        enabled = role_config.enabled
+        text.append("启用 " if enabled else "启用 ", style="green" if enabled else "dim")
 
         # 输出方式
         output_mode = role_config.output_mode

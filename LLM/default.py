@@ -4,14 +4,13 @@
 
 # ==================== 基本信息 ====================
 name = ''                           # 角色名称（留空表示默认）
-match = True                        # 是否启用前缀匹配
-process = False                      # 是否启用 LLM 处理
+enabled = False                      # 是否启用此角色
 
 # ==================== API 配置 ====================
-provider = 'lmstudio'                   # API 提供商：'ollama', 'openai', 'deepseek', 'moonshot', 'zhipu', 'claude', 'gemini'
+provider = 'deepseek'                   # API 提供商：'ollama', 'openai', 'deepseek', 'moonshot', 'zhipu', 'claude', 'gemini'
 api_url = ''                            # 留空则自动使用 provider 对应的默认值
-api_key = ''                            # API Key
-model = 'local-model'                   # 模型名称
+api_key = 'sk-4c756***********************36fb' # API Key
+model = 'deepseek-v4-flash'             # 模型名称
 
 # ==================== 上下文管理 ====================
 max_context_length = 4096               # 最大上下文长度（token 数）

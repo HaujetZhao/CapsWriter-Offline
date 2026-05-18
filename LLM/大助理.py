@@ -4,8 +4,7 @@
 
 # ==================== 基本信息 ====================
 name = '大助理'                         # 角色名称（留空表示默认）
-match = True                            # 是否启用前缀匹配
-process = True                          # 是否启用 LLM 处理
+enabled = True                           # 是否启用此角色
 
 # ==================== API 配置 ====================
 provider = 'deepseek'                               # API 提供商：'ollama', 'openai', 'deepseek', 'moonshot', 'zhipu', 'claude', 'gemini'
