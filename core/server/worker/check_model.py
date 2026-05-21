@@ -51,9 +51,6 @@ def check_model() -> None:
                 ModelPaths.paraformer_model,
                 ModelPaths.paraformer_tokens,
             ],
-            '标点模型文件': [
-                ModelPaths.punc_model_dir,
-            ]
         }
     elif model_type == 'qwen_asr':
         required_files = {
@@ -108,6 +105,6 @@ def check_model() -> None:
         input('按回车退出')
         sys.exit(1)
 
-    # 所有检查通过
+    # 所有必需文件检查通过
     logger.info(f"模型文件检查通过 ({model_type})")
     console.print(f'[green4]模型文件检查通过 ({model_type})', end='\n\n')
