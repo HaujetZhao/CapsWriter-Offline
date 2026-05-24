@@ -250,6 +250,7 @@ class ResultProcessor:
         # 窗口兼容性检测
         paste = Config.paste
         process_name = get_active_window_info().get('process_name', '').lower()
+        logger.debug(f"当前活动窗口: {process_name}")
         if any(app.lower() == process_name for app in Config.paste_apps):
             paste = True
             logger.debug(f"检测到兼容性应用: {process_name}，使用粘贴模式")
