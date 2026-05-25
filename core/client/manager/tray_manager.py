@@ -1,6 +1,7 @@
 # coding: utf-8
 import os
 from . import logger
+import os, sys, subprocess
 from config_client import ClientConfig as Config
 
 
@@ -37,7 +38,7 @@ class TrayManager:
             more_options=[
                 ('📋 复制结果', self._copy_last_result),
                 ('📝 上下文', self._add_context),
-                ('✨ 添加热词', self._add_hotword),
+                ('✨ 热词', self._add_hotword),
                 ('🧹 清除记忆', self._clear_memory),
                 ('🔄 重启音频', self._restart_audio),
             ]
@@ -70,12 +71,15 @@ class TrayManager:
             toast("清除成功：已清除所有角色的对话历史记录", duration=3000, bg="#075077")
 
     def _add_hotword(self):
-        """打开添加热词界面回调"""
-        try:
-            from ..ui import on_add_hotword
-            on_add_hotword()
-        except ImportError as e:
-            logger.warning(f"无法导入热词菜单处理器: {e}")
+        """用系统默认方式打开热词文件回调"""
+        
+        target = os.path.abspath('hot.txt')
+        if sys.platform == 'win32':
+            os.startfile(target)
+        elif sys.platform == 'darwin':
+            subprocess.Popen(['open', target])
+        else:
+            subprocess.Popen(['xdg-open', target])
 
     def _add_context(self):
         """打开编辑上下文界面回调"""
