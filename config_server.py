@@ -26,6 +26,12 @@ class ServerConfig:
     log_level = 'DEBUG'        # 日志级别：'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
     aligner_idle_timeout = 10  # 对齐引擎空闲多少秒后自动释放显存 (0 表示不释放)
 
+    # GPU 预加速配置（有识别任务时，提前调高显存频率，降低延迟，需管理员权限运行）
+    gpu_boost_enabled = False                   # 总开关，默认关闭
+    gpu_boost_cmd = 'nvidia-smi -lmc 9000'      # GPU 预加速命令，锁定显存频率到9000MHz（根据实际 GPU 调整）
+    gpu_unboost_cmd = 'nvidia-smi -rmc'         # GPU 取消预加速命令，恢复显存到默认频率
+    gpu_unboost_timeout = 1                     # 空闲多少秒后取消加速
+
     # 集成显卡兼容性补丁
     # os.environ["GGML_VK_DISABLE_COOPMAT"] = "1"   # AMD集显无法加载 GGUF 模型时尝试
     # os.environ["GGML_VK_DISABLE_F16"] = "1"       # 集成显卡解码有误，强制熔断时尝试

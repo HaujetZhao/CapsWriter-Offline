@@ -13,6 +13,7 @@ import websockets
 
 from ..state import console
 from ..schema import Task
+from config_server import ServerConfig as Config
 from core.protocol import AudioMessage
 from core.constants import AudioFormat
 from core.tools.my_status import Status
@@ -63,6 +64,17 @@ async def message_handler(websocket, msg: AudioMessage, cache: AudioCache, app) 
     is_start = not bool(cache.chunks)
     socket_id = str(websocket.id)
 
+    # 麦克风首次消息 → GPU 加速
+    if is_start and msg.source == 'mic' and Config.gpu_boost_enabled:
+        queue_in.put(Task(
+            type='cmd',
+            task_id='gpu_boost',
+            data=b'', offset=0, overlap=0,
+            socket_id=socket_id, is_final=False,
+            time_start=0, time_submit=0,
+            command='gpu_boost'
+        ))
+
     # 从消息中获取分段参数
     seg_threshold = msg.seg_duration + msg.seg_overlap * 2
 
@@ -89,7 +101,7 @@ async def message_handler(websocket, msg: AudioMessage, cache: AudioCache, app) 
                 cache.chunks = cache.chunks[stride_bytes:]
 
                 task = Task(
-                    source=msg.source,
+                    type=msg.source,
                     data=segment_data,
                     offset=cache.offset,
                     task_id=msg.task_id,
@@ -118,7 +130,7 @@ async def message_handler(websocket, msg: AudioMessage, cache: AudioCache, app) 
 
             # 提交最终片段
             task = Task(
-                source=msg.source,
+                type=msg.source,
                 data=cache.chunks,
                 offset=cache.offset,
                 task_id=msg.task_id,

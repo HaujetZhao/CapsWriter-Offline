@@ -56,9 +56,9 @@ async def ws_send(app):
             await websocket.send(msg.to_json())
             logger.debug(f"发送识别结果，任务ID: {result.task_id}, 文本长度: {len(result.text)}")
 
-            if result.source == 'mic':
+            if result.type == 'mic':
                 logger.info(f"麦克风识别结果: {result.text}")
-            elif result.source == 'file':
+            elif result.type == 'file':
                 console.print(f'    转录进度：{result.duration:.2f}s', end='\r')
                 logger.debug(f"文件转录进度: {result.duration:.2f}s")
                 if result.is_final:

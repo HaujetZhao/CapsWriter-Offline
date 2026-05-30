@@ -14,11 +14,11 @@ from typing import List, Optional
 class Task:
     """
     语音识别任务
-    
+
     封装发送到识别进程的任务数据，包含音频数据和元信息。
-    
+
     Attributes:
-        source: 音频来源 ('mic' 或 'file')
+        type: 任务类型 ('mic' 麦克风, 'file' 文件, 'cmd' 命令)
         data: 原始音频数据 (float32, 16kHz, mono)
         offset: 当前片段在整段音频中的时间偏移（秒）
         overlap: 片段重叠时间（秒），用于去重
@@ -29,7 +29,7 @@ class Task:
         time_submit: 任务提交时间戳
         samplerate: 采样率，默认 16000 Hz
     """
-    source: str
+    type: str
     data: bytes
     offset: float
     overlap: float
@@ -41,6 +41,7 @@ class Task:
     context: str = ''
     language: str = 'auto'
     samplerate: int = 16000
+    command: str = ''           # 特殊命令，如 'gpu_boost' / 'gpu_unboost'
 
 
 @dataclass
@@ -68,8 +69,8 @@ class Result:
     """
     task_id: str
     socket_id: str
-    source: str
-    
+    type: str
+
     duration: float = 0.0
     time_start: float = 0.0
     time_submit: float = 0.0

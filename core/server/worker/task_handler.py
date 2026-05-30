@@ -14,6 +14,7 @@ from multiprocessing.managers import ListProxy
 import queue
 from .pipeline import TaskPipeline
 from ..state import WorkerState
+from .gpu_boost import GpuBoostManager
 from . import logger
 
 
@@ -29,7 +30,7 @@ class TaskBuffer:
         tid = task.task_id
         if tid not in self._buffers:
             self._buffers[tid] = deque()
-            self.state.get_session(tid, task.socket_id, task.source)
+            self.state.get_session(tid, task.socket_id, task.type)
         self._buffers[tid].append(task)
 
     def pop(self):
@@ -76,6 +77,7 @@ class TaskHandler:
         self.pipeline = None
 
         self.buffer = TaskBuffer(state)
+        self.gpu_boost = GpuBoostManager(state)
 
     def set_engine(self, recognizer, punc_model=None, aligner=None):
         """注入识别引擎实例并初始化管线"""
@@ -110,7 +112,7 @@ class TaskHandler:
             if task.socket_id not in self.sockets_id:
                 logger.debug(f"跳过断连客户端任务: {task.task_id[:8]}")
                 continue
-            
+
             # 任务进入缓冲区
             self.buffer.enqueue(task)
 
@@ -120,9 +122,21 @@ class TaskHandler:
         self.buffer.cleanup_tasks()
 
     def cleanup_engines(self):
-        """时间戳引擎空闲时自动卸载。"""
+        """闲置资源清理：对齐器卸载 + GPU 加速取消。"""
         if self.pipeline and self.pipeline.aligner:
             self.pipeline.aligner.check_idle()
+        self.gpu_boost.check_idle()
+
+    def handle_command_task(self, task):
+        """处理命令任务。"""
+        self.gpu_boost.handle_command(task)
+
+    def handle_audio_task(self, task):
+        """处理音频识别任务。"""
+        result = self.pipeline.process(task)
+        self.queue_out.put(result)
+        if result.is_final:
+            self.state.sessions.pop(task.task_id, None)
 
     def loop(self):
         """核心任务循环：drain 队列 → 清理断连 → 轮转执行一个。"""
@@ -137,16 +151,12 @@ class TaskHandler:
                 if task is None:
                     continue
 
-                # 安全网：在 pipeline 处理前再次检查（任务可能在 drain→pop 之间成为孤儿）
-                # if task.socket_id not in self.sockets_id:
-                #     logger.debug(f"跳过断连客户端任务(安全网): {task.task_id[:8]}")
-                #     self.cleanup()
-                #     continue
+                # 根据任务类型分派
+                if task.type == 'cmd':
+                    self.handle_command_task(task)
+                else:
+                    self.handle_audio_task(task)
 
-                result = self.pipeline.process(task)
-                self.queue_out.put(result)
-                if result.is_final:
-                    self.state.sessions.pop(task.task_id, None)
                 self.cleanup()
             except InterruptedError:
                 continue

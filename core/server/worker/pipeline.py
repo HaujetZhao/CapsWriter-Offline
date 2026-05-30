@@ -12,6 +12,7 @@ import time
 from core.server.state import WorkerState, console
 from core.server.schema import Task, Result
 from core.server.formatter import TextFormatter
+from config_server import ServerConfig as Config
 from core.tools.token_sync import sync_tokens_from_text
 from core.server.engines.base import EngineCapabilities
 from .audio import process_audio_task
@@ -60,11 +61,15 @@ class TaskPipeline:
         处理单个音频任务片段并返回识别结果
         """
         try:
-            logger.info(f"任务 {task.task_id[:8]}, 语言={task.language}, 来源={task.source}")
+            logger.info(f"任务 {task.task_id[:8]}, 语言={task.language}, 类型={task.type}")
             is_first_segment = task.task_id not in self.state.sessions
-            session = self.state.get_session(task.task_id, task.socket_id, task.source)
+            session = self.state.get_session(task.task_id, task.socket_id, task.type)
             result = session.result
-            
+
+            # GPU 加速活跃时间更新（只要有任务进来就刷新）
+            if Config.gpu_boost_enabled and self.state.gpu_boosted:
+                self.state.gpu_last_active = time.time()
+
             # 2. 预处理音频并获取采样点
             samples = process_audio_task(task, result)
 
@@ -93,7 +98,7 @@ class TaskPipeline:
             # 5. 路径 B: 对齐增强 (仅针对文件任务)
             # 门控：仅在“文件任务”且“引擎不支持时间戳”时，才调用外部 Aligner
             caps = self.recognizer.capabilities
-            if (task.source == 'file'  
+            if (task.type == 'file'
                 and EngineCapabilities.TIMESTAMPS not in caps 
                 and self.aligner 
                 and stream.result.text.strip()):

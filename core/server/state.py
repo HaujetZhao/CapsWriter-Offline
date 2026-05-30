@@ -62,11 +62,15 @@ class WorkerState:
     """
     # 识别会话集
     sessions: Dict[str, RecognitionSession] = field(default_factory=dict)
+    
+    # GPU 加速状态
+    gpu_boosted: bool = False       # 当前是否已执行 GPU 加速
+    gpu_last_active: float = 0.0    # 上次任务活跃时间，用于超时取消加速
 
     def get_session(self, task_id: str, socket_id: str = '', source: str = '') -> RecognitionSession:
         """获取或创建识别会话"""
         if task_id not in self.sessions:
-            result = Result(task_id=task_id, socket_id=socket_id, source=source)
+            result = Result(task_id=task_id, socket_id=socket_id, type=source)
             self.sessions[task_id] = RecognitionSession(task_id=task_id, result=result)
         return self.sessions[task_id]
     
