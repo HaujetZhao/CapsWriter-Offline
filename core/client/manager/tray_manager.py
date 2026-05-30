@@ -40,7 +40,7 @@ class TrayManager:
                 ('📝 上下文', self._add_context),
                 ('✨ 热词', self._add_hotword),
                 ('🧹 清除记忆', self._clear_memory),
-                ('🔄 重启音频', self._restart_audio),
+                ('♻️ 重开音频', self._restart_audio),
             ]
         )
         logger.info("托盘图标已启用")

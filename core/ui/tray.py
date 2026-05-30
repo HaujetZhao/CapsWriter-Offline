@@ -19,6 +19,7 @@ import sys
 import time
 import threading
 import platform
+import subprocess
 from typing import Optional
 from . import logger, set_ui_logger
 
@@ -232,6 +233,7 @@ class _TraySystem:
             for opt_name, opt_func in more_options:
                 menu_items.append(item(opt_name, opt_func))
 
+        menu_items.append(item('🔄 重启', self.on_restart))
         menu_items.append(item('❌ 退出', self.on_exit))
 
         self.icon = pystray.Icon(
@@ -260,6 +262,27 @@ class _TraySystem:
                 if _is_window_visible(self.hwnd) and _is_window_minimized(self.hwnd):
                     user32.ShowWindow(self.hwnd, SW_HIDE)
             time.sleep(0.2)
+
+    def on_restart(self, icon, item) -> None:
+        """托盘重启处理：启动新进程后退出当前进程"""
+        logger.info("托盘重启: 用户点击重启菜单，准备重启程序")
+        try:
+            if getattr(sys, 'frozen', False):
+                cmd = sys.argv
+            else:
+                cmd = [sys.executable] + sys.argv
+            subprocess.Popen(cmd)
+        except Exception as e:
+            logger.error(f"重启失败: {e}")
+            return
+
+        # 启动新进程成功后，调用退出回调退出当前进程
+        exit_callback = _get_exit_callback()
+        if exit_callback:
+            try:
+                exit_callback()
+            except Exception as e:
+                logger.error(f"重启时调用退出回调发生错误: {e}")
 
     def on_exit(self, icon, item) -> None:
         """托盘退出处理"""
