@@ -17,6 +17,7 @@ from core.protocol import RecognitionMessage
 
 from core.client.output.text_output import TextOutput
 from core.tools.window_detector import get_active_window_info
+import keyboard
 from . import logger
 
 from core.client.udp.udp_broadcaster import broadcast_output_udp
@@ -39,6 +40,13 @@ def _estimate_tokens(text: str) -> int:
     chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
     other_chars = len(text) - chinese_chars
     return int(chinese_chars / 1.5 + other_chars / 4)
+
+
+async def _auto_enter(delay: float) -> None:
+    """延迟发送回车键"""
+    await asyncio.sleep(delay)
+    keyboard.press_and_release('enter')
+    logger.debug(f"自动回车已发送 (延迟 {delay}s)")
 
 
 class ResultProcessor:
@@ -254,6 +262,11 @@ class ResultProcessor:
         if any(app.lower() == process_name for app in Config.paste_apps):
             paste = True
             logger.debug(f"检测到兼容性应用: {process_name}，使用粘贴模式")
+
+        # 自动回车检测
+        for app, delay in Config.enter_apps:
+            if app.lower() == process_name:
+                asyncio.create_task(_auto_enter(delay))
 
         # LLM 处理和输出
         llm_result = None
