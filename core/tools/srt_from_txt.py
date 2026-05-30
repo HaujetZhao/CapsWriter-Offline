@@ -128,6 +128,7 @@ def get_lines(txt_file: Path) -> List[str]:
 
 def generate_srt_file(words: list, text_lines: List[str], srt_file: Path):
     """根据提供的 words 和 text_lines 生成 srt 文件"""
+    text_lines = [line.rstrip('，。？！,.?!\r\n ') for line in text_lines]
     subtitle_list = lines_match_words(text_lines, words)
     with open(srt_file, 'w', encoding='utf-8') as f:
         f.write(srt.compose(subtitle_list))

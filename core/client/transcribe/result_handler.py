@@ -13,7 +13,7 @@ class ResultHandler:
     """结果处理器：负责文本格式化和文件保存"""
 
     @staticmethod
-    def smart_split(text: str) -> str:
+    def smart_split(text: str, min_chars: int = 2) -> str:
         """
         智能分行功能
         1. 保留标点符号
@@ -35,8 +35,9 @@ class ResultHandler:
             if clean_part and clean_part in punct_chars and len(clean_part) == 1:
                 buffer += part
                 is_strong = clean_part in strong_punct
-                # 如果是强标点，或者缓冲区够长，就换行
-                if is_strong or len(buffer) > 15:
+                # 如果是强标点，强制换行
+                # 如果是弱标点，要累积了一定字数才换行
+                if is_strong or len(buffer) > min_chars:
                     lines.append(buffer)
                     buffer = ""
             else:
@@ -46,17 +47,8 @@ class ResultHandler:
         if buffer:
             lines.append(buffer)
 
-        # 去除每行末尾的标点
-        final_lines = []
-        for line in lines:
-            line = line.strip()
-            # 循环去除结尾的标点
-            while line and line[-1] in punct_chars:
-                line = line[:-1].strip()
-            if line:
-                final_lines.append(line)
             
-        return "\n".join(final_lines)
+        return "\n".join(lines)
 
     @classmethod
     def save_results(cls, file: Path, message: RecognitionMessage) -> str:
