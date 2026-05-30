@@ -35,11 +35,14 @@ class GpuBoostManager:
         subprocess.run(Config.gpu_boost_cmd, shell=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.state.gpu_boosted = True
-        self.state.gpu_last_active = time.time()
+        self.state.gpu_last_active = 0  # 0 表示已加速但尚未有实际音频任务使用过
 
     def check_idle(self):
         """GPU 闲置超时检查，超时则取消加速。"""
         if not Config.gpu_boost_enabled or not self.state.gpu_boosted:
+            return
+        # gpu_last_active = 0 表示刚加速但尚未被实际音频任务使用，不取消
+        if self.state.gpu_last_active <= 0:
             return
 
         idle_time = time.time() - self.state.gpu_last_active

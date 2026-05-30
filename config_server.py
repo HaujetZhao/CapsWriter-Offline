@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 # 版本信息
-__version__ = '2.5'
+__version__ = '2.6'
 
 # 项目根目录
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
