@@ -47,6 +47,8 @@ class ClientConfig:
     language = 'auto'           # 识别语言：'auto', 'chinese', 'english', 'japanese' 等（各引擎支持范围不同）
 
     trash_punc = '，。,.'       # 识别结果要消除的末尾标点
+    trash_punc_thresh = 8       # 识别结果的单词数量低于阈值时，强制去除末尾标点
+    trash_punc_apps = ['WeiXin.exe', ]   # 对于指定的应用，强制去除末尾标点
 
     traditional_convert = False     # 是否将识别结果转换为繁体中文
     traditional_locale = 'zh-hant'  # 繁体地区：'zh-hant'（标准繁体）, 'zh-tw'（台湾繁体）, 'zh-hk'（香港繁体）

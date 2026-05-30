@@ -17,7 +17,22 @@ import pyclip
 from pynput import keyboard as pynput_keyboard
 
 from config_client import ClientConfig as Config
+from core.tools.window_detector import get_active_window_info
 from . import logger
+
+
+# 语义字符计数模式：匹配中文字、英文单词、数字
+# 中文字（含日韩等）各算 1 个语义单元，英文连续字母算 1 个，连续数字算 1 个
+_SEMANTIC_UNIT_RE = re.compile(
+    r'[一-鿿㐀-䶿豈-﫿]'
+    r'|[a-zA-Z]+'
+    r'|\d+'
+)
+
+
+def count_semantic_units(text: str) -> int:
+    """计算语义字符数：中文字=1，英文单词=1，数字=1"""
+    return len(_SEMANTIC_UNIT_RE.findall(text))
 
 
 
@@ -32,15 +47,30 @@ class TextOutput:
     def strip_punc(text: str) -> str:
         """
         消除末尾最后一个标点
-        
+
+        语义字符数不超过 trash_punc_thresh 时去除末尾标点，
+        超过时保留标点（长句正常说话场景）。
+        在 trash_punc_apps 指定的应用中，不受阈值限制，必定去除。
+
         Args:
             text: 原始文本
-            
+
         Returns:
-            去除末尾标点后的文本
+            处理后的文本
         """
         if not text or not Config.trash_punc:
             return text
+
+        # 检查是否在强制去标点的应用中
+        force_strip = False
+        if Config.trash_punc_apps:
+            process_name = get_active_window_info().get('process_name', '').lower()
+            if any(app.lower() == process_name for app in Config.trash_punc_apps):
+                force_strip = True
+
+        if not force_strip and Config.trash_punc_thresh > 0 and count_semantic_units(text) > Config.trash_punc_thresh:
+            return text
+
         clean_text = re.sub(f"(?<=.)[{Config.trash_punc}]$", "", text)
         return clean_text
     
