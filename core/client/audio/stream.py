@@ -28,26 +28,26 @@ if TYPE_CHECKING:
 class AudioStreamManager:
     """
     音频流管理器
-    
+
     负责管理音频输入流的生命周期，包括：
     - 检测和选择音频设备
     - 创建和启动音频流
     - 处理音频数据回调
     - 流的重启和关闭
-    
+
     Attributes:
         state: 客户端状态实例
         sample_rate: 采样率（默认 48000Hz）
         block_duration: 每个数据块的时长（秒，默认 0.05s）
     """
-    
+
     SAMPLE_RATE = 48000
     BLOCK_DURATION = 0.05  # 50ms
-    
+
     def __init__(self, app: CapsWriterClient):
         """
         初始化音频流管理器
-        
+
         Args:
             app: 客户端 App 实例
         """
@@ -59,7 +59,7 @@ class AudioStreamManager:
     def state(self) -> ClientState:
         """快捷访问状态单例"""
         return self.app.state
-    
+
     def _audio_callback(
         self,
         indata: np.ndarray,
@@ -69,15 +69,15 @@ class AudioStreamManager:
     ) -> None:
         """
         音频数据回调函数
-        
+
         当音频流接收到新数据时调用，将数据放入异步队列中。
         """
         # 只在录音状态时处理数据
         if not self.state.recording:
             return
-        
+
         import asyncio
-        
+
         # 将数据放入队列
         if self.app.loop and self.state.queue_in:
             asyncio.run_coroutine_threadsafe(
@@ -88,28 +88,28 @@ class AudioStreamManager:
                 }),
                 self.app.loop
             )
-    
+
     def _on_stream_finished(self) -> None:
         """音频流结束回调"""
         if not threading.main_thread().is_alive():
             return
         if not self._running:
             return
-        
+
         logger.info("音频流意外结束，正在尝试重启...")
         self.reopen()
-    
+
     def start(self) -> Optional[sd.InputStream]:
         """
         启动音频流
-        
+
         Returns:
             创建的音频输入流，如果失败返回 None
         """
         if self._running:
             logger.debug("音频流已在运行，跳过启动")
             return self.state.stream
-            
+
         # 检测音频设备
         try:
             device = sd.query_devices(kind='input')
@@ -126,7 +126,7 @@ class AudioStreamManager:
             logger.error("未找到麦克风设备")
             input('按回车键退出')
             sys.exit(1)
-        
+
         # 创建音频流
         try:
             stream = sd.InputStream(
@@ -139,7 +139,7 @@ class AudioStreamManager:
                 finished_callback=self._on_stream_finished,
             )
             stream.start()
-            
+
             self.state.stream = stream
             self._running = True
             logger.debug(
@@ -147,16 +147,28 @@ class AudioStreamManager:
                 f"块大小={int(self.BLOCK_DURATION * self.SAMPLE_RATE)}"
             )
             return stream
-            
+
+        except sd.PortAudioError as e:
+            logger.error(f"创建音频流失败: {e}", exc_info=True)
+            if '-9999' in str(e):
+                console.print("""
+[bold red]检测到麦克风被占用或权限异常（错误码 -9999）[/bold red]
+请尝试以下解决方案：
+
+  1. 设置 > 隐私和安全性 > 麦克风，将「允许桌面应用访问麦克风」打开
+  2. 状态栏右下角音量图标 > 右键菜单 > 声音 > 麦克风的属性，关闭「允许应用程序独占控制该设备」
+  3. 状态栏右下角音量图标 > 右键菜单 > 声音 > 麦克风的属性，关闭「增强效果」
+""")
+            return None
         except Exception as e:
             logger.error(f"创建音频流失败: {e}", exc_info=True)
             return None
-    
+
     def stop(self) -> None:
         """停止音频流"""
         if not self._running:
             return
-            
+
         self._running = False  # 标记为停止
         if self.state.stream is not None:
             try:
@@ -166,19 +178,19 @@ class AudioStreamManager:
                 logger.debug(f"停止音频流时发生错误: {e}")
             finally:
                 self.state.stream = None
-    
+
     def reopen(self) -> Optional[sd.InputStream]:
         """
         重新启动音频流
-        
+
         Returns:
             新创建的音频输入流
         """
         logger.info("正在重启音频流...")
-        
+
         # 停止旧流
         self.stop()
-        
+
         # 重载 PortAudio，更新设备列表
         try:
             sd._terminate()
@@ -187,9 +199,9 @@ class AudioStreamManager:
             sd._initialize()
         except Exception as e:
             logger.warning(f"重载 PortAudio 时发生警告: {e}")
-        
+
         # 等待设备稳定
         time.sleep(0.1)
-        
+
         # 启动新流
         return self.start()
