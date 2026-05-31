@@ -29,37 +29,33 @@ def check_model() -> None:
 
     # 根据模型类型确定需要检查的文件
     if model_type == 'fun_asr_nano':
-        required_files = {
-            'Fun-ASR-Nano-GGUF 模型文件': [
-                ModelPaths.fun_asr_nano_gguf_encoder_adaptor,
-                ModelPaths.fun_asr_nano_gguf_ctc,
-                ModelPaths.fun_asr_nano_gguf_llm_decode,
-                ModelPaths.fun_asr_nano_gguf_token,
-            ]
-        }
+        model_dir = ModelPaths.fun_asr_nano_gguf_dir
+        required_files = [
+            ModelPaths.fun_asr_nano_gguf_encoder_adaptor,
+            ModelPaths.fun_asr_nano_gguf_ctc,
+            ModelPaths.fun_asr_nano_gguf_llm_decode,
+            ModelPaths.fun_asr_nano_gguf_token,
+        ]
     elif model_type == 'sensevoice':
-        required_files = {
-            'SenseVoice 模型文件': [
-                ModelPaths.sensevoice_encoder,
-                ModelPaths.sensevoice_decoder,
-                ModelPaths.sensevoice_tokenizer,
-            ]
-        }
+        model_dir = ModelPaths.sensevoice_dir
+        required_files = [
+            ModelPaths.sensevoice_encoder,
+            ModelPaths.sensevoice_decoder,
+            ModelPaths.sensevoice_tokenizer,
+        ]
     elif model_type == 'paraformer':
-        required_files = {
-            'Paraformer 模型文件': [
-                ModelPaths.paraformer_model,
-                ModelPaths.paraformer_tokens,
-            ],
-        }
+        model_dir = ModelPaths.paraformer_dir
+        required_files = [
+            ModelPaths.paraformer_model,
+            ModelPaths.paraformer_tokens,
+        ]
     elif model_type == 'qwen_asr':
-        required_files = {
-            'Qwen-ASR-GGUF 模型文件': [
-                ModelPaths.qwen3_asr_gguf_encoder_frontend,
-                ModelPaths.qwen3_asr_gguf_encoder_backend,
-                ModelPaths.qwen3_asr_gguf_llm_decode,
-            ]
-        }
+        model_dir = ModelPaths.qwen3_asr_gguf_dir
+        required_files = [
+            ModelPaths.qwen3_asr_gguf_encoder_frontend,
+            ModelPaths.qwen3_asr_gguf_encoder_backend,
+            ModelPaths.qwen3_asr_gguf_llm_decode,
+        ]
     else:
         error_msg = f"不支持的模型类型: {Config.model_type}"
         logger.error(error_msg)
@@ -78,30 +74,33 @@ def check_model() -> None:
 
     # 检查所有必需的文件
     missing_files = []
-    for category, files in required_files.items():
-        for file_path in files:
-            if not file_path.exists():
-                missing_files.append((category, file_path))
-                logger.warning(f"模型文件缺失: {file_path}")
+    for file_path in required_files:
+        if not file_path.exists():
+            missing_files.append(file_path)
+            logger.warning(f"模型文件缺失: [bold yellow]{file_path}[/bold yellow]")
 
     # 如果有缺失的文件，显示错误信息并提供下载链接
     if missing_files:
-        error_msg = f'\n    [bold red]未能找到模型文件[/bold red]\n\n'
-        for category, file_path in missing_files:
-            error_msg += f'    [{category}]\n'
-            error_msg += f'    未找到：{file_path}\n\n'
+        logger.error(f"模型文件检查失败，共 {len(missing_files)} 个文件缺失")
+        error_msg = f'\n[bold red]未能找到模型文件[/bold red]\n\n'
+        error_msg += f'当前配置的模型类型：[bold yellow]{model_type}[/bold yellow]\n\n'
+        for file_path in missing_files:
+            error_msg += f'未找到：[bold yellow]{file_path.name}[/bold yellow]\n'
 
-        error_msg += f'    当前配置的模型类型：[bold yellow]{model_type}[/bold yellow]\n\n'
+        # 检查是否有文件被错放到上级目录
+        for parent in model_dir.parents:
+            if any((parent / fp.name).exists() for fp in missing_files):
+                error_msg += f'\n模型文件似乎错放到了上级目录，请确保放到：[bold yellow]{model_dir}[/bold yellow]\n'
+                break
 
         # 提供统一下载页面链接
-        error_msg += f'    [cyan]请前往模型发布页下载缺失文件：[/cyan]\n'
-        error_msg += f'    [cyan]{ModelDownloadLinks.models_page}[/cyan]\n\n'
+        error_msg += f'\n模型发布页面：\n'
+        error_msg += f'[cyan]{ModelDownloadLinks.models_page}[/cyan]\n\n'
 
-        error_msg += f'    下载后请根据发布页说明，解压到：[cyan]{ModelPaths.model_dir}[/cyan]\n'
-        error_msg += '    \n'
+        error_msg += f'请根据发布页说明，将模型解压到 [cyan]{ModelPaths.model_dir}[/cyan] 下的正确目录\n'
+        error_msg += '\n'
         
-        logger.error(f"模型文件检查失败，共 {len(missing_files)} 个文件缺失")
-        console.print(error_msg)
+        logger.error(error_msg)
         input('按回车退出')
         sys.exit(1)
 

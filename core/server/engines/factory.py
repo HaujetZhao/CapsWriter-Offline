@@ -88,5 +88,17 @@ class EngineFactory:
             return QwenForceAligner(config)
         except Exception as e:
             from . import logger
-            logger.warning(f"⚠️ [警告] 对齐模型加载失败 (原因: {e})，系统将以【无精确时间戳模式】继续运行...")
+            msg = f"⚠️ [警告] 对齐模型加载失败，原因: \n\n{e}\n\n系统将以【无精确时间戳模式】继续运行...\n\n"
+            # 检查模型文件是否错放到上级目录
+            aligner_dir = ModelPaths.force_aligner_gguf_dir
+            aligner_files = [
+                ModelPaths.force_aligner_gguf_encoder_frontend,
+                ModelPaths.force_aligner_gguf_encoder_backend,
+                ModelPaths.force_aligner_gguf_llm_decode,
+            ]
+            for parent in aligner_dir.parents:
+                if any((parent / fp.name).exists() for fp in aligner_files):
+                    msg += f"模型文件似乎错放到了上级目录，应解压到：[bold yellow]{aligner_dir}[/bold yellow]\n\n"
+                    break
+            logger.warning(msg)
             return BaseAlignEngine(None)
