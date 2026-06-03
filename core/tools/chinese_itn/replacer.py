@@ -3,7 +3,10 @@
 主替换逻辑和入口函数
 """
 
-from .mappings import idioms, fuzzy_regex
+from .mappings import idioms, fuzzy_regex, value_mapper
+
+_DIGIT_CHARS = {k for k, v in value_mapper.items() if v <= 9}
+_UNIT_CHARS = {k for k, v in value_mapper.items() if v > 9}
 from .patterns import pattern
 from .utils import convert_pure_num, strip_unit
 from .sequence_parser import parse_sequence, tokenize, parse_tokens, _BASIC_NUMERIC_TYPES
@@ -242,6 +245,11 @@ def replace(match):
         final = original
 
     elif fuzzy_regex.search(original):
+        final = original
+
+    elif (_UNIT_CHARS.issuperset(original)
+          and len(original) >= 2
+          and not any(c in _DIGIT_CHARS for c in original)):
         final = original
 
     else:
