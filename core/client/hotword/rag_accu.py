@@ -113,7 +113,7 @@ class AccuRAG:
         Returns:
             [(热词, 分数, start_idx, end_idx), ...]
         """
-        input_phonemes, _ = get_phoneme_info(text)
+        input_phonemes = get_phoneme_info(text)
         if not input_phonemes:
             return []
 
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     print("\n=== 两阶段检索演示 ===")
     # 模拟 FastRAG 粗筛结果
     input_text = "康灰是央视主持人"
-    input_phonemes, _ = get_phoneme_info(input_text)
+    input_phonemes = get_phoneme_info(input_text)
 
     # 假设 FastRAG 粗筛返回这些候选
     candidates = ["康辉", "撒贝宁", "科大讯飞", "东方财富"]

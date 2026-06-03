@@ -215,7 +215,7 @@ class FileTranscriber:
             correction = self.app.hotword.get_phoneme_corrector().correct(text_accu, k=10)
             corrected = correction.text
             # 记录热词匹配日志
-            for origin, hw, score in correction.matchs:
+            for origin, hw, score in correction.matches:
                 logger.info(f"热词匹配: 「{origin}」→「{hw}」(分数={score:.2f})")
                 console.print(f'    [cyan]热词匹配:[/] 「{origin}」→「[green]{hw}[/]」(分数={score:.2f})')
             for origin, hw, score in correction.similars:

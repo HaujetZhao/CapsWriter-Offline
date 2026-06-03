@@ -15,7 +15,7 @@ import time
 from . import logger
 
 from .algo_phoneme import Phoneme
-from .rag_fast import PhonemeIndex, HAS_NUMBA
+from .rag_fast import PhonemeIndex
 import rapidfuzz.fuzz as _fuzz
 import rapidfuzz.distance.OSA as _OSA
 
@@ -139,7 +139,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     print(f"\n=== RapidFuzz 加速 RAG 测试 ===")
-    print(f"Numba 可用: {HAS_NUMBA}")
 
     chinese_chars = '的一是不了在人有我他这个们中来上大为和国地到以说时要就出会可也你对生能而子那得于着下自之年过发后作里如等'
 

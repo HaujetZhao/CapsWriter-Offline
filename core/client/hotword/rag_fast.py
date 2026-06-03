@@ -14,13 +14,6 @@ from collections import defaultdict
 import time
 from . import logger
 
-HAS_NUMBA = False
-
-
-# =============================================================================
-# 音素编码器（字符串 -> 整数）
-# =============================================================================
-
 from .algo_phoneme import Phoneme
 from .algo_calc import SIMILAR_PHONEMES
 
@@ -73,7 +66,6 @@ class PhonemeIndex:
         self.encoder = PhonemeEncoder()
         # {音素编码: [(热词原文, 整数列表), ...]}
         self.index: Dict[int, List[Tuple[str, List[int]]]] = defaultdict(list)
-        self.all_hotwords: List[Tuple[str, List[int]]] = []
         
     def add(self, hotword: str, phonemes: List[Phoneme]):
         """添加热词到索引，内部自动决定索引哪些位置"""
@@ -95,8 +87,6 @@ class PhonemeIndex:
         
         for code in target_codes:
             self.index[code].append((hotword, codes))
-            
-        self.all_hotwords.append((hotword, codes))
         
     def get_candidates(self, input_codes: List[int]) -> List[Tuple[str, List[int], List[int]]]:
         """
@@ -243,30 +233,9 @@ class FastRAG:
             if curr[n] <= best_dist:
                 best_dist = curr[n]
                 best_pos = j
-            prev[:] = curr[:]
+            prev, curr = curr, prev
             
         return best_dist, best_pos
-
-    def _python_distance(self, main_list: List[int], sub_list: List[int]) -> float:
-        """标准模糊子串距离计算 (纯 Python)"""
-        n, m = len(sub_list), len(main_list)
-        if n == 0: return 0.0
-        if m == 0: return float(n)
-        
-        prev = [float(i) for i in range(n + 1)]
-        curr = [0.0] * (n + 1)
-        best_dist = float(n)
-
-        for j in range(1, m + 1):
-            curr[0] = 0.0 # 允许从任意处开始
-            m_val = main_list[j-1]
-            for i in range(1, n + 1):
-                cost = 0.0 if sub_list[i-1] == m_val else 1.0
-                curr[i] = min(prev[i] + 1.0, curr[i-1] + 1.0, prev[i-1] + cost)
-            if curr[n] < best_dist: best_dist = curr[n]
-            prev[:] = curr[:]
-        return best_dist
-
 
 # =============================================================================
 # 测试
@@ -280,8 +249,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     
     print(f"\n=== 高性能 RAG 测试 ===")
-    print(f"Numba 可用: {HAS_NUMBA}")
-    
+
     # 生成测试数据
     chinese_chars = '的一是不了在人有我他这个们中来上大为和国地到以说时要就出会可也你对生能而子那得于着下自之年过发后作里如等'
     
@@ -304,11 +272,6 @@ if __name__ == "__main__":
     input_text = ''.join(random.choice(chinese_chars) for _ in range(100))
     input_phonemes = get_phoneme_seq(input_text)
     print(f"\n输入: {input_text[:50]}... ({len(input_text)}字, {len(input_phonemes)}音素)")
-    
-    # 预热 Numba
-    if HAS_NUMBA:
-        print("\n预热 Numba JIT...")
-        _ = rag.search(input_phonemes[:10], top_k=3)
     
     # 测试性能
     print("\n测试检索性能...")

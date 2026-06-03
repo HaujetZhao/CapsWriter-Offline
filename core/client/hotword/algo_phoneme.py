@@ -170,10 +170,6 @@ def get_phoneme_seq(text: str, ascii_split_char: bool = False) -> List[Phoneme]:
     将文本转换为音素序列（带语言属性）
     """
     normalized = normalize_text(text)
-    if not pinyin:
-        logger.warning("pypinyin 未安装，功能将降级。")
-        return [Phoneme(c, 'zh', is_word_start=True, is_word_end=True) for c in split_mixed_label(normalized)]
-
     phoneme_seq: List[Phoneme] = []
     for token in split_mixed_label(normalized):
         # 英文/数字处理
@@ -199,9 +195,6 @@ def get_phoneme_info(text: str, ascii_split_char: bool = True) -> List[Phoneme]:
     """
     获取带位置和语言属性的音素序列（高层编排）
     """
-    if not pinyin:
-        return [Phoneme(c, 'zh', char_start=i, char_end=i+1) for i, c in enumerate(text)]
-
     phoneme_seq: List[Phoneme] = []
     pos = 0
     while pos < len(text):
@@ -294,6 +287,7 @@ if __name__ == "__main__":
     # Setup UTF-8 output for Windows
     import sys
     import io
+    import logging
 
     if sys.platform == 'win32':
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -315,7 +309,6 @@ if __name__ == "__main__":
 
     for text in test_cases:
         print(f"\nText: {text}")
-        seq, indices = get_phoneme_info(text)
+        seq = get_phoneme_info(text)
         print(f"Phonemes: {seq}")
-        # print(f"Indices: {indices}")
 

@@ -238,7 +238,7 @@ class ResultProcessor:
             logger.debug(f"热词替换后: {text[:50]}{'...' if len(text) > 50 else ''}")
 
         # 热词匹配情况
-        matched_hotwords = correction_result.matchs
+        matched_hotwords = correction_result.matches
         potential_hotwords = correction_result.similars
 
         # 1. 显示完全匹配/已替换的热词

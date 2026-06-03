@@ -14,8 +14,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from .algo_phoneme import get_phoneme_info, Phoneme
-from .rag_fast_rf import FastRAG
-from .algo_calc import fast_substring_score, fuzzy_substring_score, fuzzy_substring_search_constrained
+from .rag_fast_batch import FastRAG
+from .algo_calc import fuzzy_substring_search_constrained
 
 # 使用统一的 logger（从 __init__.py 导入）
 from . import logger
@@ -31,7 +31,7 @@ class MatchResult(NamedTuple):
 class CorrectionResult(NamedTuple):
     """纠错结果，包含纠错后的文本和匹配的热词列表"""
     text: str                           # 纠错后的文本
-    matchs: List[Tuple[str, str, float]]  # [(原词, 热词, 分数), ...]
+    matches: List[Tuple[str, str, float]]  # [(原词, 热词, 分数), ...]
     similars: List[Tuple[str, str, float]]  # [(原词, 热词, 分数), ...]
     
 
@@ -41,27 +41,19 @@ class PhonemeCorrector:
     拼音纠错器
 
     使用两阶段检索策略：
-    1. FastRAG 粗筛：使用倒排索引 + Numba JIT 快速过滤候选
-    2. AccuRAG 精确计算：使用模糊音权重进行精确匹配
-
-    优势：
-    - FastRAG 倒排索引减少 90% 计算量
-    - AccuRAG 保留模糊音权重精度 (前后鼻音、平翘舌等)
-    - 适合任意规模热词库
+    1. FastRAG 粗筛：使用倒排索引快速过滤候选
+    2. 精筛：使用模糊音权重编辑距离进行精确匹配
 
     并将相似度超过阈值的片段替换为热词。
     """
 
-    def __init__(self, threshold: float = 0.7, similar_threshold: float = None):
+    def __init__(self, threshold: float = 0.85, similar_threshold: float = None):
         """
         初始化拼音纠错器
         """
         self.threshold = threshold
         self.similar_threshold = similar_threshold if similar_threshold is not None else threshold - 0.2
-        
-        self.max_diff = 2             # 滑窗匹配中允许的最大音素差异数
-        self.top_k_candidates = 100   # 粗筛保留的候选词数
-        
+
         self.hotwords: Dict[str, List[List[Phoneme]]] = {}
         self.fast_rag = FastRAG(threshold=min(self.threshold, self.similar_threshold) - 0.1)
         self._lock = threading.Lock()
@@ -207,12 +199,12 @@ class PhonemeCorrector:
             k: 返回上下文相关的前 k 个热词
         """
         if not text or not self.hotwords:
-            return CorrectionResult(text=text, matchs=[], similars=[])
+            return CorrectionResult(text=text, matches=[], similars=[])
 
         # 1. 提取带位置信息的音素序列
         input_phonemes = get_phoneme_info(text)
         if not input_phonemes:
-            return CorrectionResult(text=text, matchs=[], similars=[])
+            return CorrectionResult(text=text, matches=[], similars=[])
 
         # 2. 检索与匹配
         with self._lock:
@@ -234,12 +226,12 @@ class PhonemeCorrector:
         new_text, final_hw_info, all_hw_info = self._resolve_and_replace(text, matches)
         
         # similars 已经是 [(origin, hw, score), ...] 的元组列表
-        return CorrectionResult(text=new_text, matchs=final_hw_info, similars=similars[:k])
+        return CorrectionResult(text=new_text, matches=final_hw_info, similars=similars[:k])
 
 
 if __name__ == "__main__":
-    from core.logger import setup_logger
-    setup_logger('test', level='DEBUG')
+    # from core.logger import setup_logger
+    # setup_logger('test', level='DEBUG')
 
     print("\n--- PhonemeCorrector 测试 ---")
     corrector = PhonemeCorrector(threshold=0.7)
@@ -288,8 +280,8 @@ VsCode
     for text in test_cases_zh:
         result = corrector.correct(text)
         print(f"  '{text}' -> '{result.text}'")
-        if result.matchs:
-            print(f"    匹配热词: {result.matchs}")
+        if result.matches:
+            print(f"    匹配热词: {result.matches}")
         if result.similars:
             print(f"    相似热词: {result.similars}")
     
@@ -304,8 +296,8 @@ VsCode
     for text in test_cases_en:
         result = corrector.correct(text)
         print(f"  '{text}' -> '{result.text}'")
-        if result.matchs:
-            print(f"    匹配热词: {result.matchs}")
+        if result.matches:
+            print(f"    匹配热词: {result.matches}")
         if result.similars:
             print(f"    相似热词: {result.similars}")
 
@@ -317,7 +309,7 @@ VsCode
     print("="*70)
 
     # 导入
-    from .rag_fast_rf import FastRAG
+    from .rag_fast_batch import FastRAG
     from .rag_accu import AccuRAG
     from .algo_phoneme import get_phoneme_info
 
