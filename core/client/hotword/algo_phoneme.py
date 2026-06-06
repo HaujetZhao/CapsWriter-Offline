@@ -6,6 +6,7 @@
 """
 
 import re
+import unicodedata
 from typing import List, Tuple, Literal
 from dataclasses import dataclass
 from . import logger
@@ -208,7 +209,15 @@ def get_phoneme_info(text: str, ascii_split_char: bool = True) -> List[Phoneme]:
             # 处理英文/数字片段 (严格判定 ASCII 字母和数字)
             pos = _process_en_num(text, pos, phoneme_seq, ascii_split_char)
         else:
-            # 其他字符（空格、标点）：跳过，保持音素流连续以便匹配
+            cat = unicodedata.category(char)
+            if cat.startswith('L'):
+                # 非中文、非 ASCII 的字母（希腊字母等）保留为独立音素
+                phoneme_seq.append(Phoneme(
+                    char.lower(), 'other',
+                    is_word_start=True, is_word_end=True,
+                    char_start=pos, char_end=pos + 1
+                ))
+            # 标点 (P*)、分隔符 (Z*)、数学/杂项符号 (Sm, So) 等跳过
             pos += 1
             
     return phoneme_seq
