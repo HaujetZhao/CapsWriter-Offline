@@ -253,22 +253,32 @@ def replace(match):
         final = original
 
     else:
-        tokens = tokenize(original)
+        # 提取正负号
+        sign_prefix = ""
+        parsed_original = original
+        if original and original[0] in ('正', '负'):
+            sign_prefix = '+' if original[0] == '正' else '-'
+            parsed_original = original[1:]
 
-        for reducer in [
-            try_reduce_percent,    # 百分比
-            try_reduce_fraction,   # 分数
-            try_reduce_ratio,      # 比值
-            try_reduce_date_time,  # 日期时间
-            try_reduce_range,      # 范围表达式
-            try_reduce_numerical,  # 数值解析
-        ]:
-            res = reducer(tokens, original)
-            if res is not None:
-                final = res
-                break
+        if parsed_original == '一' and sign_prefix:
+            final = sign_prefix + '1'
         else:
-            final = original
+            tokens = tokenize(parsed_original)
+
+            for reducer in [
+                try_reduce_percent,    # 百分比
+                try_reduce_fraction,   # 分数
+                try_reduce_ratio,      # 比值
+                try_reduce_date_time,  # 日期时间
+                try_reduce_range,      # 范围表达式
+                try_reduce_numerical,  # 数值解析
+            ]:
+                res = reducer(tokens, parsed_original)
+                if res is not None:
+                    final = sign_prefix + res
+                    break
+            else:
+                final = original
 
     if head:
         final = head + final
