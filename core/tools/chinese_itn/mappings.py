@@ -16,7 +16,7 @@ _idioms_path = _current_dir / 'resources' / 'idioms.json'
 try:
     with open(_units_path, 'r', encoding='utf-8') as _f:
         unit_mapping = json.load(_f)
-except Exception as e:
+except Exception:
     # 防御性回滚兜底
     unit_mapping = {}
 
@@ -24,7 +24,7 @@ except Exception as e:
 try:
     with open(_idioms_path, 'r', encoding='utf-8') as _f:
         idioms = json.load(_f)
-except Exception as e:
+except Exception:
     idioms = []
 
 # 生成单位正则（按长度从长到短排序，确保先匹配长的）
@@ -41,7 +41,7 @@ num_mapper = {
 
 # 中文数字对数值的映射
 value_mapper = {
-    '零': 0,  '一': 1,  '二': 2,  '两': 2,  '三': 3,  '四': 4,  '五': 5,
+    '零': 0,  '一': 1,  '幺': 1,  '二': 2,  '两': 2,  '三': 3,  '四': 4,  '五': 5,
     '六': 6,  '七': 7,  '八': 8,  '九': 9,  "十": 10,  "百": 100,
     "千": 1000,  "万": 10000,  "亿": 100000000,
 }

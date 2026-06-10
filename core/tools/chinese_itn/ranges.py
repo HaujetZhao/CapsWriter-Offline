@@ -4,23 +4,22 @@
 将 "三五百→300~500", "十五六→15~16", "三四→3~4" 等范围表达转为波浪线格式。
 """
 
-from .mappings import value_mapper, unit_mapping
-from .sequence_parser import tokenize, parse_tokens
+from .mappings import value_mapper, unit_mapping, _sorted_units
+from .sequence_parser import tokenize, parse_tokens, _BASIC_NUMERIC_TYPES
+
+# 范围表达式允许的 Token 类型：基础数字类型（排除小数点，因为范围不含小数）
+_ALLOWED_RANGE_TYPES = _BASIC_NUMERIC_TYPES - {'DOT'}
 
 
 def _strip_physical_unit(text):
     """剥离物理单位 (如人, 米, 克等)"""
     stripped_text = text
     mapped_unit = ''
-    numeric_units = {'万', '亿', '千', '百', '十'}
-    sorted_units = sorted(unit_mapping.keys(), key=len, reverse=True)
-    
-    for unit_cn in sorted_units:
-        if unit_cn in numeric_units:
-            continue
+
+    for unit_cn in _sorted_units:
         if text.endswith(unit_cn):
             stripped_text = text[:-len(unit_cn)]
-            mapped_unit = unit_mapping[unit_cn]
+            mapped_unit = unit_mapping.get(unit_cn)
             if mapped_unit is None:
                 mapped_unit = unit_cn
             break
@@ -48,7 +47,6 @@ def parse_range(text):
         return None
     
     # 剥离单位后的核心文本必须纯净，只能含有基础数字 Token，绝不能掺杂百分之、分之、比或其它 OTHER 字符
-    _ALLOWED_RANGE_TYPES = {'DIGIT', 'TEN', 'HUNDRED', 'THOUSAND', 'TEN_THOUSAND', 'HUNDRED_MILLION', 'ZERO'}
     if not all(t.type in _ALLOWED_RANGE_TYPES for t in tokens):
         return None
 

@@ -6,10 +6,13 @@
 import re
 from .mappings import unit_mapping, common_units, num_mapper
 
+# 预编译正则（均为模块级常量，不会变化）
+_UNIT_PATTERN = re.compile(rf'({common_units})$')
+_LETTER_PATTERN = re.compile(r'[a-zA-Z]+$')
+
 def strip_unit(original):
     """把数字后面跟着的单位剥离开，并应用单位映射"""
-    unit_pattern = re.compile(rf'({common_units})$')
-    match = unit_pattern.search(original)
+    match = _UNIT_PATTERN.search(original)
 
     if match:
         unit_cn = match.group(1)
@@ -21,7 +24,7 @@ def strip_unit(original):
         unit = ''
 
     if not unit and stripped:
-        letter_match = re.search(r'[a-zA-Z]+$', stripped)
+        letter_match = _LETTER_PATTERN.search(stripped)
         if letter_match:
             unit = letter_match.group()
             stripped = stripped[:letter_match.start()]
@@ -32,7 +35,7 @@ def strip_unit(original):
 def convert_pure_num(original, strict=False):
     """把中文数字转为对应的阿拉伯数字"""
     stripped, unit = strip_unit(original)
-    if stripped in ['一'] and not strict:
+    if stripped == '一' and not strict:
         return original
     converted = [num_mapper[c] for c in stripped]
     return ''.join(converted) + unit

@@ -5,6 +5,7 @@ Tokenizer+Parser 架构的中文数字序列解析器 (统一 Lexer 版)
 
 import re
 from dataclasses import dataclass
+from .mappings import value_mapper as _CHAR_VALUE_MAP
 
 # ============================================================
 # Token 定义
@@ -45,17 +46,12 @@ _TOKEN_RULES = [
 
 _lex_regex = re.compile('|'.join(f'(?P<{name}>{pattern})' for name, pattern in _TOKEN_RULES))
 
-_CHAR_VALUE_MAP = {
-    '零': 0, '一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '幺': 1,
-    '十': 10, '百': 100, '千': 1000, '万': 10000, '亿': 100000000
-}
-
 def tokenize(text):
     """通用词法分析，生成 Token 序列。"""
     tokens = []
     for match in _lex_regex.finditer(text):
         token_type = match.lastgroup
-        token_char = match.group(token_type)
+        token_char = match.group()
         token_pos = match.start()
         
         # 忽略空白 Token
@@ -75,6 +71,23 @@ def tokenize(text):
 _BASIC_NUMERIC_TYPES = {
     'DIGIT', 'TEN', 'HUNDRED', 'THOUSAND', 'TEN_THOUSAND', 'HUNDRED_MILLION', 'ZERO', 'DOT'
 }
+
+# 单位 Token 类型（十百千万），用于省略尾随单位推断
+_UNIT_TYPES = frozenset({'HUNDRED', 'THOUSAND', 'TEN_THOUSAND'})
+# 注：不含 TEN（十），因为十是最小量级单位，不存在"省略更低单位"的语义
+
+def _infer_omitted_unit_scale(tokens, i, j):
+    """推断省略尾随单位的数字应乘的量级。
+
+    例如"一千八"中的"八"省略了"百"，应乘以 10；
+    "一万二千五"中的"五"省略了"百"，应乘以 100。
+    返回量级系数，或 None 表示无法推断。
+    """
+    prev = tokens[j - 1] if j > i else None
+    if prev and prev.type in _UNIT_TYPES and (j + 1 >= len(tokens) or tokens[j + 1].type == 'DOT'):
+        return prev.value // 10
+    return None
+
 
 def _parse_atomic(tokens, i):
     """从位置 i 解析一个原子数值，返回 (值, 消耗_token数) 或 None"""
@@ -205,6 +218,12 @@ def _build_number(tokens, i):
             chunk_val, chunk_con = chunk
             if chunk_val >= limit:
                 break
+
+            # 省略尾随单位推断（如 一千八 → 1800，一万二千五 → 12500）
+            scale = _infer_omitted_unit_scale(tokens, i, j)
+            if scale is not None:
+                chunk_val = chunk_val * scale
+
             value += chunk_val
             consumed += chunk_con
             j += chunk_con
