@@ -55,6 +55,7 @@ class PhonemeCorrector:
         self.similar_threshold = similar_threshold if similar_threshold is not None else threshold - 0.2
 
         self.hotwords: Dict[str, List[List[Phoneme]]] = {}
+        self.blacklists: Dict[str, Set[str]] = {}
         self.fast_rag = FastRAG(threshold=min(self.threshold, self.similar_threshold) - 0.1)
         self._lock = threading.Lock()
 
@@ -66,19 +67,33 @@ class PhonemeCorrector:
         lines = [line.strip() for line in hotword_text.splitlines() if line.strip() and not line.strip().startswith('#')]
         
         new_hotwords: Dict[str, List[List[Phoneme]]] = {}
+        new_blacklists: Dict[str, Set[str]] = {}
         for line in lines:
-            parts = [p.strip() for p in line.split('|')]
+            if '~~~' in line:
+                hotword_part, blacklist_part = line.split('~~~', 1)
+            else:
+                hotword_part, blacklist_part = line, ""
+
+            parts = [p.strip() for p in hotword_part.split('|') if p.strip()]
+            if not parts:
+                continue
             target = parts[0]
+            
             phoneme_lists = []
             for part in parts:
                 phons = get_phoneme_info(part)
                 if phons:
                     phoneme_lists.append(phons)
+            
+            blacklist_words = set(p.strip() for p in blacklist_part.split('|') if p.strip())
+            
             if phoneme_lists:
                 new_hotwords[target] = phoneme_lists
+                new_blacklists[target] = blacklist_words
         
         with self._lock:
             self.hotwords = new_hotwords
+            self.blacklists = new_blacklists
             self.fast_rag = FastRAG(threshold=min(self.threshold, self.similar_threshold) - 0.1)
             self.fast_rag.add_hotwords(new_hotwords)
         
@@ -153,7 +168,50 @@ class PhonemeCorrector:
                 
         return matches, final_similars
 
-    def _resolve_and_replace(self, text: str, matches: List[MatchResult]) -> Tuple[str, List[Tuple[str, float]], List[Tuple[str, float]]]:
+    def _tokenize_semantic_words(self, text: str) -> List[Tuple[str, int, int]]:
+        """提取语义词 (CJK 字符、英文单词、数字) 的位置"""
+        import re
+        token_pattern = re.compile(r'[\u4e00-\u9fa5]|[a-zA-Z]+|[0-9]+')
+        tokens = []  # [(val, start, end)]
+        for match in token_pattern.finditer(text):
+            tokens.append((match.group(), match.start(), match.end()))
+        return tokens
+
+    def _is_blacklisted(self, text: str, m: MatchResult, tokens: List[Tuple[str, int, int]], window: int) -> bool:
+        """检查匹配是否被黑名单拦截"""
+        hw_blacklist = self.blacklists.get(m.hotword, set())
+        if not hw_blacklist:
+            return False
+            
+        # 寻找与当前待替换区间重叠的所有语义 token
+        matched_token_indices = []
+        for idx, (t_val, t_start, t_end) in enumerate(tokens):
+            if not (t_end <= m.start or t_start >= m.end):
+                matched_token_indices.append(idx)
+        
+        if matched_token_indices:
+            t_start_idx = min(matched_token_indices)
+            t_end_idx = max(matched_token_indices)
+            # 扩展左右各 window 个 token 数量
+            win_start_token = max(0, t_start_idx - window)
+            win_end_token = min(len(tokens), t_end_idx + 1 + window)
+            
+            win_start = tokens[win_start_token][1]
+            win_end = tokens[win_end_token - 1][2]
+        else:
+            # 降级：如果未匹配到任何语义 token，则使用字符窗口
+            win_start = max(0, m.start - window)
+            win_end = min(len(text), m.end + window)
+
+        context_slice = text[win_start:win_end]
+        context_lower = context_slice.lower()
+        
+        for b_word in hw_blacklist:
+            if b_word.lower() in context_lower:
+                return True
+        return False
+
+    def _resolve_and_replace(self, text: str, matches: List[MatchResult], window: int) -> Tuple[str, List[Tuple[str, float]], List[Tuple[str, float]]]:
         """冲突去重与文本替换"""
         # 分数优先 > 长度优先
         matches.sort(key=lambda x: (x.score, x.end - x.start), reverse=True)
@@ -161,6 +219,8 @@ class PhonemeCorrector:
         final_matches = []
         all_matched_info = []
         occupied_ranges = []
+
+        tokens = self._tokenize_semantic_words(text)
 
         seen_hw_score = set()
         for m in matches:
@@ -170,6 +230,11 @@ class PhonemeCorrector:
 
             if m.score < self.threshold: continue
             
+            # 黑名单检测
+            if self._is_blacklisted(text, m, tokens, window):
+                logger.debug(f"匹配 '{text[m.start:m.end]}' -> '{m.hotword}' 触发黑名单拦截，跳过替换")
+                continue
+
             is_overlap = False
             for r_start, r_end in occupied_ranges:
                 if not (m.end <= r_start or m.start >= r_end):
@@ -190,16 +255,19 @@ class PhonemeCorrector:
             
         return "".join(result_list), [(text[m.start:m.end], m.hotword, m.score) for m in final_matches], all_matched_info
 
-    def correct(self, text: str, k: int = 10) -> CorrectionResult:
+    def correct(self, text: str, k: int = 10, blacklist_window: int = 5) -> CorrectionResult:
         """
         执行纠错替换
 
         Args:
             text: 输入文本
             k: 返回上下文相关的前 k 个热词
+            blacklist_window: 邻近黑名单窗口大小
         """
         if not text or not self.hotwords:
             return CorrectionResult(text=text, matches=[], similars=[])
+
+        window = blacklist_window
 
         # 1. 提取带位置信息的音素序列
         input_phonemes = get_phoneme_info(text)
@@ -223,7 +291,7 @@ class PhonemeCorrector:
             matches, similars = self._find_matches(text, fast_results, input_processed)
 
         # 3. 冲突解决与替换
-        new_text, final_hw_info, all_hw_info = self._resolve_and_replace(text, matches)
+        new_text, final_hw_info, all_hw_info = self._resolve_and_replace(text, matches, window)
         
         # similars 已经是 [(origin, hw, score), ...] 的元组列表
         return CorrectionResult(text=new_text, matches=final_hw_info, similars=similars[:k])
