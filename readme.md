@@ -82,6 +82,14 @@ CapsWriter 的特别之处在于追求：
 
 所有的设置都在根目录的 `config_server.py` 和 `config_client.py` 里，可直接编辑。
 
+只需临时切换语音模型时，也可以保持配置文件不变，通过启动参数选择：
+
+```powershell
+.\start_server.exe --model fun_asr_nano
+```
+
+可选值为 `qwen_asr`、`fun_asr_nano`、`sensevoice`、`paraformer`。省略 `--model` 时仍使用 `config_server.py` 中的 `ServerConfig.model_type`。
+
 
 ## 🛠️ 常见问题
 
