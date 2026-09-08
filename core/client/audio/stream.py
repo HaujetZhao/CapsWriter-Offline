@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import sys
 import time
 import threading
 from typing import TYPE_CHECKING, Optional
@@ -43,6 +42,7 @@ class AudioStreamManager:
 
     SAMPLE_RATE = 48000
     BLOCK_DURATION = 0.05  # 50ms
+    RETRY_DELAY = 2.0
 
     def __init__(self, app: CapsWriterClient):
         """
@@ -53,7 +53,12 @@ class AudioStreamManager:
         """
         self.app = app
         self._channels = 1
-        self._running = False  # 标志是否应该运行
+        self._running = False  # 当前音频流是否已启动
+        self._want_running = False  # 设备缺失时仍保留运行意图
+        self._lock = threading.RLock()
+        self._restart_timer = None
+        self._restarting = False
+        self._last_error = None
 
     @property
     def state(self) -> ClientState:
@@ -90,118 +95,125 @@ class AudioStreamManager:
             )
 
     def _on_stream_finished(self) -> None:
-        """音频流结束回调"""
-        if not threading.main_thread().is_alive():
+        """立即离开 PortAudio 回调，交由其他线程恢复设备。"""
+        if not self._want_running or self._restarting:
             return
-        if not self._running:
-            return
+        loop = self.app.loop
+        if loop and not loop.is_closed():
+            try:
+                loop.call_soon_threadsafe(self._schedule_restart)
+            except RuntimeError:
+                pass  # 程序退出时，事件循环可能刚好关闭。
 
-        logger.info("音频流意外结束，正在尝试重启...")
-        self.reopen()
+    def _schedule_restart(self) -> None:
+        with self._lock:
+            if not self._want_running or self._restart_timer is not None:
+                return
+            self._restart_timer = threading.Timer(self.RETRY_DELAY, self._retry)
+            self._restart_timer.daemon = True
+            self._restart_timer.start()
+
+    def _retry(self) -> None:
+        with self._lock:
+            self._restart_timer = None
+            if self._want_running:
+                self.reopen()
+
+    def _report_unavailable(self, error: Exception) -> None:
+        message = str(error)
+        if message != self._last_error:
+            logger.warning("Microphone unavailable; retrying in the background: %s", message)
+            console.print("[yellow]麦克风暂不可用，正在后台重试；重新连接后将自动恢复录音。[/]")
+            if '-9999' in message:
+                console.print(
+                    '[yellow]请检查 Windows 麦克风隐私权限，以及设备的独占模式和音频增强设置。[/]'
+                )
+            self._last_error = message
+        self._schedule_restart()
 
     def start(self) -> Optional[sd.InputStream]:
-        """
-        启动音频流
+        """启动音频流；设备暂不可用时后台重试，不依赖控制台输入。"""
+        with self._lock:
+            self._want_running = True
+            if self._running:
+                return self.state.stream
+            stream = None
+            try:
+                try:
+                    device = sd.query_devices(kind='input')
+                except UnicodeDecodeError:
+                    logger.warning("无法获取音频设备名称（编码问题），尝试默认单声道设备")
+                    device = {'name': '未知设备', 'max_input_channels': 1}
+                self._channels = min(2, device['max_input_channels'])
+                if self._channels < 1:
+                    raise sd.PortAudioError('No input channels available')
+                stream = sd.InputStream(
+                    samplerate=self.SAMPLE_RATE,
+                    blocksize=int(self.BLOCK_DURATION * self.SAMPLE_RATE),
+                    device=None,
+                    dtype="float32",
+                    channels=self._channels,
+                    callback=self._audio_callback,
+                    finished_callback=self._on_stream_finished,
+                )
+                stream.start()
+                if not stream.active:
+                    raise sd.PortAudioError('Input stream stopped during startup')
+                self.state.stream = stream
+                self._running = True
+                self._last_error = None
+                if self._restart_timer is not None:
+                    self._restart_timer.cancel()
+                    self._restart_timer = None
+                logger.info("Microphone connected: %s", device.get('name', 'default'))
+                console.print(
+                    f"使用默认音频设备：{device.get('name', '未知设备')}，声道数：{self._channels}",
+                    markup=False,
+                )
+                return stream
+            except Exception as error:
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except Exception:
+                        pass
+                self.state.stream = None
+                self._running = False
+                self._report_unavailable(error)
+                return None
 
-        Returns:
-            创建的音频输入流，如果失败返回 None
-        """
-        if self._running:
-            logger.debug("音频流已在运行，跳过启动")
-            return self.state.stream
-
-        # 检测音频设备
-        try:
-            device = sd.query_devices(kind='input')
-            self._channels = min(2, device['max_input_channels'])
-            device_name = device.get('name', '未知设备')
-            console.print(
-                f'使用默认音频设备：[italic]{device_name}，声道数：{self._channels}',
-                end='\n\n'
-            )
-            logger.info(f"找到音频设备: {device_name}, 声道数: {self._channels}")
-        except UnicodeDecodeError:
-            logger.warning("无法获取音频设备名称（编码问题）")
-        except sd.PortAudioError:
-            logger.error("未找到麦克风设备")
-            input('按回车键退出')
-            sys.exit(1)
-
-        # 创建音频流
-        try:
-            stream = sd.InputStream(
-                samplerate=self.SAMPLE_RATE,
-                blocksize=int(self.BLOCK_DURATION * self.SAMPLE_RATE),
-                device=None,
-                dtype="float32",
-                channels=self._channels,
-                callback=self._audio_callback,
-                finished_callback=self._on_stream_finished,
-            )
-            stream.start()
-
-            self.state.stream = stream
-            self._running = True
-            logger.debug(
-                f"音频流已启动: 采样率={self.SAMPLE_RATE}, "
-                f"块大小={int(self.BLOCK_DURATION * self.SAMPLE_RATE)}"
-            )
-            return stream
-
-        except sd.PortAudioError as e:
-            logger.error(f"创建音频流失败: {e}", exc_info=True)
-            if '-9999' in str(e):
-                console.print("""
-[bold red]检测到麦克风被占用或权限异常（错误码 -9999）[/bold red]
-请尝试以下解决方案：
-
-  1. 设置 > 隐私和安全性 > 麦克风，将「允许桌面应用访问麦克风」打开
-  2. 状态栏右下角音量图标 > 右键菜单 > 声音 > 麦克风的属性，关闭「允许应用程序独占控制该设备」
-  3. 状态栏右下角音量图标 > 右键菜单 > 声音 > 麦克风的属性，关闭「增强效果」
-""")
-            return None
-        except Exception as e:
-            logger.error(f"创建音频流失败: {e}", exc_info=True)
-            return None
+    def _close_stream(self) -> None:
+        stream, self.state.stream = self.state.stream, None
+        self._running = False
+        if stream is not None:
+            try:
+                stream.close()
+            except Exception as error:
+                logger.debug("Closing unavailable microphone: %s", error)
 
     def stop(self) -> None:
-        """停止音频流"""
-        if not self._running:
-            return
-
-        self._running = False  # 标记为停止
-        if self.state.stream is not None:
-            try:
-                self.state.stream.close()
-                logger.debug("音频流已停止")
-            except Exception as e:
-                logger.debug(f"停止音频流时发生错误: {e}")
-            finally:
-                self.state.stream = None
+        """关闭音频流并取消待执行的重连，防止退出后再次开启设备。"""
+        with self._lock:
+            self._want_running = False
+            if self._restart_timer is not None:
+                self._restart_timer.cancel()
+                self._restart_timer = None
+            self._close_stream()
 
     def reopen(self) -> Optional[sd.InputStream]:
-        """
-        重新启动音频流
-
-        Returns:
-            新创建的音频输入流
-        """
-        logger.info("正在重启音频流...")
-
-        # 停止旧流
-        self.stop()
-
-        # 重载 PortAudio，更新设备列表
-        try:
-            sd._terminate()
-            sd._ffi.dlclose(sd._lib)
-            sd._lib = sd._ffi.dlopen(sd._libname)
-            sd._initialize()
-        except Exception as e:
-            logger.warning(f"重载 PortAudio 时发生警告: {e}")
-
-        # 等待设备稳定
-        time.sleep(0.1)
-
-        # 启动新流
-        return self.start()
+        """在 PortAudio 回调之外关闭旧流、刷新设备列表并重新打开。"""
+        with self._lock:
+            if not self._want_running:
+                return None
+            self._restarting = True
+            try:
+                self._close_stream()
+                # 刷新设备列表即可；仍有回调指针时不能卸载 CFFI 共享库。
+                sd._terminate()
+                sd._initialize()
+                return self.start()
+            except Exception as error:
+                self._report_unavailable(error)
+                return None
+            finally:
+                self._restarting = False
