@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  capswriter:
+    build:
+      context: .
+
+      # 无法正常访问github时请按下列格式添加代理
+
+      # args:
+      #   - http_proxy=http://192.168.3.2:11088
+      #   - https_proxy=http://192.168.3.2:11088
+      #   - no_proxy=localhost,127.0.0.1
+
+    # 可以将6016替换为你想使用的端口
+    ports:
+      - "6016:6016"
+    restart: unless-stopped
+    container_name: capswriter
+    # 请将models目录替换为你的模型目录，并将模型文件放入其中
+    volumes:
+      - ./models:/app/models
