@@ -9,6 +9,28 @@
 import numpy as np
 from typing import Optional
 from core.server.schema import Task, Result
+from . import logger
+
+# Conservative near-silence gate, not a speech classifier. Keep any frame
+# above -65 dBFS RMS or any sample above -45 dBFS peak, including brief speech.
+SILENCE_RMS = 10 ** (-65 / 20)
+SILENCE_PEAK = 10 ** (-45 / 20)
+
+
+def is_near_silence(samples: np.ndarray, samplerate: int) -> bool:
+    if samples.size == 0 or samplerate <= 0 or not np.isfinite(samples).all():
+        return False
+    if float(np.max(np.abs(samples))) >= SILENCE_PEAK:
+        return False
+    frame_size = max(1, int(samplerate * 0.02))
+    for start in range(0, samples.size, frame_size):
+        frame = samples[start:start + frame_size]
+        if float(np.mean(frame * frame)) >= SILENCE_RMS ** 2:
+            return False
+    return True
+
+
+logger.info(f"能量静音过滤已启用: RMS=-65dBFS, peak=-45dBFS, frame=20ms, mic only; module={__file__}")
 
 
 def process_audio_task(task: Task, result: Result) -> Optional[np.ndarray]:
@@ -37,5 +59,11 @@ def process_audio_task(task: Task, result: Result) -> Optional[np.ndarray]:
     result.duration += duration - task.overlap
     if task.is_final:
         result.duration += task.overlap
-        
+
+    # Preserve duration and the pipeline's existing final-result lifecycle.
+    # File transcription remains unchanged; never trim or edit voiced samples.
+    if task.type == 'mic' and is_near_silence(samples, task.samplerate):
+        logger.info(f"跳过近静音录音: task={task.task_id[:8]}, duration={duration:.2f}s")
+        return None
+
     return samples

@@ -16,7 +16,10 @@ from config_server import ServerConfig as Config
 from core.tools.token_sync import sync_tokens_from_text
 from core.server.engines.base import EngineCapabilities
 from .audio import process_audio_task
+from .filler_filter import suppress_filler_only
 from . import logger
+
+logger.info(f"整段语气词过滤已启用（mic only）; module={__file__}")
 
 # 导入拆分后的算法子包
 from core.server.merger import (
@@ -78,6 +81,8 @@ class TaskPipeline:
                 result.time_start, result.time_submit = task.time_start, task.time_submit
                 result.time_complete = time.time()
                 result.is_final = task.is_final
+                if task.is_final and suppress_filler_only(result):
+                    logger.info(f"已屏蔽整段语气词: task={task.task_id[:8]}")
                 return result
 
             # 3. 执行识别推理
@@ -135,6 +140,8 @@ class TaskPipeline:
             raw_text = result.text
             result.text = self.formatter.format(result.text)
             result.text_accu = self.formatter.format(result.text_accu)
+            if suppress_filler_only(result):
+                logger.info(f"已屏蔽整段语气词: task={task.task_id[:8]}")
             console.print(f'  片段拼接：[purple]{raw_text}', soft_wrap=True)
             console.print(f'  格式化后：[green]{result.text}\n', soft_wrap=True)
 
@@ -166,6 +173,5 @@ class TaskPipeline:
         except Exception as e:
             logger.error(f"推理管线错误: {e}", exc_info=True)
             raise
-
 
 
