@@ -40,6 +40,16 @@ class RecognizerWorker:
 
     def _setup_environment(self):
         """配置运行环境 (输入接管、信号处理、资源回收)"""
+        # 控制台编码兜底：exe 冻结后 PYTHONIOENCODING 不起作用，控制台代码页仍是 GBK，
+        # 模型输出含 emoji / 生僻字时 print 会抛 UnicodeEncodeError，把整条识别结果带没。
+        # 只放宽 errors、不动 encoding，中文照常显示，编不出的字符退化成 '?'。
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                if stream is not None and hasattr(stream, 'reconfigure'):
+                    stream.reconfigure(errors='replace')
+            except Exception:
+                pass
+
         if self.stdin_fn is not None:
             try:
                 sys.stdin = os.fdopen(self.stdin_fn)
