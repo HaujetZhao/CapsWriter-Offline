@@ -49,6 +49,17 @@ async def _auto_enter(delay: float) -> None:
     logger.debug(f"自动回车已发送 (延迟 {delay}s)")
 
 
+def _show_asr_error_toast(error: str) -> None:
+    """用项目自带的浮动通知显示识别失败"""
+    try:
+        from core.ui.toast import toast
+
+        toast(text=f"识别失败: {error[:120]}", font_size=16, bg='#8B0000',
+              fg='white', duration=5000, initial_width=0.6)
+    except Exception as e:
+        logger.error(f"识别失败 Toast 显示失败: {e}")
+
+
 class ResultProcessor:
     """
     识别结果处理器
@@ -181,6 +192,15 @@ class ResultProcessor:
     async def _handle_message(self, message: Optional[RecognitionMessage]) -> None:
         """处理接收到的消息"""
         if message is None:
+            return
+
+        # 服务端识别失败：必须让她看得见，否则表现成“长按没反应”
+        if message.error:
+            logger.warning(f"服务端识别失败: {message.error}")
+            console.print(f'    [bold red]识别失败：{message.error}[/bold red]')
+            _show_asr_error_toast(message.error)
+            if message.is_final:
+                self.state.pop_audio_file(message.task_id)
             return
 
 
