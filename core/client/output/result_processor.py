@@ -197,9 +197,9 @@ class ResultProcessor:
         # 服务端识别失败：必须让用户看得见，否则表现成“长按没反应”
         if message.error:
             logger.warning(f"服务端识别失败: {message.error}")
-            console.print(f'    识别失败：{message.error}', style='bold red', markup=False)
             if message.task_id not in self._error_notified:
                 self._error_notified.add(message.task_id)
+                console.print(f'    识别失败：{message.error}', style='bold red', markup=False)
                 _show_asr_error_toast(message.error)
             if message.is_final:
                 self._error_notified.discard(message.task_id)
