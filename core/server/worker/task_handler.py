@@ -138,7 +138,7 @@ class TaskHandler:
             result = self.pipeline.process(task)
         except Exception as e:
             # 客户端在等这一单的回执，只记日志不发帧就等于让它永久干等
-            logger.error(f"识别任务失败: {task.task_id[:8]}: {e}")
+            logger.error(f"识别任务失败: {task.task_id[:8]}: {e}", exc_info=True)
             result = self.state.get_session(task.task_id, task.socket_id, task.type).result
             result.time_start, result.time_submit = task.time_start, task.time_submit
             result.time_complete = time.time()
