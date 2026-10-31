@@ -73,6 +73,7 @@ class RecognitionMessage:
         text_accu: 精确输出 - 基于时间戳去重的拼接结果（用于字幕生成）
         tokens: 字级 token 列表（与 timestamps 对应）
         timestamps: 字级时间戳列表（秒）
+        error: 识别失败的原因（正常结果为空）
     """
     task_id: str
     is_final: bool
