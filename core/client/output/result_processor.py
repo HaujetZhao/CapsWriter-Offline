@@ -82,6 +82,7 @@ class ResultProcessor:
         self.app = app
         self._exit_event = asyncio.Event()
         self._loop = asyncio.get_running_loop()  # 保存事件循环引用
+        self._error_notified: set[str] = set()  # 长语音逐段失败时只弹一次
 
     @property
     def state(self) -> ClientState:
@@ -198,10 +199,16 @@ class ResultProcessor:
         if message.error:
             logger.warning(f"服务端识别失败: {message.error}")
             console.print(f'    识别失败：{message.error}', style='bold red', markup=False)
-            _show_asr_error_toast(message.error)
+            if message.task_id not in self._error_notified:
+                self._error_notified.add(message.task_id)
+                _show_asr_error_toast(message.error)
             if message.is_final:
+                self._error_notified.discard(message.task_id)
                 self.state.pop_audio_file(message.task_id)
             return
+
+        if message.is_final:
+            self._error_notified.discard(message.task_id)
 
         # 使用 text 字段（简单拼接结果，用于语音输入）
         text = message.text
@@ -331,6 +338,7 @@ class ResultProcessor:
     
     def _cleanup(self) -> None:
         """清理资源"""
+        self._error_notified.clear()
         if self.state.websocket is not None:
             try:
                 if self.state.websocket.closed:
