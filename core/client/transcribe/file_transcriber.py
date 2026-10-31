@@ -179,7 +179,7 @@ class FileTranscriber:
                 msg = await self._ws_manager.receive()
                 if not msg:
                     break
-
+                
                 if msg.error:
                     logger.error(f"服务端识别失败: {msg.error}, 文件: {self.file}")
                     if not error_notified:

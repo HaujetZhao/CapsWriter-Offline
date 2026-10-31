@@ -54,8 +54,7 @@ def _show_asr_error_toast(error: str) -> None:
     try:
         from core.ui.toast import toast
 
-        toast(text=f"识别失败: {error[:120]}", font_size=16, bg='#8B0000',
-              fg='white', duration=5000, initial_width=0.6)
+        toast(f"识别失败: {error[:120]}")
     except Exception as e:
         logger.error(f"识别失败 Toast 显示失败: {e}")
 
