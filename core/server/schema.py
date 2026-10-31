@@ -66,6 +66,7 @@ class Result:
         timestamps: 字级时间戳列表（秒）
         
         is_final: 是否已完成所有片段识别
+        error: 识别失败的原因（正常结果为空字符串）
     """
     task_id: str
     socket_id: str
@@ -86,6 +87,7 @@ class Result:
     
     is_final: bool = False
 
+    # 识别失败原因
     error: str = ''
 
 @dataclass

@@ -136,6 +136,8 @@ class TaskHandler:
         """处理音频识别任务。"""
         try:
             result = self.pipeline.process(task)
+            # result 是会话共用的，上一段失败留下的 error 不能带到这一帧
+            result.error = ''
         except Exception as e:
             # 客户端在等这一单的回执，只记日志不发帧就等于让它永久干等
             logger.error(f"识别任务失败: {task.task_id[:8]}: {e}", exc_info=True)
