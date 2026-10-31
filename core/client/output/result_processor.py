@@ -194,15 +194,14 @@ class ResultProcessor:
         if message is None:
             return
 
-        # 服务端识别失败：必须让她看得见，否则表现成“长按没反应”
+        # 服务端识别失败：必须让用户看得见，否则表现成“长按没反应”
         if message.error:
             logger.warning(f"服务端识别失败: {message.error}")
-            console.print(f'    [bold red]识别失败：{message.error}[/bold red]')
+            console.print(f'    识别失败：{message.error}', style='bold red', markup=False)
             _show_asr_error_toast(message.error)
             if message.is_final:
                 self.state.pop_audio_file(message.task_id)
             return
-
 
         # 使用 text 字段（简单拼接结果，用于语音输入）
         text = message.text
