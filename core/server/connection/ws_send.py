@@ -39,7 +39,8 @@ async def ws_send(app):
                 text=result.text,
                 text_accu=result.text_accu,
                 tokens=result.tokens,
-                timestamps=result.timestamps
+                timestamps=result.timestamps,
+                error=result.error
             )
 
             # 获得 socket

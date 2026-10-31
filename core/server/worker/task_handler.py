@@ -12,6 +12,7 @@ from collections import OrderedDict, deque
 from multiprocessing import Queue
 from multiprocessing.managers import ListProxy
 import queue
+import time
 from .pipeline import TaskPipeline
 from ..state import WorkerState
 from .gpu_boost import GpuBoostManager
@@ -133,7 +134,16 @@ class TaskHandler:
 
     def handle_audio_task(self, task):
         """处理音频识别任务。"""
-        result = self.pipeline.process(task)
+        try:
+            result = self.pipeline.process(task)
+        except Exception as e:
+            # 客户端在等这一单的回执，只记日志不发帧就等于让它永久干等
+            logger.error(f"识别任务失败: {task.task_id[:8]}: {e}")
+            result = self.state.get_session(task.task_id, task.socket_id, task.type).result
+            result.time_start, result.time_submit = task.time_start, task.time_submit
+            result.time_complete = time.time()
+            result.is_final = task.is_final
+            result.error = f"{type(e).__name__}: {e}"
         self.queue_out.put(result)
         if result.is_final:
             self.state.sessions.pop(task.task_id, None)

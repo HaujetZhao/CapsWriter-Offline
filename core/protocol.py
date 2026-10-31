@@ -88,6 +88,9 @@ class RecognitionMessage:
     text_accu: str = ''
     tokens: List[str] = field(default_factory=list)
     timestamps: List[float] = field(default_factory=list)
+
+    # 服务端识别失败的原因，正常结果为空
+    error: str = ''
     
     def to_json(self) -> str:
         """序列化为 JSON 字符串"""
@@ -111,4 +114,5 @@ class RecognitionMessage:
             text_accu=data.get('text_accu', ''),
             tokens=data.get('tokens', []),
             timestamps=data.get('timestamps', []),
+            error=data.get('error', ''),
         )

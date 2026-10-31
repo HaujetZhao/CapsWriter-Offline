@@ -86,6 +86,8 @@ class Result:
     
     is_final: bool = False
 
+    error: str = ''
+
 @dataclass
 class RecognitionSession:
     """
