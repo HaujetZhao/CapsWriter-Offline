@@ -9,9 +9,11 @@
 """
 
 from collections import OrderedDict, deque
+from copy import deepcopy
 from multiprocessing import Queue
 from multiprocessing.managers import ListProxy
 import queue
+import time
 from .pipeline import TaskPipeline
 from ..state import WorkerState
 from .gpu_boost import GpuBoostManager
@@ -133,8 +135,20 @@ class TaskHandler:
 
     def handle_audio_task(self, task):
         """处理音频识别任务。"""
-        result = self.pipeline.process(task)
-        self.queue_out.put(result)
+        try:
+            result = self.pipeline.process(task)
+            # result 是会话共用的，上一段失败留下的 error 不能带到这一帧
+            result.error = ''
+        except Exception as e:
+            # 客户端在等这一单的回执，只记日志不发帧就等于让它永久干等
+            logger.error(f"识别任务失败: {task.task_id[:8]}: {e}", exc_info=True)
+            result = self.state.get_session(task.task_id, task.socket_id, task.type).result
+            result.time_start, result.time_submit = task.time_start, task.time_submit
+            result.time_complete = time.time()
+            result.is_final = task.is_final
+            result.error = f"{type(e).__name__}: {e}"
+        # Queue 在后台序列化，会话结果必须先快照，避免被后续分片改写。
+        self.queue_out.put(deepcopy(result))
         if result.is_final:
             self.state.sessions.pop(task.task_id, None)
 

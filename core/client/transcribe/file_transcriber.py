@@ -174,11 +174,20 @@ class FileTranscriber:
         """接收转录结果"""
         
         try:
+            error_notified = False
             while True:
                 msg = await self._ws_manager.receive()
                 if not msg:
                     break
                 
+                if msg.error:
+                    logger.error(f"服务端识别失败: {msg.error}, 文件: {self.file}")
+                    if not error_notified:
+                        console.print(f'    识别失败：{msg.error}', style='bold red', markup=False)
+                        error_notified = True
+                    if msg.is_final:
+                        return
+
                 console.print(f'    转录进度: {msg.duration:.2f}s', end='\r')
                 if msg.is_final:
                     message = msg # 保持变量名兼容后续调用

@@ -39,7 +39,8 @@ async def ws_send(app):
                 text=result.text,
                 text_accu=result.text_accu,
                 tokens=result.tokens,
-                timestamps=result.timestamps
+                timestamps=result.timestamps,
+                error=result.error
             )
 
             # 获得 socket
@@ -61,7 +62,7 @@ async def ws_send(app):
             elif result.type == 'file':
                 console.print(f'    转录进度：{result.duration:.2f}s', end='\r')
                 logger.debug(f"文件转录进度: {result.duration:.2f}s")
-                if result.is_final:
+                if result.is_final and not result.error:
                     console.print('\n    [green]转录完成')
                     logger.info(f"文件转录完成，任务ID: {result.task_id}, 总时长: {result.duration:.2f}s")
 
