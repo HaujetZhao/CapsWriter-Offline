@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Optional
 
 from . import logger
 from core.tools.my_status import Status
+from core.ui import recording_indicator
  
 if TYPE_CHECKING:
     from core.client.shortcut.shortcut_config import Shortcut
@@ -90,6 +91,9 @@ class ShortcutTask:
         # 打印动画：正在录音
         self._status.start()
 
+        # 屏幕浮窗：红色声波跳动
+        recording_indicator.show_recording()
+
         # 启动识别任务
         recorder = self._get_recorder()
         self.task = asyncio.run_coroutine_threadsafe(
@@ -105,6 +109,9 @@ class ShortcutTask:
         self.state.stop_recording()
         self._status.stop()
 
+        # 取消录音：直接隐藏浮窗
+        recording_indicator.hide()
+
         self.task.cancel()
         self.task = None
 
@@ -115,6 +122,9 @@ class ShortcutTask:
         self.is_recording = False
         self.state.stop_recording()
         self._status.stop()
+
+        # 录音结束，进入转写：浮窗切换为蓝色转圈
+        recording_indicator.show_transcribing()
 
         asyncio.run_coroutine_threadsafe(
             self.state.queue_in.put({

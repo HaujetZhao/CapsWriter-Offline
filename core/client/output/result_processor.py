@@ -24,6 +24,7 @@ from core.client.udp.udp_broadcaster import broadcast_output_udp
 from core.tools.zhconv import convert as zhconv_convert
 from core.client.audio.file_manager import AudioFileManager
 from core.client.llm.llm_write_md import write_llm_md
+from core.ui import recording_indicator
 
 if TYPE_CHECKING:
     from core.client.state import ClientState
@@ -307,6 +308,9 @@ class ResultProcessor:
 
         # 检测修饰键状态（调试用）
         self._log_modifier_key_state()
+
+        # 识别流程全部结束：隐藏状态浮窗
+        recording_indicator.hide()
 
         console.line()
     
