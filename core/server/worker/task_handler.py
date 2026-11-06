@@ -9,6 +9,7 @@
 """
 
 from collections import OrderedDict, deque
+from copy import deepcopy
 from multiprocessing import Queue
 from multiprocessing.managers import ListProxy
 import queue
@@ -146,7 +147,8 @@ class TaskHandler:
             result.time_complete = time.time()
             result.is_final = task.is_final
             result.error = f"{type(e).__name__}: {e}"
-        self.queue_out.put(result)
+        # Queue 在后台序列化，会话结果必须先快照，避免被后续分片改写。
+        self.queue_out.put(deepcopy(result))
         if result.is_final:
             self.state.sessions.pop(task.task_id, None)
 
