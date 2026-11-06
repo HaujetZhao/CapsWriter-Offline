@@ -11,7 +11,7 @@
 - 复用 ToastMessageManager 已经在子线程里跑起来的 tkinter root，
   绝不在本模块里新建 tk.Tk() / mainloop，避免双主循环冲突。
 - 所有 tk 操作都通过 root.after(0, ...) 投递到 tk 线程执行。
-- 任何异常都吞掉，绝不影响录音主流程。
+- 任何异常都吞掉，绝不影响录音流程。
 """
 
 from __future__ import annotations
