@@ -75,6 +75,7 @@ hiddenimports += [
     'PIL',           # Pillow 用于托盘图标
     'PIL.Image',
     'pystray',       # 托盘图标库
+    'core.ui.win_notify',  # 识别失败系统通知（result_processor 内延迟导入，须显式收集）
 ]
 
 # # 对所有模块用 .py 源码而非 .pyc（猴子补丁 _get_module_collection_mode）

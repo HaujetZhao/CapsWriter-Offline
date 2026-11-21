@@ -75,6 +75,7 @@ hiddenimports += [
     'PIL',           # Pillow 用于托盘图标
     'PIL.Image',
     'pystray',       # 托盘图标库
+    'core.ui.win_notify',  # 识别失败系统通知（result_processor 内延迟导入，须显式收集）
     'rich._unicode_data.unicode17-0-0',
 ]
 

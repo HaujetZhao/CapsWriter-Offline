@@ -50,13 +50,13 @@ async def _auto_enter(delay: float) -> None:
 
 
 def _show_asr_error_toast(error: str) -> None:
-    """用项目自带的浮动通知显示识别失败"""
+    """显示识别失败：Win10+ 用右下角系统通知，否则回退项目浮动窗"""
     try:
-        from core.ui.toast import toast
+        from core.ui.win_notify import show_asr_error_notification
 
-        toast(f"识别失败: {error[:120]}")
+        show_asr_error_notification(error)
     except Exception as e:
-        logger.error(f"识别失败 Toast 显示失败: {e}")
+        logger.error(f"识别失败通知显示失败: {e}")
 
 
 class ResultProcessor:
